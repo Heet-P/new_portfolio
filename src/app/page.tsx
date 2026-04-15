@@ -1,65 +1,103 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { TopNav } from "@/components/desktop/TopNav";
+import { LeftSidebar } from "@/components/desktop/LeftSidebar";
+import { RightSidebar } from "@/components/desktop/RightSidebar";
+import { MacWindow } from "@/components/windows/MacWindow";
+import { HomeContent } from "@/components/windows/HomeContent";
+import { ProjectsContent } from "@/components/windows/ProjectsContent";
+
+export default function Desktop() {
+  const [openWindows, setOpenWindows] = useState<string[]>([]);
+  const [activeWindow, setActiveWindow] = useState<string>("");
+  
+  // Store the exact coordinate box of the clicked icon
+  const [origins, setOrigins] = useState<Record<string, DOMRect>>({});
+
+  const openWindow = (id: string, rect: DOMRect) => {
+    setOrigins(prev => ({ ...prev, [id]: rect })); // Save the origin
+    if (!openWindows.includes(id)) setOpenWindows([...openWindows, id]);
+    setActiveWindow(id);
+  };
+
+  const closeWindow = (id: string) => {
+    const updated = openWindows.filter(w => w !== id);
+    setOpenWindows(updated);
+    if (activeWindow === id) setActiveWindow(updated[updated.length - 1] || "");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="relative w-screen h-screen overflow-hidden text-zinc-50 selection:bg-orange-500/30">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-950 to-black z-0">
+        <div className="absolute inset-0 opacity-[0.04] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+      </div>
+
+      <TopNav />
+      <LeftSidebar onOpen={openWindow} />
+      <RightSidebar onOpen={openWindow} />
+
+      <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+         <AnimatePresence>
+           
+           {openWindows.includes("home") && (
+             <MacWindow
+               key="home"
+               id="home"
+               title="home.mdx"
+               originRect={origins["home"]}
+               defaultPosition={{ x: -150, y: -50 }}
+               width="w-[700px]"
+               height="h-[450px]"
+               isActive={activeWindow === "home"}
+               onFocus={() => setActiveWindow("home")}
+               onClose={() => closeWindow("home")}
+             >
+                <HomeContent />
+             </MacWindow>
+           )}
+
+           {openWindows.includes("projects") && (
+             <MacWindow
+               key="projects"
+               id="projects"
+               title="projects.mdx"
+               originRect={origins["projects"]}
+               defaultPosition={{ x: 100, y: 50 }}
+               width="w-[650px]"
+               height="h-[500px]"
+               isActive={activeWindow === "projects"}
+               onFocus={() => setActiveWindow("projects")}
+               onClose={() => closeWindow("projects")}
+             >
+                <ProjectsContent />
+             </MacWindow>
+           )}
+
+           {openWindows.includes("changelog") && (
+             <MacWindow
+               key="changelog"
+               id="changelog"
+               title="changelog.mdx"
+               originRect={origins["changelog"]}
+               defaultPosition={{ x: 200, y: -100 }}
+               width="w-[500px]"
+               height="h-[400px]"
+               isActive={activeWindow === "changelog"}
+               onFocus={() => setActiveWindow("changelog")}
+               onClose={() => closeWindow("changelog")}
+             >
+                <div className="p-8 text-zinc-400 font-mono text-sm">
+                  <h2 className="text-white font-bold mb-4">v1.0.5 - The Hyper-Smooth Update</h2>
+                  <p>- Strip blur filters for 60fps hardware acceleration</p>
+                  <p>- Implement dynamic DOMRect origin math</p>
+                </div>
+             </MacWindow>
+           )}
+
+         </AnimatePresence>
+      </div>
+    </main>
   );
 }
