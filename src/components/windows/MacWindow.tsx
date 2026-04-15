@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, Variants } from "framer-motion";
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 
 interface MacWindowProps {
   id: string;
@@ -13,7 +13,9 @@ interface MacWindowProps {
   isActive: boolean;
   onFocus: () => void;
   onClose: () => void;
-  originRect?: DOMRect; // The exact coordinates of the clicked icon
+  originRect?: DOMRect;
+  // NEW PROP: Reports if this window is currently maximized
+  onMaximize?: (isMaximized: boolean) => void; 
 }
 
 export function MacWindow({
@@ -26,6 +28,7 @@ export function MacWindow({
   onFocus,
   onClose,
   originRect,
+  onMaximize,
 }: MacWindowProps) {
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -41,10 +44,11 @@ export function MacWindow({
 
   const origin = getOriginOffset();
 
+  // Optimized typed variants with no blur and will-change
   const genieVariants: Variants = {
     closed: {
       opacity: 0,
-      scale: 0.05, // Start tiny, exactly at the icon
+      scale: 0.05,
       x: origin.x,
       y: origin.y,
     },
@@ -67,10 +71,23 @@ export function MacWindow({
       y: origin.y,
       transition: {
         duration: 0.25,
+        // STRICT TUPLE FIX APPLIED HERE
         ease: [0.32, 0, 0.67, 0] as [number, number, number, number],
       },
     },
   };
+
+  // Toggle maximize state and call the prop
+  const toggleMaximize = () => {
+    const nextMaximizeState = !isMaximized;
+    setIsMaximized(nextMaximizeState);
+    if (onMaximize) onMaximize(nextMaximizeState);
+  };
+
+  // Reset maximization state when prop is missing (defensive)
+  useEffect(() => {
+    if(!onMaximize) setIsMaximized(false);
+  }, [onMaximize]);
 
   return (
     <motion.div
@@ -81,7 +98,6 @@ export function MacWindow({
       drag={!isMaximized}
       dragMomentum={false}
       onMouseDown={onFocus}
-      // Hardware acceleration added here (willChange)
       style={{ willChange: "transform, opacity" }}
       className={`absolute flex flex-col overflow-hidden border transition-[box-shadow,border-color] duration-300 pointer-events-auto ${
         isActive 
@@ -94,7 +110,7 @@ export function MacWindow({
       }`}
     >
       <div 
-        onDoubleClick={() => setIsMaximized(!isMaximized)}
+        onDoubleClick={toggleMaximize}
         className="h-10 flex items-center justify-between border-b border-white/10 bg-black/20 w-full shrink-0 cursor-grab active:cursor-grabbing select-none"
       >
         <div className="flex items-center gap-3 px-3">
@@ -109,7 +125,7 @@ export function MacWindow({
           <button onClick={onClose} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
             <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0,5 L10,5" stroke="currentColor" strokeWidth="1"/></svg>
           </button>
-          <button onClick={() => setIsMaximized(!isMaximized)} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
+          <button onClick={toggleMaximize} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
             <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1" fill="none"/></svg>
           </button>
           <button onClick={onClose} className="h-full px-4 hover:bg-[#e81123] text-zinc-400 hover:text-white flex items-center justify-center">

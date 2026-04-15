@@ -1,38 +1,54 @@
-import { Search, Wifi, BatteryMedium } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
 
 export function TopNav() {
-  const menuItems = ["Work", "About", "Projects", "Blog", "Contact", "More"];
+  const [time, setTime] = useState<Date | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setTime(new Date());
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <nav className="absolute top-0 left-0 w-full h-8 flex items-center justify-between px-4 z-50 text-xs font-medium bg-zinc-950/40 backdrop-blur-2xl border-b border-white/10">
-      {/* Left Menu */}
-      <div className="flex items-center gap-6">
-        <span className="font-bold text-white cursor-pointer hover:text-white/80 transition-colors">
-          Heet Parikh
-        </span>
-        <ul className="flex items-center gap-4 text-zinc-300">
-          {menuItems.map((item) => (
-            <li key={item} className="cursor-pointer hover:text-white transition-colors">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Right Menu & Status */}
-      <div className="flex items-center gap-4 text-zinc-300">
-        <button className="bg-orange-500/90 hover:bg-orange-500 text-white px-3 py-0.5 rounded shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all cursor-pointer">
-          View Live
-        </button>
-        <div className="flex items-center gap-3">
-          <Search size={14} className="cursor-pointer hover:text-white" />
-          <Wifi size={14} />
-          <BatteryMedium size={14} />
-          <span className="text-white font-mono tracking-tighter">
-            {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-          </span>
-        </div>
-      </div>
-    </nav>
+    <div className="absolute top-0 left-0 w-full h-8 bg-[#1c1c1e]/80 backdrop-blur-md border-b border-white/10 z-50 flex items-center justify-between px-4 text-xs font-medium text-zinc-300">
+       
+       <div className="flex items-center gap-4">
+         {/* Functional Dropdown Menu */}
+         <div className="relative">
+            <button 
+              onClick={() => setMenuOpen(!menuOpen)} 
+              className={`font-black text-white px-2 py-1 rounded transition-colors ${menuOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
+            >
+              Heet OS
+            </button>
+            
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 w-48 bg-[#1c1c1e] border border-white/10 rounded-md shadow-2xl py-1 z-50">
+                   <div 
+                     className="px-4 py-1.5 hover:bg-orange-500 hover:text-white cursor-pointer" 
+                     onClick={() => window.location.reload()}
+                   >
+                     Restart System...
+                   </div>
+                </div>
+              </>
+            )}
+         </div>
+         <span className="hidden sm:inline hover:text-white cursor-pointer">File</span>
+         <span className="hidden sm:inline hover:text-white cursor-pointer">Edit</span>
+         <span className="hidden sm:inline hover:text-white cursor-pointer">View</span>
+       </div>
+       
+       <div className="flex items-center gap-4">
+          <span>100%</span>
+          {/* Live Clock */}
+          <span>{time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}</span>
+       </div>
+    </div>
   );
 }
