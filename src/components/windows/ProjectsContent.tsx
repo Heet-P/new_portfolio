@@ -46,7 +46,7 @@ export function ProjectsContent() {
     if (isHovered) return;
     const timer = setInterval(() => {
       setActiveIndex((current) => (current + 1) % projects.length);
-    }, 6000);
+    }, 3550);
     return () => clearInterval(timer);
   }, [isHovered, projects.length]);
 

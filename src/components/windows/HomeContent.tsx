@@ -4,8 +4,9 @@ export function HomeContent() {
       <div className="text-orange-500 mb-4 animate-pulse">System initialized. Auth: 24CS058.</div>
       <h1 className="text-3xl text-white font-bold mb-6 font-sans">Crafting digital experiences.</h1>
       <p className="mb-4">
-        Hey, I'm Heet. I build fast, scalable web applications and dive deep into game engine architecture. 
-        Whether it's optimizing React renders or managing memory in C++, I engineer software that feels native and performs flawlessly.
+        Hey, I'm Heet. I build full-stack web applications focused on real-world impact — from helping users navigate language barriers in government forms to deploying
+AI-driven mental health tools for Indian communities. I work across the stack with a strong focus on AI integration, and have shipped
+production-ready products in competitive hackathon environments
       </p>
       <div className="mt-8 p-4 bg-black/50 border border-white/5 rounded-md">
         <code className="text-green-400">~ $ ./execute_vision.sh</code>

@@ -353,16 +353,17 @@ export default function Desktop() {
              </MacWindow>
            )}
 
-           {/* SETTINGS WINDOW */}
+           {/* SETTINGS WINDOW - Reconfigured for max visible area and large photo */}
            {openWindows.includes("settings") && (
              <MacWindow
                key="settings"
                id="settings"
-               title="System Settings"
+               title="System Settings // Auth: 24CS058"
                originRect={origins["settings"]}
-               defaultPosition={{ x: -200, y: -50 }}
-               width="w-[750px]"
-               height="h-[550px]"
+               // We increase size significantly and adjust position for balance
+               width="w-[950px]"
+               height="h-[650px]"
+               defaultPosition={{ x: -50, y: -20 }}
                isActive={activeWindow === "settings"}
                onFocus={() => setActiveWindow("settings")}
                onClose={() => closeWindow("settings")}
