@@ -13,6 +13,11 @@ const arvo = Arvo({
 export const metadata: Metadata = {
   title: "Heet Parikh | Developer Portfolio",
   description: "Crafting digital experiences in React, C++, and game development. Welcome to my interactive desktop.",
+  icons: {
+    icon: "/images/icon.png",
+    shortcut: "/images/icon.png",
+    apple: "/images/icon.png",
+  },
   openGraph: {
     title: "Heet Parikh | Developer Portfolio",
     description: "Interactive macOS-inspired developer portfolio.",
