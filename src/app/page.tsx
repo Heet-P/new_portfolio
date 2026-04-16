@@ -149,7 +149,7 @@ export default function Desktop() {
              <MacWindow
                key="home"
                id="home"
-               title="home.mdx"
+               title="About.txt"
                originRect={origins["home"]}
                width="w-[850px]"
                height="h-[600px]"
@@ -168,7 +168,7 @@ export default function Desktop() {
              <MacWindow
                key="projects"
                id="projects"
-               title="projects.mdx"
+               title="Projects.txt"
                originRect={origins["projects"]}
                width="w-[950px]"
                height="h-[650px]"
@@ -187,7 +187,7 @@ export default function Desktop() {
              <MacWindow
                key="changelog"
                id="changelog"
-               title="changelog.mdx"
+               title="changelog.txt"
                originRect={origins["changelog"]}
                defaultPosition={{ x: 200, y: -100 }}
                width="w-[600px]"
@@ -320,7 +320,7 @@ export default function Desktop() {
              <MacWindow
                key={openWindows.includes("experience") ? "experience" : "journey"}
                id={openWindows.includes("experience") ? "experience" : "journey"}
-               title="experience.mdx"
+               title="Journey.txt"
                originRect={origins[openWindows.includes("experience") ? "experience" : "journey"]}
                defaultPosition={{ x: 150, y: -20 }}
                width="w-[800px]"
@@ -358,7 +358,7 @@ export default function Desktop() {
              <MacWindow
                key="settings"
                id="settings"
-               title="System Settings // Auth: 24CS058"
+               title="System Settings"
                originRect={origins["settings"]}
                // We increase size significantly and adjust position for balance
                width="w-[950px]"

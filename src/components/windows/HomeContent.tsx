@@ -1,10 +1,10 @@
 export function HomeContent() {
   return (
     <div className="p-8 text-zinc-300 font-mono text-sm leading-relaxed h-full flex flex-col justify-center max-w-2xl mx-auto">
-      <div className="text-orange-500 mb-4 animate-pulse">System initialized. Auth: 24CS058.</div>
+      <div className="text-orange-500 mb-4">Software Engineer & Game Developer</div>
       <h1 className="text-3xl text-white font-bold mb-6 font-sans">Crafting digital experiences.</h1>
       <p className="mb-4">
-        Hey, I'm Heet. I build full-stack web applications focused on real-world impact — from helping users navigate language barriers in government forms to deploying
+        Hey, I&apos;m Heet. I build full-stack web applications focused on real-world impact — from helping users navigate language barriers in government forms to deploying
 AI-driven mental health tools for Indian communities. I work across the stack with a strong focus on AI integration, and have shipped
 production-ready products in competitive hackathon environments
       </p>

@@ -19,13 +19,12 @@ export function SettingsContent({ currentTheme, setTheme }: SettingsContentProps
       {/* 1. THE PROFILE TERMINAL BLOCK */}
       {/* Large square window on the right with a solid offset shadow */}
       <div className="absolute top-10 right-10 w-48 h-48 border-4 border-orange-500 bg-zinc-900 shadow-[8px_8px_0_0_rgba(249,115,22,1)] z-10 hidden md:block">
-         <img 
-           src="/images/pfp.jpeg" 
-           alt="Heet Parikh" 
+         <img
+           src="/images/pfp.jpeg"
+           alt="Heet Parikh"
            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
            onError={(e) => {
              e.currentTarget.style.display = 'none';
-             e.currentTarget.parentElement!.innerHTML = '<span class="flex items-center justify-center h-full text-xs font-mono text-zinc-500 text-center p-4">IMG_NOT_FOUND<br/>[24CS058]</span>';
            }}
          />
       </div>
@@ -38,7 +37,6 @@ export function SettingsContent({ currentTheme, setTheme }: SettingsContentProps
 
         {/* Identity Card */}
         <div className="mb-12 p-6 border-2 border-zinc-700 bg-zinc-950 shadow-[4px_4px_0_0_#3f3f46] relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-zinc-800 px-2 py-1 text-[10px] font-bold text-zinc-500">ID: 24CS058</div>
           <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2">Authenticated_Identity</h2>
           <h3 className="text-3xl font-black text-white uppercase tracking-tight">Heet Parikh</h3>
           <p className="text-orange-500 font-bold mt-1 tracking-widest text-xs underline decoration-2 underline-offset-4">SYS_ADMIN // GAME_ARCHITECT</p>

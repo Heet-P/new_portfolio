@@ -12,7 +12,7 @@ const arvo = Arvo({
 // --- OPTIMIZED METADATA ---
 export const metadata: Metadata = {
   // Putting your name first is crucial for "Heet Parikh" search results
-  title: "Heet Parikh | Software Engineer & Game Developer (24CS058)",
+  title: "Heet Parikh | Software Engineer",
   description: "Official website of Heet Parikh. Explore my interactive OS portfolio featuring C++ game mechanics, React apps, and AI systems like FormAI and emoDiary.",
   metadataBase: new URL("https://your-actual-domain.com"), // REPLACE THIS with your real domain
   alternates: {

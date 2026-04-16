@@ -122,13 +122,13 @@ export function MacWindow({
         </div>
         
         <div className="flex h-full">
-          <button onClick={onClose} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
+          <button onClick={onClose} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50">
             <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0,5 L10,5" stroke="currentColor" strokeWidth="1"/></svg>
           </button>
-          <button onClick={toggleMaximize} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
+          <button onClick={toggleMaximize} className="h-full px-4 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50">
             <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1" fill="none"/></svg>
           </button>
-          <button onClick={onClose} className="h-full px-4 hover:bg-[#e81123] text-zinc-400 hover:text-white flex items-center justify-center">
+          <button onClick={onClose} className="h-full px-4 hover:bg-[#e81123] text-zinc-400 hover:text-white flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50">
             <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2"/></svg>
           </button>
         </div>

@@ -18,9 +18,9 @@ export function TopNav() {
        <div className="flex items-center gap-4">
          {/* Functional Dropdown Menu */}
          <div className="relative">
-            <button 
-              onClick={() => setMenuOpen(!menuOpen)} 
-              className={`font-black text-white px-2 py-1 rounded transition-colors ${menuOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className={`font-black text-white px-2 py-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${menuOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
             >
               Heet OS
             </button>
@@ -45,9 +45,9 @@ export function TopNav() {
        </div>
        
        <div className="flex items-center gap-4">
-          <span>100%</span>
-          {/* Live Clock */}
-          <span>{time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}</span>
+          <span className="font-medium text-white">Heet OS v1.0</span>
+          {/* Live Clock - aria-hidden since it's decorative */}
+          <span aria-hidden="true">{time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}</span>
        </div>
     </div>
   );

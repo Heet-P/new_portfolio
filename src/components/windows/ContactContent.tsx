@@ -4,7 +4,6 @@ export function ContactContent() {
       <div className="flex-1 bg-black/50 border border-white/10 rounded-lg p-4 overflow-y-auto">
         <div className="text-zinc-500 mb-4">
           Last login: {new Date().toDateString()} on ttys000<br />
-          System Auth ID: <span className="text-orange-500">24CS058</span><br />
           User: Heet Parikh
         </div>
         
@@ -20,10 +19,10 @@ export function ContactContent() {
           <p>{">"} READY FOR TRANSMISSION.</p>
           
           <div className="flex gap-4 mt-4">
-            <a href="mailto:heet16@gmail.com" className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-white transition-colors border border-white/10">
+            <a href="mailto:heet16@gmail.com" aria-label="Send email to Heet" className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-white transition-colors border border-white/10">
               [ Send Email ]
             </a>
-            <a href="https://linkedin.com/in/heetparikh" target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-[#0a66c2]/20 hover:bg-[#0a66c2]/40 rounded text-[#0a66c2] transition-colors border border-[#0a66c2]/30">
+            <a href="https://linkedin.com/in/heetparikh" target="_blank" rel="noopener noreferrer" aria-label="Visit LinkedIn profile" className="px-4 py-2 bg-[#0a66c2]/20 hover:bg-[#0a66c2]/40 rounded text-[#0a66c2] transition-colors border border-[#0a66c2]/30">
               [ Ping LinkedIn ]
             </a>
           </div>
