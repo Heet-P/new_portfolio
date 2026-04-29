@@ -6,9 +6,9 @@ export function ContactContent() {
           Last login: {new Date().toDateString()} on ttys000<br />
           User: Heet Parikh
         </div>
-        
+
         <div className="mb-4">
-          <span className="text-green-400">guest@portfolio</span>
+          <span className="text-green-400">heet@portfolio</span>
           <span className="text-white">:</span>
           <span className="text-blue-400">~</span>
           <span className="text-white">$ ./initiate_contact.sh</span>
@@ -17,7 +17,7 @@ export function ContactContent() {
         <div className="text-zinc-300 space-y-4 mb-6">
           <p>{">"} INITIALIZING SECURE CHANNEL...</p>
           <p>{">"} READY FOR TRANSMISSION.</p>
-          
+
           <div className="flex gap-4 mt-4">
             <a href="mailto:heet16@gmail.com" aria-label="Send email to Heet" className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-white transition-colors border border-white/10">
               [ Send Email ]

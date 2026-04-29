@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { AnimatePresence } from "framer-motion";
 import { TopNav } from "@/components/desktop/TopNav";
@@ -16,22 +16,70 @@ import { VideosFolderContent } from "@/components/windows/VideosFolderContent";
 import { DocsFolderContent } from "@/components/windows/DocsFolderContent";
 import { PdfViewerContent } from "@/components/windows/PdfViewerContent";
 import { SettingsContent } from "@/components/windows/SettingsContent";
+import { PptxViewerContent } from "@/components/windows/PptxViewerContent";
 
-// Import your custom art
 import customBg from "@/assets/images/bg-removed.png";
 
 export default function Desktop() {
   const [openWindows, setOpenWindows] = useState<string[]>([]);
-  const [activeWindow, setActiveWindow] = useState<string>("");
+  // windowOrder tracks focus history — last item is the topmost (active) window.
+  const [windowOrder, setWindowOrder] = useState<string[]>([]);
+  const [minimizedWindows, setMinimizedWindows] = useState<string[]>([]);
   const [origins, setOrigins] = useState<Record<string, DOMRect>>({});
   const [isAnyWindowMaximized, setIsAnyWindowMaximized] = useState(false);
   const [bgTheme, setBgTheme] = useState<string>("default");
-  
+
+  // Ref for the window canvas — passed to MacWindow as dragConstraints so windows
+  // can't escape the viewport.
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // The active window is simply the top of the focus stack.
+  const activeWindow = windowOrder[windowOrder.length - 1] ?? "";
+
+  const bringToFront = (id: string) => {
+    setWindowOrder(prev => [...prev.filter(w => w !== id), id]);
+  };
+
+  // zIndex within the canvas stacking context: bottom window = 1, topmost = n.
+  const getWindowZIndex = (id: string): number => {
+    const idx = windowOrder.indexOf(id);
+    return idx === -1 ? 1 : idx + 1;
+  };
+
+  const openWindow = (id: string, rect: DOMRect) => {
+    setIsAnyWindowMaximized(false);
+    setOrigins(prev => ({ ...prev, [id]: rect }));
+
+    if (!openWindows.includes(id)) {
+      setOpenWindows(prev => [...prev, id]);
+    }
+    // Restore from minimized if needed.
+    if (minimizedWindows.includes(id)) {
+      setMinimizedWindows(prev => prev.filter(w => w !== id));
+    }
+    bringToFront(id);
+  };
+
+  const closeWindow = (id: string) => {
+    setOpenWindows(prev => prev.filter(w => w !== id));
+    setMinimizedWindows(prev => prev.filter(w => w !== id));
+    setWindowOrder(prev => prev.filter(w => w !== id));
+  };
+
+  const minimizeWindow = (id: string) => {
+    setMinimizedWindows(prev => [...prev, id]);
+    // Remove from focus stack so the next window becomes active.
+    setWindowOrder(prev => prev.filter(w => w !== id));
+  };
+
+  const handleWindowMaximize = (isMaximized: boolean) => {
+    setIsAnyWindowMaximized(isMaximized);
+  };
+
   const windowContents: Record<string, React.ReactNode> = {
     "home": <HomeContent />,
     "projects": <ProjectsContent />,
     "journey": <ExperienceContent />,
-    "experience": <ExperienceContent />, 
     "contact": <ContactContent />,
     "changelog": (
       <div className="p-8 text-zinc-400 font-mono text-sm leading-relaxed">
@@ -43,93 +91,83 @@ export default function Desktop() {
     ),
   };
 
-  const openWindow = (id: string, rect: DOMRect) => {
-    setIsAnyWindowMaximized(false); 
-    setOrigins(prev => ({ ...prev, [id]: rect }));
-    if (!openWindows.includes(id)) setOpenWindows([...openWindows, id]);
-    setActiveWindow(id);
-  };
-
-  const closeWindow = (id: string) => {
-    const updated = openWindows.filter(w => w !== id);
-    setOpenWindows(updated);
-    if (activeWindow === id) setActiveWindow(updated[updated.length - 1] || "");
-    if (updated.length === 0) setIsAnyWindowMaximized(false);
-  };
-
-  const handleWindowMaximize = (isMaximized: boolean) => {
-    setIsAnyWindowMaximized(isMaximized);
-  };
+  // Shared props to reduce repetition across MacWindow declarations.
+  const windowProps = (id: string) => ({
+    id,
+    isActive: activeWindow === id,
+    isMinimized: minimizedWindows.includes(id),
+    zIndex: getWindowZIndex(id),
+    originRect: origins[id],
+    onFocus: () => bringToFront(id),
+    onClose: () => closeWindow(id),
+    onMinimize: () => minimizeWindow(id),
+    onMaximize: handleWindowMaximize,
+    constraintsRef: canvasRef,
+  });
 
   return (
     <main className="relative w-screen h-screen overflow-hidden text-zinc-50 bg-black selection:bg-orange-500/30">
-      
+
       {/* --- CONDITIONAL BACKGROUND LAYER (z-0) --- */}
-      
-      {/* 1. Theme: Minimal Light */}
-      {bgTheme === 'light' && (
+
+      {bgTheme === "light" && (
         <div className="absolute inset-0 z-0 bg-[#e5e5e5] transition-colors duration-500" />
       )}
 
-      {/* 2. Theme: Windows OG */}
-      {bgTheme === 'windows' && (
+      {bgTheme === "windows" && (
         <div className="absolute inset-0 z-0 bg-black">
-          <Image 
-            src="/images/windows_og.jpg" 
-            alt="Classic OS Background" 
-            fill 
+          <Image
+            src="/images/windows_og.jpg"
+            alt="Classic OS Background"
+            fill
             className="object-cover"
             priority
           />
         </div>
       )}
 
-      {/* 3. Theme: Default Interactive Art */}
-      {bgTheme === 'default' && (
+      {bgTheme === "default" && (
         <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-auto transition-opacity duration-500">
-          <div className="relative w-full max-w-7xl aspect-[16/9]">
-            <Image 
-              src={customBg} 
-              alt="Interactive Desktop Environment" 
-              fill 
+          <div className="relative w-full max-w-7xl aspect-video">
+            <Image
+              src={customBg}
+              alt="Interactive Desktop Environment"
+              fill
               className="object-contain pointer-events-none"
               priority
             />
 
-            {/* LinkedIn Hitbox */}
-            <a 
+            <a
               href="https://linkedin.com/in/heetparikh"
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
               className="absolute rounded-2xl cursor-pointer group"
               style={{ top: "54%", left: "27.5%", width: "12%", height: "20%" }}
               title="LinkedIn"
             >
-               <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">LinkedIn</span>
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">LinkedIn</span>
             </a>
 
-            {/* GitHub Hitbox */}
-            <a 
+            <a
               href="https://github.com/Heet-P"
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
               className="absolute rounded-2xl cursor-pointer group"
               style={{ top: "59%", left: "40.5%", width: "14%", height: "22%" }}
               title="GitHub"
             >
-               <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">GitHub</span>
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">GitHub</span>
             </a>
 
-            {/* Instagram Hitbox */}
-            <a 
+            <a
               href="https://instagram.com/heet_1606"
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
               className="absolute rounded-2xl cursor-pointer group"
               style={{ top: "55%", left: "59.5%", width: "14%", height: "22%" }}
               title="Instagram"
             >
-               <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">Instagram</span>
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">Instagram</span>
             </a>
           </div>
         </div>
@@ -137,243 +175,194 @@ export default function Desktop() {
 
       {/* --- DESKTOP UI OVERLAYS --- */}
       <TopNav />
-      <LeftSidebar onOpen={openWindow} />
-      <RightSidebar onOpen={openWindow} />
+      <LeftSidebar
+        onOpen={openWindow}
+        openWindows={openWindows}
+        minimizedWindows={minimizedWindows}
+      />
+      <RightSidebar
+        onOpen={openWindow}
+        openWindows={openWindows}
+        minimizedWindows={minimizedWindows}
+      />
 
       {/* --- CENTRAL WINDOW CANVAS --- */}
-      <div className={`absolute inset-0 pointer-events-none flex items-center justify-center ${isAnyWindowMaximized ? 'z-60' : 'z-10'}`}>
-         <AnimatePresence>
-           
-           {/* HOME */}
-           {openWindows.includes("home") && (
-             <MacWindow
-               key="home"
-               id="home"
-               title="About.txt"
-               originRect={origins["home"]}
-               width="w-[850px]"
-               height="h-[600px]"
-               defaultPosition={{ x: -150, y: -50 }}
-               isActive={activeWindow === "home"}
-               onFocus={() => setActiveWindow("home")}
-               onClose={() => closeWindow("home")}
-               onMaximize={handleWindowMaximize} 
-             >
-                {windowContents["home"]}
-             </MacWindow>
-           )}
+      <div
+        ref={canvasRef}
+        className={`absolute top-8 inset-x-0 bottom-0 pointer-events-none flex items-center justify-center ${isAnyWindowMaximized ? "z-60" : "z-10"}`}
+      >
+        <AnimatePresence>
 
-           {/* PROJECTS */}
-           {openWindows.includes("projects") && (
-             <MacWindow
-               key="projects"
-               id="projects"
-               title="Projects.txt"
-               originRect={origins["projects"]}
-               width="w-[950px]"
-               height="h-[650px]"
-               defaultPosition={{ x: 50, y: 20 }}
-               isActive={activeWindow === "projects"}
-               onFocus={() => setActiveWindow("projects")}
-               onClose={() => closeWindow("projects")}
-               onMaximize={handleWindowMaximize}
-             >
-                {windowContents["projects"]}
-             </MacWindow>
-           )}
+          {openWindows.includes("home") && (
+            <MacWindow
+              key="home"
+              {...windowProps("home")}
+              title="About.txt"
+              width="w-[850px]"
+              height="h-[600px]"
+              defaultPosition={{ x: -150, y: -50 }}
+            >
+              {windowContents["home"]}
+            </MacWindow>
+          )}
 
-           {/* CHANGELOG */}
-           {openWindows.includes("changelog") && (
-             <MacWindow
-               key="changelog"
-               id="changelog"
-               title="changelog.txt"
-               originRect={origins["changelog"]}
-               defaultPosition={{ x: 200, y: -100 }}
-               width="w-[600px]"
-               height="h-[450px]"
-               isActive={activeWindow === "changelog"}
-               onFocus={() => setActiveWindow("changelog")}
-               onClose={() => closeWindow("changelog")}
-               onMaximize={handleWindowMaximize}
-             >
-                {windowContents["changelog"]}
-             </MacWindow>
-           )}
+          {openWindows.includes("projects") && (
+            <MacWindow
+              key="projects"
+              {...windowProps("projects")}
+              title="Projects.txt"
+              width="w-[950px]"
+              height="h-[650px]"
+              defaultPosition={{ x: 50, y: 20 }}
+            >
+              {windowContents["projects"]}
+            </MacWindow>
+          )}
 
-           {/* VIDEOS FOLDER */}
-           {openWindows.includes("videos") && (
-             <MacWindow
-               key="videos"
-               id="videos"
-               title="Videos"
-               originRect={origins["videos"]}
-               defaultPosition={{ x: -100, y: -50 }}
-               width="w-[950px]"
-               height="h-[650px]"
-               isActive={activeWindow === "videos"}
-               onFocus={() => setActiveWindow("videos")}
-               onClose={() => closeWindow("videos")}
-               onMaximize={handleWindowMaximize}
-             >
-                <VideosFolderContent onOpen={openWindow} />
-             </MacWindow>
-           )}
+          {openWindows.includes("changelog") && (
+            <MacWindow
+              key="changelog"
+              {...windowProps("changelog")}
+              title="changelog.txt"
+              width="w-[600px]"
+              height="h-[450px]"
+              defaultPosition={{ x: 200, y: -100 }}
+            >
+              {windowContents["changelog"]}
+            </MacWindow>
+          )}
 
-           {/* EMODIARY VIDEO PLAYER */}
-           {openWindows.includes("video_emodiary") && (
-             <MacWindow
-               key="video_emodiary"
-               id="video_emodiary"
-               title="emoDiary.mp4"
-               originRect={origins["video_emodiary"]}
-               defaultPosition={{ x: 50, y: 50 }}
-               width="w-[850px]"
-               height="h-[550px]"
-               isActive={activeWindow === "video_emodiary"}
-               onFocus={() => setActiveWindow("video_emodiary")}
-               onClose={() => closeWindow("video_emodiary")}
-               onMaximize={handleWindowMaximize}
-             >
-                <DemoContent src="/videos/emoDiary.mp4" title="emoDiary - AI Journaling Web App" />
-             </MacWindow>
-           )}
+          {openWindows.includes("journey") && (
+            <MacWindow
+              key="journey"
+              {...windowProps("journey")}
+              title="Journey.txt"
+              width="w-[800px]"
+              height="h-[600px]"
+              defaultPosition={{ x: 150, y: -20 }}
+            >
+              {windowContents["journey"]}
+            </MacWindow>
+          )}
 
-           {/* FORMAI VIDEO PLAYER */}
-           {openWindows.includes("video_formai") && (
-             <MacWindow
-               key="video_formai"
-               id="video_formai"
-               title="FormAI.mp4"
-               originRect={origins["video_formai"]}
-               defaultPosition={{ x: 75, y: 75 }}
-               width="w-[850px]"
-               height="h-[550px]"
-               isActive={activeWindow === "video_formai"}
-               onFocus={() => setActiveWindow("video_formai")}
-               onClose={() => closeWindow("video_formai")}
-               onMaximize={handleWindowMaximize}
-             >
-                <DemoContent src="/videos/FormAI.mp4" title="FormAI - Government Assistant" />
-             </MacWindow>
-           )}
+          {openWindows.includes("contact") && (
+            <MacWindow
+              key="contact"
+              {...windowProps("contact")}
+              title="terminal — bash"
+              width="w-[650px]"
+              height="h-[450px]"
+              defaultPosition={{ x: 250, y: 100 }}
+            >
+              {windowContents["contact"]}
+            </MacWindow>
+          )}
 
-           {/* QUIZVERSE VIDEO PLAYER */}
-           {openWindows.includes("video_quizverse") && (
-             <MacWindow
-               key="video_quizverse"
-               id="video_quizverse"
-               title="QuizVerse.mp4"
-               originRect={origins["video_quizverse"]}
-               defaultPosition={{ x: 100, y: 100 }}
-               width="w-[850px]"
-               height="h-[550px]"
-               isActive={activeWindow === "video_quizverse"}
-               onFocus={() => setActiveWindow("video_quizverse")}
-               onClose={() => closeWindow("video_quizverse")}
-               onMaximize={handleWindowMaximize}
-             >
-                <DemoContent src="/videos/QuizVerse.mp4" title="QuizVerse - Gamified Platform" />
-             </MacWindow>
-           )}
+          {openWindows.includes("videos") && (
+            <MacWindow
+              key="videos"
+              {...windowProps("videos")}
+              title="Videos"
+              width="w-[950px]"
+              height="h-[650px]"
+              defaultPosition={{ x: -100, y: -50 }}
+            >
+              <VideosFolderContent onOpen={openWindow} />
+            </MacWindow>
+          )}
 
-           {/* DOCS FOLDER */}
-           {openWindows.includes("docs") && (
-             <MacWindow
-               key="docs"
-               id="docs"
-               title="Docs"
-               originRect={origins["docs"]}
-               defaultPosition={{ x: -10, y: 30 }}
-               width="w-[950px]"
-               height="h-[600px]"
-               isActive={activeWindow === "docs"}
-               onFocus={() => setActiveWindow("docs")}
-               onClose={() => closeWindow("docs")}
-               onMaximize={handleWindowMaximize}
-             >
-                <DocsFolderContent onOpen={openWindow} />
-             </MacWindow>
-           )}
+          {openWindows.includes("video_emodiary") && (
+            <MacWindow
+              key="video_emodiary"
+              {...windowProps("video_emodiary")}
+              title="emoDiary.mp4"
+              width="w-[850px]"
+              height="h-[550px]"
+              defaultPosition={{ x: 50, y: 50 }}
+            >
+              <DemoContent src="/videos/emoDiary.mp4" title="emoDiary - AI Journaling Web App" />
+            </MacWindow>
+          )}
 
-           {/* PDF VIEWER WINDOW */}
-           {openWindows.includes("resume_pdf") && (
-             <MacWindow
-               key="resume_pdf"
-               id="resume_pdf"
-               title="Resume_HeetParikh.pdf"
-               originRect={origins["resume_pdf"]}
-               defaultPosition={{ x: 50, y: 0 }}
-               width="w-[850px]"
-               height="h-[85vh]"
-               isActive={activeWindow === "resume_pdf"}
-               onFocus={() => setActiveWindow("resume_pdf")}
-               onClose={() => closeWindow("resume_pdf")}
-               onMaximize={handleWindowMaximize}
-             >
-                <PdfViewerContent fileUrl="/Resume_HeetParikh.pdf" />
-             </MacWindow>
-           )}
+          {openWindows.includes("video_formai") && (
+            <MacWindow
+              key="video_formai"
+              {...windowProps("video_formai")}
+              title="FormAI.mp4"
+              width="w-[850px]"
+              height="h-[550px]"
+              defaultPosition={{ x: 75, y: 75 }}
+            >
+              <DemoContent src="/videos/FormAI.mp4" title="FormAI - Government Assistant" />
+            </MacWindow>
+          )}
 
-           {/* EXPERIENCE / JOURNEY WINDOW */}
-           {(openWindows.includes("experience") || openWindows.includes("journey")) && (
-             <MacWindow
-               key={openWindows.includes("experience") ? "experience" : "journey"}
-               id={openWindows.includes("experience") ? "experience" : "journey"}
-               title="Journey.txt"
-               originRect={origins[openWindows.includes("experience") ? "experience" : "journey"]}
-               defaultPosition={{ x: 150, y: -20 }}
-               width="w-[800px]"
-               height="h-[600px]"
-               isActive={activeWindow === "experience" || activeWindow === "journey"}
-               onFocus={() => setActiveWindow(openWindows.includes("experience") ? "experience" : "journey")}
-               onClose={() => closeWindow(openWindows.includes("experience") ? "experience" : "journey")}
-               onMaximize={handleWindowMaximize}
-             >
-                {windowContents["journey"]}
-             </MacWindow>
-           )}
+          {openWindows.includes("video_quizverse") && (
+            <MacWindow
+              key="video_quizverse"
+              {...windowProps("video_quizverse")}
+              title="QuizVerse.mp4"
+              width="w-[850px]"
+              height="h-[550px]"
+              defaultPosition={{ x: 100, y: 100 }}
+            >
+              <DemoContent src="/videos/QuizVerse.mp4" title="QuizVerse - Gamified Platform" />
+            </MacWindow>
+          )}
 
-           {/* CONTACT TERMINAL WINDOW */}
-           {openWindows.includes("contact") && (
-             <MacWindow
-               key="contact"
-               id="contact"
-               title="terminal — bash"
-               originRect={origins["contact"]}
-               defaultPosition={{ x: 250, y: 100 }}
-               width="w-[650px]"
-               height="h-[450px]"
-               isActive={activeWindow === "contact"}
-               onFocus={() => setActiveWindow("contact")}
-               onClose={() => closeWindow("contact")}
-               onMaximize={handleWindowMaximize}
-             >
-                {windowContents["contact"]}
-             </MacWindow>
-           )}
+          {openWindows.includes("docs") && (
+            <MacWindow
+              key="docs"
+              {...windowProps("docs")}
+              title="Docs"
+              width="w-[950px]"
+              height="h-[600px]"
+              defaultPosition={{ x: -10, y: 30 }}
+            >
+              <DocsFolderContent onOpen={openWindow} />
+            </MacWindow>
+          )}
 
-           {/* SETTINGS WINDOW - Reconfigured for max visible area and large photo */}
-           {openWindows.includes("settings") && (
-             <MacWindow
-               key="settings"
-               id="settings"
-               title="System Settings"
-               originRect={origins["settings"]}
-               // We increase size significantly and adjust position for balance
-               width="w-[950px]"
-               height="h-[650px]"
-               defaultPosition={{ x: -50, y: -20 }}
-               isActive={activeWindow === "settings"}
-               onFocus={() => setActiveWindow("settings")}
-               onClose={() => closeWindow("settings")}
-               onMaximize={handleWindowMaximize}
-             >
-                <SettingsContent currentTheme={bgTheme} setTheme={setBgTheme} />
-             </MacWindow>
-           )}
+          {openWindows.includes("resume_pdf") && (
+            <MacWindow
+              key="resume_pdf"
+              {...windowProps("resume_pdf")}
+              title="Resume_HeetParikh.pdf"
+              width="w-[850px]"
+              height="h-[85vh]"
+              defaultPosition={{ x: 50, y: 0 }}
+            >
+              <PdfViewerContent fileUrl="/Resume_HeetParikh.pdf" />
+            </MacWindow>
+          )}
 
-         </AnimatePresence>
+          {openWindows.includes("settings") && (
+            <MacWindow
+              key="settings"
+              {...windowProps("settings")}
+              title="System Settings"
+              width="w-[950px]"
+              height="h-[650px]"
+              defaultPosition={{ x: -50, y: -20 }}
+            >
+              <SettingsContent currentTheme={bgTheme} setTheme={setBgTheme} />
+            </MacWindow>
+          )}
+
+          {openWindows.includes("pptx_hire") && (
+            <MacWindow
+              key="pptx_hire"
+              {...windowProps("pptx_hire")}
+              title="WhyHireMe.pptx — PowerPoint"
+              width="w-[1000px]"
+              height="h-[680px]"
+              defaultPosition={{ x: -30, y: -20 }}
+            >
+              <PptxViewerContent />
+            </MacWindow>
+          )}
+
+        </AnimatePresence>
       </div>
     </main>
   );

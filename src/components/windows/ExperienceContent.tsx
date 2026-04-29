@@ -20,7 +20,7 @@ export function ExperienceContent() {
       
       <div className="space-y-10">
         {journey.map((item, i) => (
-          <div key={i} className="relative border-2 border-zinc-600 bg-[#1c1c1e] p-6 shadow-[6px_6px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
+          <div key={i} className="relative border-2 border-zinc-600 bg-mac-dark p-6 shadow-[6px_6px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
             
             {/* Brutalist Date Tag */}
             <div className="absolute -top-4 -right-2 bg-orange-500 text-black font-black text-xs px-3 py-1 border-2 border-zinc-800 uppercase">

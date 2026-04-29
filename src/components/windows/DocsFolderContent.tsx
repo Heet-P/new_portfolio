@@ -6,7 +6,8 @@ interface DocsFolderContentProps {
 
 export function DocsFolderContent({ onOpen }: DocsFolderContentProps) {
   const files = [
-    { id: "resume_pdf", name: "Resume_HeetParikh.pdf", size: "1.2 MB" },
+    { id: "resume_pdf",  name: "Resume_HeetParikh.pdf", type: "pdf"  },
+    { id: "pptx_hire",  name: "WhyHireMe.pptx",         type: "pptx" },
   ];
 
   return (
@@ -21,23 +22,29 @@ export function DocsFolderContent({ onOpen }: DocsFolderContentProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex content-start gap-2 flex-wrap bg-[#1c1c1e]">
+      <div className="flex-1 overflow-y-auto p-6 flex content-start gap-2 flex-wrap bg-mac-dark">
         {files.map(file => (
-          <div 
+          <button
             key={file.id}
-            onDoubleClick={(e) => onOpen(file.id, e.currentTarget.getBoundingClientRect())}
-            className="w-28 flex flex-col items-center gap-2 p-3 hover:bg-white/10 rounded-xl cursor-pointer group transition-all duration-200"
+            onClick={(e) => onOpen(file.id, e.currentTarget.getBoundingClientRect())}
+            className="w-28 flex flex-col items-center gap-2 p-3 hover:bg-white/10 rounded-xl cursor-pointer group transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            aria-label={`Open ${file.name}`}
           >
-            {/* Custom Premium PDF File Icon */}
-            <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center border border-white/20 shadow-md group-hover:shadow-[0_8px_16px_rgba(0,0,0,0.4)] group-hover:-translate-y-1 transition-all relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-bl-lg" /> {/* Folded corner effect */}
-               <span className="font-black text-white text-lg drop-shadow-md">PDF</span>
-            </div>
-
+            {file.type === "pdf" ? (
+              <div className="w-16 h-16 bg-linear-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center border border-white/20 shadow-md group-hover:shadow-[0_8px_16px_rgba(0,0,0,0.4)] group-hover:-translate-y-1 transition-all relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-bl-lg" />
+                <span className="font-black text-white text-lg drop-shadow-md">PDF</span>
+              </div>
+            ) : (
+              <div className="w-16 h-16 bg-linear-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center border border-white/20 shadow-md group-hover:shadow-[0_8px_16px_rgba(0,0,0,0.4)] group-hover:-translate-y-1 transition-all relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-bl-lg" />
+                <span className="font-black text-white text-base drop-shadow-md">PPT</span>
+              </div>
+            )}
             <span className="text-xs font-medium text-zinc-300 text-center truncate w-full group-hover:text-white px-1">
               {file.name}
             </span>
-          </div>
+          </button>
         ))}
       </div>
 

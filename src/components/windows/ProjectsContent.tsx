@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export function ProjectsContent() {
   const projects = [
@@ -54,7 +55,7 @@ export function ProjectsContent() {
   const activeTheme = themes[activeProject.theme as keyof typeof themes];
 
   return (
-    <div className="h-full bg-[#1c1c1e] text-zinc-200 font-sans p-6 overflow-y-auto no-scrollbar selection:bg-white/20">
+    <div className="h-full bg-mac-dark text-zinc-200 font-sans p-6 overflow-y-auto no-scrollbar selection:bg-white/20">
       <div 
         className="w-full max-w-5xl mx-auto flex flex-col"
         onMouseEnter={() => setIsHovered(true)}
@@ -84,12 +85,12 @@ export function ProjectsContent() {
         </div>
 
         {/* Main Content Box */}
-        <div className={`relative border-[4px] rounded-2xl rounded-tl-none bg-[#151619] transition-colors duration-500 ${activeTheme.border}`}>
+        <div className={`relative border-4 rounded-2xl rounded-tl-none bg-[#151619] transition-colors duration-500 ${activeTheme.border}`}>
           
           <div className="p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start">
             
             {/* Left: Text Content & Buttons */}
-            <div className="flex-1 flex flex-col h-full justify-between min-h-[12rem]">
+            <div className="flex-1 flex flex-col h-full justify-between min-h-48">
               <div className="space-y-6">
                 <h2 className="text-3xl font-black text-white tracking-tight">{activeProject.title}</h2>
                 <p className="text-zinc-400 text-lg leading-relaxed">{activeProject.desc}</p>
@@ -119,14 +120,15 @@ export function ProjectsContent() {
             </div>
 
             {/* Right: Image/Illustration */}
-            <div className="w-full md:w-[40%] aspect-[4/3] bg-[#111214] border-2 border-zinc-800 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative">
+            <div className="w-full md:w-[40%] aspect-4/3 bg-[#111214] border-2 border-zinc-800 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative">
                <span className="absolute text-xs text-zinc-600 font-mono z-0 text-center px-4">
                  [ Missing Asset: {activeProject.image} ]
                </span>
-               <img 
+               <Image 
                  src={activeProject.image} 
                  alt={activeProject.title}
-                 className="w-full h-full object-cover relative z-10"
+                 fill
+                 className="object-cover relative z-10"
                  onError={(e) => {
                    e.currentTarget.style.display = 'none';
                  }}
