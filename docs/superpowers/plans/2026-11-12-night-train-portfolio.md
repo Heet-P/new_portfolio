@@ -14,7 +14,7 @@
 
 - Facts come from `HeetParikh_Resume.pdf`. Vaani response time is **383 ms**; the string "300 ms"/"300ms" must not appear anywhere.
 - Phone number never rendered on the page (it stays only inside the PDF).
-- Station ids, in order: `departure, mct, vaani, yieldguard, formai, quizzx, solar, next, terminus`. Hash URL = `#<id>`.
+- Station ids, in order (revised 2026-11-13): `departure, vaani, yieldguard, solar, sahara, experience, next, terminus`. Hash URL = `#<id>`. The internship company is never named on the site.
 - Sound **off by default**; preference key `nt-sound` in localStorage, every access in try/catch.
 - Night-only theme; no light/dark toggle.
 - Type scale 16 / 20 / 25 / 32px, line-height 1.4–1.6×; spacing multiples of 4/8px; touch targets ≥ 44×44px; text contrast ≥ 4.5:1.
@@ -193,6 +193,13 @@ export const useRide: UseBoundStore<StoreApi<RideState>>;
 - [ ] **Step 1: Failing test:** `skillReel(PROFILE.skills)` returns a flat ordered list of every skill exactly once; panel layout helper places N panels evenly along each tunnel's arc-length span, alternating walls.
 - [ ] **Step 2–4:** FAIL → implement → PASS.
 - [ ] **Step 5:** Inside each tunnel, backlit panels on the walls (emissive, one instanced mesh + one texture atlas rendered from a canvas with skill names/group labels) flash past as the train passes, metro-ad style; a short light strobe as each panel passes the camera. Tunnel bore dark otherwise. Commit `feat: tunnel skills reel`.
+
+### Task 10d: Route content restructure (8 stations)
+
+*(Added 2026-11-13 from Heet.)* **Files:** `src/content/route.ts` (+ test), every place keyed by station id/count: `src/scene/palette.ts`, `src/scene/route3d.ts`, `src/scene/worldgen.ts`, `src/scene/stations/*`, CameraRig framing tables, e2e specs, `src/ride/*` tests that hard-code 9 or old ids.
+- [ ] **Step 1: Failing tests:** ids exactly `["departure","vaani","yieldguard","solar","sahara","experience","next","terminus"]`; no station/profile text matches `/MCT/i`; `experience.name === "Work Experience"`; Vaani/YieldGuard/Solar/SAHARA each have a GitHub link (exact URLs from spec table); SAHARA has two YouTube links labelled "Watch demo"; `solar.status === "current"`; still no "300 ms" and no phone number. Route/palette/worldgen tests updated for 8 stations (stationU length 8, palettes golden hour → night across 8).
+- [ ] **Step 2–4:** FAIL → implement → PASS. SAHARA copy from the spec table (no hype). Departure gets an awards line. Palette: spread golden hour → night across the 8 stops (departure golden … next/terminus night). Station themes: SAHARA = helipad with a small hovering low-poly quadcopter (bobbing; static under reduced motion); Work Experience = plain office-style building variant. Display buttons: "GitHub", "Watch demo" (YouTube, new tab) — "See live" only when a live site exists.
+- [ ] **Step 5:** e2e: `/#sahara` shows SAHARA display; `/#mct` falls back to Departure. Screenshots. Commit `feat: 8-station route with SAHARA and work experience`.
 
 ### Task 11: Media pipeline + Skiper67 video
 

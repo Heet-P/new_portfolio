@@ -38,15 +38,16 @@ stations. Each chapter of Heet's career is a **station** along the route.
 
 | # | Station | Content |
 |---|---|---|
-| 0 | **Departure** | Heet Parikh — full-stack developer, AI integrations. 3rd-year B.Tech CSE, CSPIT CHARUSAT (CGPA 8.69). President, TechGenius Club. GitHub + LinkedIn + resume. |
-| 1 | **MCT IT Solutions** (internship, done) | Software Intern, 05/2026–06/2026, Ahmedabad. Next.js/TypeScript payment workflows across 5+ e-commerce checkouts; ~25% lower checkout interaction delay; reusable payment components cut integration effort ~40%. |
-| 2 | **Vaani AI** (flagship) | AI sales agent platform: lead discovery, enrichment, AI voice calling agent. Voice pipeline (Twilio + Sarvam AI) at **383 ms** response, <1.5 s TTS. Post-call WhatsApp memo. Chaos2Commit Hackathon, Top 6. Stack: Next.js, Supabase, Twilio, Sarvam AI. |
-| 3 | **YieldGuard AI** (flagship) | AI orchestrator for semiconductor FAB yield analysis. IBM Bob coordinating 14 tools over MCP, Gemini reasoning + watsonx.ai Granite fallback. ResNet-style CNN on WM-811K, 0.923 macro-F1 (beat ViT baseline). Isolation Forest on SECOM sensor data. Vector search over past root causes. **IBM Hackathon, 2nd place.** |
-| 4 | **FormAI** | Multilingual government-form assistant. Techathon, 2nd place among 100+ teams (02/2026). |
-| 5 | **QuizzX** | Quiz platform for 200+ concurrent users, built as TechGenius Web Lead (2025–2026). |
-| 6 | **Solar Lead Engine** (*current stop*) | SGP-II project, 09/2026–present. Data-mining pipeline + LLM enrichment ranking outreach targets across Maharashtra & Gujarat; XGBoost + Logistic Regression (~96–97% on synthetic data, initial eval); ranking UI for sales. |
-| 7 | **Next stop** (open) | No upcoming internship yet — Heet is actively looking. Station shows an empty platform with a sign along the lines of "Next stop: your team?" and a contact CTA. When an internship lands it becomes a real station. |
-| 8 | **Terminus** | Contact: email heet16@gmail.com, LinkedIn, GitHub. Resume handed over as a **ticket** (click → downloads the PDF). |
+| 0 | **Departure** | Heet Parikh — full-stack developer, AI integrations. 3rd-year B.Tech CSE, CSPIT CHARUSAT (CGPA 8.69). President, TechGenius Club. Awards: IBM Hackathon 2nd (YieldGuard), Techathon 2nd of 100+ (FormAI), Chaos2Commit Top 6 (Vaani). GitHub + LinkedIn + resume. |
+| 1 | **Vaani AI** (flagship) | AI sales agent platform: lead discovery, enrichment, AI voice calling agent. Voice pipeline (Twilio + Sarvam AI) at **383 ms** response, <1.5 s TTS. Post-call WhatsApp memo. Chaos2Commit Hackathon, Top 6. Stack: Next.js, Supabase, Twilio, Sarvam AI. GitHub: https://github.com/Heet-P/Vaani-AI |
+| 2 | **YieldGuard AI** (flagship) | AI orchestrator for semiconductor FAB yield analysis. IBM Bob coordinating 14 tools over MCP, Gemini reasoning + watsonx.ai Granite fallback. ResNet-style CNN on WM-811K, 0.923 macro-F1 (beat ViT baseline). Isolation Forest on SECOM sensor data. Vector search over past root causes. **IBM Hackathon, 2nd place.** GitHub: https://github.com/Heet-P/bob-ai-hackathon-DuckDuckGo |
+| 3 | **Solar Lead Engine** (*current stop*) | SGP-II project, 09/2026–present. Data-mining pipeline + LLM enrichment ranking outreach targets across Maharashtra & Gujarat; XGBoost + Logistic Regression (~96–97% on synthetic data, initial eval); ranking UI for sales. GitHub: https://github.com/Heet-P/SGP-II |
+| 4 | **SAHARA** (flagship) | Autonomous search-and-rescue drone with Meta AI as co-pilot (Meta AI hackathon 2026). S500 quad on ArduPilot SITL + Gazebo Harmonic + ROS 2 Humble grid-searches a disaster zone; RGB (YOLOv8m) by day / thermal by night casualty detection; voice commands (Muse Voice Transcribe) → AI Mission Commander (Muse Spark tool calls, operator must confirm arming); SAM 3.1 open-vocabulary hazard segmentation (smoke at 0.84); Muse Spark vision as second eyes (caught a downed power line SAM missed, 0.92) and aerial triage; SITREP generation. Flask web dashboard. GitHub: https://github.com/Heet-P/SAHARA_MetaAI · Demos: https://www.youtube.com/watch?v=foh6WNTnbp0 , https://youtu.be/sk_WdN6rbXo |
+| 5 | **Work Experience** (internship, done) | Software Intern, 05/2026–06/2026, Ahmedabad. **Never name the company on the site** (Heet). Next.js/TypeScript payment workflows across 5+ e-commerce checkouts; ~25% lower checkout interaction delay; reusable payment components cut integration effort ~40%. |
+| 6 | **Next stop** (open) | No upcoming internship yet — Heet is actively looking. Empty platform with "Next stop: your team?" and a contact CTA. When an internship lands it becomes a real station. |
+| 7 | **Terminus** | Contact: email heet16@gmail.com, LinkedIn, GitHub. Resume handed over as a **ticket** (click → downloads the PDF). |
+
+Order (Heet, 2026-11-13): projects first, work experience after. FormAI and QuizzX are not stations (FormAI's Techathon award stays in Departure's awards).
 
 Skills appear as a compact strip at Departure (and in Express view), not as a separate station.
 
