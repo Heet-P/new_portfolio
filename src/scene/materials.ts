@@ -146,6 +146,9 @@ export function tintWorld(p: Palette) {
   MATS.cloud.color
     .setRGB(...p.skyHorizon)
     .lerp(tmp.setRGB(...p.sun), 0.3)
-    .lerp(tmp.setRGB(1, 1, 1), 0.55 * (1 - p.stars));
-  MATS.cloud.emissive.setRGB(...p.skyHorizon).multiplyScalar(0.35);
+    .lerp(tmp.setRGB(1, 1, 1), 0.65 * (1 - p.stars))
+    .multiplyScalar(1 - 0.5 * p.stars); // dim blue-grey at night, not moonlit periwinkle
+  // Self-lit for most of their brightness: the golden-hour sun sits ahead of the chase camera,
+  // so the faces we see are backlit and would go muddy brown on light alone. Dimmer at night.
+  MATS.cloud.emissive.copy(MATS.cloud.color).multiplyScalar(0.85 - 0.5 * p.stars);
 }

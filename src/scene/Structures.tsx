@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { foamGeometry, riverGeometry, splashGeometry, sweep } from "./geometry";
 import { MATS } from "./materials";
+import { Mist } from "./Mist";
 import { hash2 } from "./noise";
 import { TRACK } from "./route3d";
 import { heightAt, TUNNEL_HILL, TUNNEL_HOLE, type Bridge, type Span, type WorldLayout } from "./worldgen";
@@ -257,7 +258,7 @@ function SteelBridge({ span, shadows }: { span: Bridge; shadows: boolean }) {
   return <primitive object={scene} position={[f.x, f.y, f.z]} rotation-y={Math.atan2(-f.tz, f.tx)} />;
 }
 
-/** Rivers (water + foam), bridges and tunnels. */
+/** Rivers (water + foam + waterfall mist), bridges and tunnels. */
 export function Structures({ world, shadows }: { world: WorldLayout; shadows: boolean }) {
   const water = useMemo(
     () => mergeGeometries(world.rivers.map((r) => riverGeometry(r.pts, r.bed, r.half))),
@@ -272,6 +273,7 @@ export function Structures({ world, shadows }: { world: WorldLayout; shadows: bo
       <mesh geometry={water} material={MATS.water} receiveShadow={shadows} />
       <mesh geometry={foam} material={MATS.foam} />
       <mesh geometry={splash} material={MATS.splash} />
+      <Mist falls={world.waterfalls} />
       <Trestles world={world} spans={trestles} shadows={shadows} />
       {/* Own boundary: while the model loads, everything else stays mounted (no remount/rebuild). */}
       {steel && (

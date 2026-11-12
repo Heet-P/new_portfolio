@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { STATIONS } from "@/content/route";
 import { useRide } from "@/ride/rideStore";
@@ -9,11 +9,15 @@ import { Atmosphere } from "./Atmosphere";
 import { CameraRig } from "./CameraRig";
 import { Catenary } from "./Catenary";
 import { getQuality } from "./quality";
+import { Rain } from "./Rain";
 import { updateTrainPose } from "./route3d";
 import { Track } from "./Track";
 import { Train } from "./Train";
 import { resetTravel, stepTravel, travel } from "./travel";
 import { getWorld, World } from "./World";
+
+/** Bloom + tone mapping + vignette: its own chunk, fetched only on the desktop tier. */
+const Effects = lazy(() => import("./Effects"));
 
 /**
  * Updates the shared `travel` state from the ride store once per frame, then the train's
@@ -49,8 +53,8 @@ function FirstFrame({ onReady }: { onReady: () => void }) {
  * The ride's 3D layer: one fixed, full-viewport Canvas behind the ride UI. Loaded lazily
  * (next/dynamic, ssr:false) only in ride mode. It stays transparent until the train's first
  * frame is drawn, then fades in over 600 ms, so the dark page shows meanwhile (no spinner).
- * Shadows (one soft directional map) only on the desktop tier; vegetation density follows
- * the quality tier's scenery layers.
+ * Shadows (one soft directional map) and bloom/vignette only on the desktop tier; vegetation
+ * density and rain drop count follow the quality tier.
  */
 export default function Scene() {
   // Read the device once: quality tier and motion preference are fixed for the session.
@@ -90,14 +94,20 @@ export default function Scene() {
       >
         <TravelTracker />
         <CameraRig reducedMotion={reducedMotion} />
-        <Atmosphere shadows={shadows} />
+        <Atmosphere shadows={shadows} reducedMotion={reducedMotion} />
         <World density={density} step={terrainStep} shadows={shadows} />
         <Track world={getWorld()} shadows={shadows} />
         <Catenary world={getWorld()} shadows={shadows} />
         <Suspense fallback={null}>
-          <Train reducedMotion={reducedMotion} shadows={shadows} />
+          <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
           <FirstFrame onReady={() => setReady(true)} />
         </Suspense>
+        <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
+        {quality.post && (
+          <Suspense fallback={null}>
+            <Effects />
+          </Suspense>
+        )}
       </Canvas>
     </div>
   );

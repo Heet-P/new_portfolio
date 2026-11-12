@@ -4,7 +4,9 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { hash2, mulberry32 } from "./noise";
+import { CAMERA } from "./CameraRig";
+import { hash2, mulberry32, smoothstep } from "./noise";
+import { Clouds } from "./Clouds";
 import { blendPalette } from "./palette";
 import { atmosphere, MATS, tintWorld, waterTime } from "./materials";
 import { trainPose } from "./route3d";
@@ -53,7 +55,7 @@ const skyFragment = /* glsl */ `
   }
 `;
 
-/** Far snow-capped ranges on a ring around the camera, plus a few faceted clouds. */
+/** Far snow-capped ranges on a ring around the camera (the clouds are their own layer: Clouds.tsx). */
 function backdropGeometry() {
   const rand = mulberry32(5);
   const mountains: THREE.BufferGeometry[] = [];
@@ -89,26 +91,9 @@ function backdropGeometry() {
     g.translate(Math.cos(a) * r, height / 2 - 60, Math.sin(a) * r);
     mountains.push(g);
   }
-  const clouds: THREE.BufferGeometry[] = [];
-  for (let k = 0; k < 11; k++) {
-    const a = rand() * Math.PI * 2;
-    const r = 900 + rand() * 300;
-    const y = 300 + rand() * 160;
-    for (let p = 0; p < 6; p++) {
-      const g = new THREE.IcosahedronGeometry(25 + rand() * 40, 0);
-      g.scale(1.6, 0.45, 1);
-      g.rotateY(a + Math.PI / 2);
-      const off = (p - 2.5) * 38;
-      g.translate(Math.cos(a) * r - Math.sin(a) * off, y + rand() * 25, Math.sin(a) * r + Math.cos(a) * off);
-      g.deleteAttribute("uv");
-      clouds.push(g);
-    }
-  }
   const m = mergeGeometries(mountains);
   m.computeVertexNormals();
-  const cl = mergeGeometries(clouds);
-  cl.computeVertexNormals();
-  return { mountains: m, clouds: cl };
+  return { mountains: m };
 }
 
 /** Star field: random directions on the upper sky, drawn as screen-sized points. */
@@ -128,21 +113,33 @@ function starGeometry(): THREE.BufferGeometry {
   return g;
 }
 
-/** Distance of the stars and moon from the camera (inside the far plane, beyond everything). */
+/** Distance of the stars from the camera (inside the far plane, beyond everything). */
 const STAR_R = 2600;
-/** Moon: radians to the right (+) of where the camera looks, and above the view's centre. */
-const MOON_YAW = -0.22;
-const MOON_RISE = 0.24;
+/**
+ * Moon placement. It is pinned to a spot on screen (normalised device coords), so every
+ * night framing shows it, however low the chase camera looks: upper right on wide screens
+ * (clear of the route-map panel), higher and central on portrait phones (above the peaks,
+ * left of the Express button). Blended by aspect like CameraRig's framings. It hangs in
+ * front of the far ranges (ring at 1300+) and among the clouds, so a far peak never hides
+ * it but near hills and trees still do.
+ */
+export const MOON = {
+  wide: { x: 0.3, y: 0.78 },
+  narrow: { x: -0.1, y: 0.88 },
+  distance: 1080,
+  radius: 30,
+} as const;
 
 const sunDir = new THREE.Vector3();
 const dayDir = new THREE.Vector3();
-const moonDir = new THREE.Vector3();
+const moonPos = new THREE.Vector3();
 const nightDir = new THREE.Vector3();
 /** Moonlight direction relative to the camera's heading (radians): behind and to the right. */
 const MOONLIGHT_YAW = 2.4;
 const fwd = new THREE.Vector3();
+// HDR white (2x): bright enough to cross the bloom threshold as tiny halos on desktop.
 const starMat = new THREE.PointsMaterial({
-  color: "#ffffff",
+  color: new THREE.Color(2, 2, 2),
   size: 2,
   sizeAttenuation: false,
   transparent: true,
@@ -170,10 +167,10 @@ const uniforms = {
 /**
  * Time of day for the whole scene, driven by travel.position: blends the station palettes,
  * then updates the sky dome, fog, sun/moon light (+ its shadow box following the train),
- * hemisphere fill and every world material's tint. Mount before the train so its window
- * glow reads this frame's palette.
+ * hemisphere fill and every world material's tint, plus the drifting cloud layer. Mount
+ * before the train (and rain) so they read this frame's palette.
  */
-export function Atmosphere({ shadows }: { shadows: boolean }) {
+export function Atmosphere({ shadows, reducedMotion }: { shadows: boolean; reducedMotion: boolean }) {
   const sun = useRef<THREE.DirectionalLight>(null);
   const hemi = useRef<THREE.HemisphereLight>(null);
   const fog = useRef<THREE.FogExp2>(null);
@@ -183,7 +180,7 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
   const moon = useRef<THREE.Mesh>(null);
   const geo = useMemo(() => ({ ...backdropGeometry(), stars: starGeometry() }), []);
 
-  useFrame(({ camera, clock }) => {
+  useFrame(({ camera, clock, size }) => {
     waterTime.value = clock.elapsedTime;
     const p = travel.position;
     const index = Math.floor(p);
@@ -192,12 +189,16 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
 
     const el = (pal.sunElevation * Math.PI) / 180;
     dayDir.set(SUN_AZIMUTH.x * Math.cos(el), Math.sin(el), SUN_AZIMUTH.y * Math.cos(el));
-    // The moon hangs in the upper part of whatever the camera looks at, so every night
-    // framing has it; its light comes from there too. Day: the fixed low sun.
+    // The moon hangs at a fixed spot of the view (MOON), so every night framing has it.
+    // CameraRig moved the camera this frame; refresh its matrix before unprojecting.
     camera.getWorldDirection(fwd);
-    const yaw = Math.atan2(fwd.z, fwd.x) + MOON_YAW;
-    const pitch = Math.asin(Math.max(-1, Math.min(1, fwd.y))) + MOON_RISE;
-    moonDir.set(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch));
+    camera.updateMatrixWorld();
+    const wide = smoothstep(CAMERA.narrowAspect, CAMERA.wideAspect, size.width / Math.max(1, size.height));
+    moonPos
+      .set(MOON.narrow.x + (MOON.wide.x - MOON.narrow.x) * wide, MOON.narrow.y + (MOON.wide.y - MOON.narrow.y) * wide, 0.5)
+      .unproject(camera)
+      .sub(camera.position)
+      .normalize();
     // Moonlight is cheated to come from behind the camera's right shoulder (a moon in front
     // would leave every camera-facing surface black): high, so shadows stay short.
     const back = Math.atan2(fwd.z, fwd.x) + MOONLIGHT_YAW;
@@ -229,8 +230,9 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
     }
     starMat.opacity = pal.stars;
     moonMat.opacity = pal.stars;
-    moonMat.emissiveIntensity = 0.6 + pal.stars * 0.6;
-    moon.current?.position.copy(camera.position).addScaledVector(moonDir, STAR_R * 0.95);
+    // Bright enough at full night to cross the bloom threshold (a soft halo on desktop).
+    moonMat.emissiveIntensity = 0.6 + pal.stars * 1.7;
+    moon.current?.position.copy(camera.position).addScaledVector(moonPos, MOON.distance);
     if (moon.current) moon.current.visible = pal.stars > 0.02;
     if (stars.current) stars.current.visible = pal.stars > 0.02;
     // Sky dome, stars and far ranges ride with the camera: always at "infinity".
@@ -270,12 +272,12 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
       </mesh>
       <points ref={stars} geometry={geo.stars} material={starMat} frustumCulled={false} />
       <mesh ref={moon} material={moonMat} frustumCulled={false}>
-        <icosahedronGeometry args={[48, 1]} />
+        <icosahedronGeometry args={[MOON.radius, 1]} />
       </mesh>
       <group ref={backdrop}>
         <mesh geometry={geo.mountains} material={MATS.mountain} frustumCulled={false} />
-        <mesh geometry={geo.clouds} material={MATS.cloud} frustumCulled={false} />
       </group>
+      <Clouds reducedMotion={reducedMotion} />
     </>
   );
 }

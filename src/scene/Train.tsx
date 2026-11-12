@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { atmosphere, MATS } from "./materials";
 import { ROUTE, tangentAt, trainPose } from "./route3d";
+import { TRAIN_SHAPE, TrainLights } from "./TrainLights";
 import { travel } from "./travel";
 
 /**
@@ -32,6 +33,13 @@ export const TRAIN_PARAMS = {
   bobHeight: 0.035,
   /** Sway frequency in Hz; each car gets its own phase so they never move in lockstep. */
   swayHz: 1.6,
+  /** Window emissive multiplier when there is no bloom (phones), so the panes still read as lit. */
+  noBloomGlowBoost: 1.3,
+  /**
+   * Window emissive multiplier with bloom (desktop): lifts the night windows (glow 1.5+) over
+   * the bloom threshold (Effects POST), so they glow rather than read as flat panes.
+   */
+  bloomGlowBoost: 1.9,
 } as const;
 
 /** Model nodes placed along the curve one by one; the four cars also sway. */
@@ -158,9 +166,16 @@ function rigTrain(scene: THREE.Object3D): { cars: CarRig[]; windowMats: THREE.Me
         y: node.position.y,
         q: node.quaternion.clone(),
         axles: i < CARS.length ? axlesFor(box.min.x - node.position.x, box.max.x - node.position.x) : [],
+        // Ends of this part in train coordinates (the root's offset folded in).
+        min: box.min.x + rootX,
+        max: box.max.x + rootX,
       };
     }
-    const rest = node.userData.rest as { x: number; y: number; q: THREE.Quaternion; axles: number[] };
+    const rest = node.userData.rest as { x: number; y: number; q: THREE.Quaternion; axles: number[]; min: number; max: number };
+    if (i < CARS.length) {
+      TRAIN_SHAPE.nose = Math.max(i === 0 ? -Infinity : TRAIN_SHAPE.nose, rest.max);
+      TRAIN_SHAPE.tail = Math.min(i === 0 ? Infinity : TRAIN_SHAPE.tail, rest.min);
+    }
     // Phases spread over the cycle; i*2.1 rad avoids any two cars lining up.
     return [
       { node, restX: rest.x, restY: rest.y, restQ: rest.q, phase: i * 2.1, sways: i < CARS.length, axles: rest.axles },
@@ -245,7 +260,16 @@ function glowWindows(mats: THREE.MeshStandardMaterial[], intensity: number) {
  * flat-shaded, running along ROUTE. Each car follows the curve on its
  * own; windows glow per the palette (faint at golden hour, warm and strong at night).
  */
-export function Train({ reducedMotion, shadows }: { reducedMotion: boolean; shadows: boolean }) {
+export function Train({
+  reducedMotion,
+  shadows,
+  post,
+}: {
+  reducedMotion: boolean;
+  shadows: boolean;
+  /** Bloom on (desktop tier). Without it, windows get a little extra emissive to still read as lit. */
+  post: boolean;
+}) {
   const { scene } = useGLTF(TRAIN_PARAMS.modelUrl);
   const rig = useRef<ReturnType<typeof rigTrain>>({ cars: [], windowMats: [] });
   const wheels = useRef<THREE.InstancedMesh>(null);
@@ -267,12 +291,13 @@ export function Train({ reducedMotion, shadows }: { reducedMotion: boolean; shad
     const w = clock.elapsedTime * Math.PI * 2 * TRAIN_PARAMS.swayHz;
     const angle = advanceWheels(rolling.current, trainPose.u * ROUTE.length);
     placeCars(rig.current.cars, w, amount, wheels.current, angle);
-    glowWindows(rig.current.windowMats, atmosphere.palette.windowGlow);
+    glowWindows(rig.current.windowMats, atmosphere.palette.windowGlow * (post ? TRAIN_PARAMS.bloomGlowBoost : TRAIN_PARAMS.noBloomGlowBoost));
   });
 
   // Parts are placed in world space each frame; the container itself never moves.
   return (
     <>
+      <TrainLights spill={post ? 2 : 1} />
       <primitive object={scene} />
       <instancedMesh
         ref={wheels}
