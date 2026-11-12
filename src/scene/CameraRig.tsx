@@ -49,7 +49,7 @@ export const CAMERA = {
   phone: {
     fov: 52,
     travel: F(-27, 5, 12, 34, 2),
-    station: F(-26, 6, 14, 32, 1, -2),
+    station: F(-26, 6, 14, 32, 1, -4),
   },
   /** Aspect (w/h) below which the phone framing applies fully; above wideAspect, desktop. */
   narrowAspect: 0.7,

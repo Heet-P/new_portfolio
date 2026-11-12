@@ -108,6 +108,8 @@ export const MATS = {
   girder: flat({ metalness: 0.3, roughness: 0.6 }),
   // Tunnel portals: per-facet rock colours, tinted like the rocks.
   rockFace: flat({ vertexColors: true }),
+  // Solar panels at the Solar stop: blue cells in silver frames, a little glossy.
+  panel: flat({ vertexColors: true, metalness: 0.45, roughness: 0.4 }),
   // Inside of tunnel bores: unlit near-black, so the mouth reads as a deep dark hole.
   tunnel: new THREE.MeshBasicMaterial({ color: "#040405", side: THREE.DoubleSide }),
   cloud: flat({ color: "#ffffff", fog: false }),
@@ -137,6 +139,7 @@ export function tintWorld(p: Palette) {
   MATS.foam.color.setRGB(...p.ground);
   MATS.splash.color.setRGB(...p.ground);
   MATS.wheel.color.setRGB(...p.ground);
+  MATS.panel.color.setRGB(...p.ground);
   for (const k of PROPS) {
     tinted(MATS[k], BASE[k], k === "girder" ? p.rock : p.ground);
   }

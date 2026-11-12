@@ -11,6 +11,7 @@ import { Catenary } from "./Catenary";
 import { getQuality } from "./quality";
 import { Rain } from "./Rain";
 import { updateTrainPose } from "./route3d";
+import { Stations } from "./stations/Stations";
 import { Track } from "./Track";
 import { Train } from "./Train";
 import { resetTravel, stepTravel, travel } from "./travel";
@@ -101,6 +102,10 @@ export default function Scene() {
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
           <FirstFrame onReady={() => setReady(true)} />
+        </Suspense>
+        {/* Own boundary: the stations' lettering must never hold up the train. */}
+        <Suspense fallback={null}>
+          <Stations shadows={shadows} post={quality.post} />
         </Suspense>
         <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
         {quality.post && (
