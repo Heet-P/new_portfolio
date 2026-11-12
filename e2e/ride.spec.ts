@@ -60,3 +60,13 @@ test("switching to Express lands on the same station's section", async ({ page }
   await expect(page.locator("#express")).toBeVisible();
   await expect(page.locator("#formai")).toBeInViewport();
 });
+
+// Task 7: the 3D scene exists only in ride mode (lazy chunk), and fades in once drawn.
+test("ride mode mounts the 3D scene; Express removes it", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("canvas")).toHaveCount(1);
+  await expect(page.getByTestId("ride-scene")).toHaveCSS("opacity", "1", { timeout: 15000 });
+  await page.getByRole("button", { name: /^Express/ }).click();
+  await expect(page.locator("#express")).toBeVisible();
+  await expect(page.locator("canvas")).toHaveCount(0);
+});
