@@ -1,11 +1,13 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { STATIONS } from "@/content/route";
+import { cabinFrame, resetCabin, stepCabin } from "@/ride/cabinStore";
 import { useRide } from "@/ride/rideStore";
 import { Atmosphere } from "./Atmosphere";
+import { Cabin } from "./cabin/Cabin";
 import { CameraRig } from "./CameraRig";
 import { Catenary } from "./Catenary";
 import { getQuality } from "./quality";
@@ -38,6 +40,28 @@ function TravelTracker() {
   return null;
 }
 
+/**
+ * Advances the "into the cabin" blend from the train's position and speed (cabinStore), right
+ * after TravelTracker and before the camera reads it. Resets it when the scene goes away.
+ */
+function CabinDriver() {
+  useEffect(() => resetCabin, []);
+  useFrame((_, dt) => stepCabin(travel.position, travel.speed, dt));
+  return null;
+}
+
+/**
+ * Everything outside the train's cabin. While the camera is inside the cabin (staged far away,
+ * see cabin/layout.ts) none of it can be seen, so it stops drawing (and casting shadows).
+ * The train's own lights are not in here: hiding a light would recompile every material.
+ */
+function Outside({ children }: { children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (ref.current) ref.current.visible = !cabinFrame.inside;
+  });
+  return <group ref={ref}>{children}</group>;
+}
 
 /** Calls `onReady` after the first frame that includes the train has rendered. */
 function FirstFrame({ onReady }: { onReady: () => void }) {
@@ -94,20 +118,23 @@ export default function Scene() {
         camera={{ fov: 34, near: 0.5, far: 5000 }}
       >
         <TravelTracker />
+        <CabinDriver />
         <CameraRig reducedMotion={reducedMotion} />
         <Atmosphere shadows={shadows} reducedMotion={reducedMotion} />
-        <World density={density} step={terrainStep} shadows={shadows} />
-        <Track world={getWorld()} shadows={shadows} />
-        <Catenary world={getWorld()} shadows={shadows} />
+        <Outside>
+          <World density={density} step={terrainStep} shadows={shadows} />
+          <Track world={getWorld()} shadows={shadows} />
+          <Catenary world={getWorld()} shadows={shadows} />
+          {/* The stations' lettering has its own Suspense inside, so it never holds up the meshes. */}
+          <Stations shadows={shadows} post={quality.post} />
+          <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
+        </Outside>
+        {/* The cabin loads with the train, so a deep link opens already seated at the display. */}
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
+          <Cabin />
           <FirstFrame onReady={() => setReady(true)} />
         </Suspense>
-        {/* Own boundary: the stations' lettering must never hold up the train. */}
-        <Suspense fallback={null}>
-          <Stations shadows={shadows} post={quality.post} />
-        </Suspense>
-        <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
         {quality.post && (
           <Suspense fallback={null}>
             <Effects />

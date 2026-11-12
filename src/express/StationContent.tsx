@@ -33,9 +33,10 @@ export function linkProps(href: string) {
 /**
  * Everything a station says: heading, meta, tagline, body, stats, stack, links, media.
  * Deliberately layout-free (no outer margins, no <section>) so the Express page and
- * the 3D ride's StationCard can both wrap it in their own frame.
+ * the ride's on-board display can both wrap it in their own frame. The display draws its
+ * own "See live" / "GitHub" buttons, so it passes `showLinks={false}`.
  */
-export function StationContent({ station }: { station: Station }) {
+export function StationContent({ station, showLinks = true }: { station: Station; showLinks?: boolean }) {
   const stop = String(STATIONS.findIndex((s) => s.id === station.id)).padStart(2, "0");
   const status = station.status ? STATUS_LABEL[station.status] : undefined;
 
@@ -96,7 +97,7 @@ export function StationContent({ station }: { station: Station }) {
         </ul>
       )}
 
-      {station.links && (
+      {showLinks && station.links && (
         <ul className={styles.links}>
           {station.links.map((link) => (
             <li key={link.href}>

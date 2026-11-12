@@ -70,3 +70,23 @@ test("ride mode mounts the 3D scene; Express removes it", async ({ page }) => {
   await expect(page.locator("#express")).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(0);
 });
+
+// Task 10b: parked at a station, the camera is inside the cabin and the on-board display shows that stop.
+test("deep link settles in the cabin in front of the station's display", async ({ page }) => {
+  await page.goto("/#vaani");
+  const display = page.getByRole("region", { name: "Vaani AI" });
+  await expect(display).toBeVisible({ timeout: 20000 });
+  await expect(display.getByRole("heading", { name: "Vaani AI" })).toBeVisible();
+  // Every outbound link on the display opens in a new tab without handing over the opener.
+  for (const link of await display.locator("a[href^='http']").all()) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", /noopener/);
+  }
+});
+
+test("the Terminus display hands over the resume as a download ticket", async ({ page }) => {
+  await page.goto("/#terminus");
+  const display = page.getByRole("region", { name: "Terminus" });
+  await expect(display).toBeVisible({ timeout: 20000 });
+  await expect(display.getByRole("link", { name: /resume/i })).toHaveAttribute("download", "");
+});

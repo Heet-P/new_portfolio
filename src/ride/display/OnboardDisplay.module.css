@@ -1,0 +1,470 @@
+/*
+ * The on-board display: an in-train screen (dark glass, faint scanlines, amber lamp-light
+ * accents) laid over the 3D panel in the cabin. Its box here decides where the panel sits
+ * on screen (OnboardDisplay measures it; the scene fits the 3D panel to it).
+ * Motion (Emil Kowalski): only transform/opacity animate, custom ease-out, each item well under a third of a second,
+ * 40ms stagger, scale(0.97) on press, hover only on real pointers, nothing for reduced motion.
+ */
+
+/*
+ * Desktop: the space right of the route-map panel (260px + gap), below the mode toggle.
+ * The screen is centred in it, capped so the cabin still shows around it.
+ */
+.layer {
+  position: fixed;
+  z-index: 40; /* over the canvas and the swap overlay, under the route map (50) and toggle (100) */
+  top: 80px;
+  right: 48px;
+  bottom: 48px;
+  left: 296px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.frame {
+  width: min(960px, 100%);
+  height: min(624px, 100%);
+  /* Shown, faded and moved per frame by OnboardDisplay (inline styles). */
+  opacity: 0;
+  visibility: hidden;
+  transform-origin: 0 0;
+  will-change: transform, opacity;
+  pointer-events: auto;
+}
+
+/* Phones and short windows: the full width between 16px gutters, above the route strip. */
+@media (max-width: 640px), (max-height: 600px) {
+  .layer {
+    /* Toggle ends at 60px; + 4px gap + the 3D bezel's 12px rim. */
+    top: 76px;
+    right: 16px;
+    left: 16px;
+    /* Route strip = 8 + 44 + 8px (+ the home-indicator inset), then a 16px gap. */
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .frame {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ---------- The screen ---------- */
+
+.screen {
+  /* Drives the two-column layout from the screen's own width, not the viewport's. */
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  /* Inner radius of the 3D bezel (outer 24px minus its 12px rim). */
+  border-radius: 12px;
+  /* Dark glass with a warm wash from the top edge, as if lit by the cabin lamps. */
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgb(243 178 94 / 0.09), transparent 60%),
+    rgb(7 10 20 / 0.95);
+  box-shadow:
+    inset 0 0 0 1px rgb(243 178 94 / 0.16),
+    inset 0 0 48px rgb(243 178 94 / 0.06);
+  color: var(--fg);
+}
+
+/* Scanlines: a 1px light line every 4px at a whisper of opacity. Static, never animated. */
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.022) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+
+/* Metro "Now arriving" header bar. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 24px;
+  padding: 12px 32px;
+  border-bottom: 1px solid rgb(243 178 94 / 0.22);
+  background: rgb(243 178 94 / 0.07);
+  font-family: var(--font-mono), monospace;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.barStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--amber);
+}
+
+.barNext {
+  color: var(--fg-muted);
+}
+
+/* A small lamp that breathes, like the indicator on a real car display. */
+.lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px rgb(243 178 94 / 0.8);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lamp {
+    animation: lamp 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes lamp {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 32px 32px;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(243 178 94 / 0.3) transparent;
+}
+
+@media (max-width: 640px) {
+  .bar {
+    padding: 12px 16px;
+  }
+
+  .scroller {
+    padding: 16px 16px 24px;
+  }
+}
+
+/* Wide screens: the station's text flows in two columns so a whole stop fits without scrolling. */
+@container (min-width: 760px) {
+  .columns > div {
+    columns: 2;
+    column-gap: 40px;
+  }
+
+  .columns > div > * {
+    break-inside: avoid;
+  }
+
+  .columns h2 {
+    break-after: avoid;
+  }
+
+  .columns p {
+    break-inside: avoid;
+  }
+}
+
+/* ---------- Text for the custom screens (Departure, Next stop, Terminus) ---------- */
+
+.flow {
+  max-width: 640px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.title {
+  margin: 8px 0 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: var(--text-display);
+  line-height: var(--text-display-lh);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100, "opsz" 144;
+}
+
+.role {
+  margin: 4px 0 0;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  color: var(--amber-strong);
+}
+
+.body p {
+  margin: 12px 0 0;
+}
+
+/* ---------- Buttons ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action {
+  position: relative;
+  isolation: isolate; /* keeps the hover fill (z-index: -1) inside the button */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px; /* touch target */
+  padding: 0 20px;
+  border: 1px solid rgb(243 178 94 / 0.45);
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  color: var(--amber);
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+/* Hover fill fades in by opacity (never by animating colours). */
+.action::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(243 178 94 / 0.14);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+.action[data-primary] {
+  border-color: var(--amber);
+  background: var(--amber);
+  color: var(--amber-ink);
+}
+
+.action[data-primary]::before {
+  background: var(--amber-strong);
+}
+
+/* Downloads get the same dipping arrow as on the Express page. */
+.action[download]::after {
+  content: "↓" / "";
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+.out {
+  display: inline-block;
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .action:hover::before {
+    opacity: 1;
+  }
+
+  .action:hover .out {
+    transform: translate(2px, -2px);
+  }
+
+  .action[download]:hover::after {
+    transform: translateY(2px);
+  }
+}
+
+.action:active {
+  transform: scale(0.97);
+}
+
+/* ---------- The resume ticket ---------- */
+
+/* The slot the ticket prints out of: a dark slit with the ticket tucked a little into it. */
+.ticketSlot {
+  position: relative;
+  max-width: 440px;
+  margin-top: 32px;
+  padding-top: 8px;
+  /* Hide whatever is still inside the slot (above its top edge); sides and bottom stay free for the focus ring. */
+  clip-path: inset(0 -24px -24px -24px);
+}
+
+.ticketSlot::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: -8px;
+  right: -8px;
+  height: 8px;
+  border-radius: 4px;
+  background: #02030a;
+  box-shadow: 0 1px 0 rgb(243 178 94 / 0.25);
+}
+
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  min-height: 96px;
+  border-radius: 12px;
+  background: #f6ecd2; /* warm ticket paper */
+  color: var(--amber-ink);
+  text-decoration: none;
+  transform: translateY(-8px);
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+.ticketMain {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 16px 24px;
+}
+
+.ticketKicker,
+.ticketMeta {
+  font-family: var(--font-mono), monospace;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a4630; /* 7.9:1 on the ticket paper */
+}
+
+.ticketTitle {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: var(--text-heading);
+  line-height: var(--text-heading-lh);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 100, "opsz" 72;
+}
+
+/* Stub, divided from the ticket by a perforated line. */
+.ticketStub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  width: 96px;
+  border-left: 2px dashed rgb(26 18 8 / 0.35);
+  font-family: var(--font-mono), monospace;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: #5a4630;
+}
+
+/* Punched notches at both ends of the perforation, in the screen's own colour. */
+.ticketStub::before,
+.ticketStub::after {
+  content: "";
+  position: absolute;
+  right: 88px; /* stub width 96 - notch radius 8 */
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(7 10 20);
+}
+
+.ticketStub::before {
+  top: -8px;
+}
+
+.ticketStub::after {
+  bottom: -8px;
+}
+
+.ticketNo {
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  color: var(--amber-ink);
+}
+
+/* "Printing": the ticket feeds a little further out of the slot. */
+@media (hover: hover) and (pointer: fine) {
+  .ticket:hover {
+    transform: translateY(0);
+  }
+}
+
+.ticket:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.credits {
+  margin: 24px 0 0;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--fg-muted);
+}
+
+.credits a {
+  color: var(--amber);
+}
+
+/* ---------- Entrance: the stop's content arrives in a short stagger ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .bar,
+  .flow > *,
+  .columns > div > *,
+  .actions {
+    animation: arrive 280ms var(--ease-out) both;
+  }
+
+  .bar {
+    animation-delay: 80ms;
+  }
+
+  .flow > :nth-child(1),
+  .columns > div > :nth-child(1) {
+    animation-delay: 120ms;
+  }
+  .flow > :nth-child(2),
+  .columns > div > :nth-child(2) {
+    animation-delay: 160ms;
+  }
+  .flow > :nth-child(3),
+  .columns > div > :nth-child(3) {
+    animation-delay: 200ms;
+  }
+  .flow > :nth-child(4),
+  .columns > div > :nth-child(4) {
+    animation-delay: 240ms;
+  }
+  .flow > :nth-child(5),
+  .columns > div > :nth-child(5) {
+    animation-delay: 280ms;
+  }
+  .flow > :nth-child(n + 6),
+  .columns > div > :nth-child(n + 6),
+  .actions {
+    animation-delay: 320ms;
+  }
+
+  /* The ticket prints out of its slot instead of rising. */
+  .ticket {
+    animation: print 280ms var(--ease-out) 400ms both;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes print {
+  from {
+    transform: translateY(-100%);
+  }
+}

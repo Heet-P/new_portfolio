@@ -3,6 +3,8 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
+import { cabinFrame } from "@/ride/cabinStore";
+import { applyStopCamera } from "./cabin/cabinCamera";
 import { smoothstep } from "./noise";
 import { ROUTE, tangentAt, trainPose } from "./route3d";
 import { travel } from "./travel";
@@ -138,6 +140,8 @@ export function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
     );
     camera.position.copy(goalPos);
     camera.lookAt(goalLook);
+    // At a stop: swoop to the window and on into the cabin (no-op while travelling).
+    applyStopCamera(camera, cabinFrame.blend, reducedMotion);
 
     // FOV per framing, and shift the projection right on desktop so the train sits in the
     // space beside the route-map panel instead of under it.

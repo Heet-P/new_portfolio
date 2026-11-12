@@ -1,0 +1,20 @@
+/*
+ * Swap overlay: warm cabin light flooding the view as the camera passes the window.
+ * Only opacity changes (per frame, from the cabin blend). The blur is a constant property,
+ * applied only for visitors who are fine with motion (reduced motion = a plain crossfade).
+ */
+.swap {
+  position: fixed;
+  inset: 0;
+  z-index: 30; /* over the canvas, under the display (40), route map (50) and toggle (100) */
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  background: radial-gradient(90% 80% at 55% 45%, rgb(196 160 112), rgb(64 48 34) 75%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .swap {
+    backdrop-filter: blur(6px);
+  }
+}

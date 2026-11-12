@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { cabinFrame } from "@/ride/cabinStore";
 import { atmosphere, MATS } from "./materials";
 import { ROUTE, tangentAt, trainPose } from "./route3d";
 import { TRAIN_SHAPE, TrainLights } from "./TrainLights";
@@ -273,6 +274,7 @@ export function Train({
   const { scene } = useGLTF(TRAIN_PARAMS.modelUrl);
   const rig = useRef<ReturnType<typeof rigTrain>>({ cars: [], windowMats: [] });
   const wheels = useRef<THREE.InstancedMesh>(null);
+  const body = useRef<THREE.Group>(null);
   const wheelGeo = useMemo(() => wheelGeometry(), []);
   // Wheel rotation: angle = distance travelled / radius (negative = rolling forward).
   const rolling = useRef({ lastS: -1, angle: 0 });
@@ -286,6 +288,9 @@ export function Train({
   }, [scene, shadows]);
 
   useFrame(({ clock }) => {
+    // Inside the cabin the exterior train is out of sight: skip drawing it (its lights stay on,
+    // so no material has to recompile for a different light count).
+    if (body.current) body.current.visible = !cabinFrame.inside;
     // Amount follows travel speed, so parked = perfectly still. Reduced motion: always still.
     const amount = reducedMotion ? 0 : travel.speed;
     const w = clock.elapsedTime * Math.PI * 2 * TRAIN_PARAMS.swayHz;
@@ -298,13 +303,15 @@ export function Train({
   return (
     <>
       <TrainLights spill={post ? 2 : 1} />
-      <primitive object={scene} />
-      <instancedMesh
-        ref={wheels}
-        args={[wheelGeo, MATS.wheel, CARS.length * WHEELS_PER_CAR]}
-        castShadow={shadows}
-        frustumCulled={false}
-      />
+      <group ref={body}>
+        <primitive object={scene} />
+        <instancedMesh
+          ref={wheels}
+          args={[wheelGeo, MATS.wheel, CARS.length * WHEELS_PER_CAR]}
+          castShadow={shadows}
+          frustumCulled={false}
+        />
+      </group>
     </>
   );
 }

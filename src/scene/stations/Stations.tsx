@@ -2,7 +2,7 @@
 
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { STATIONS } from "@/content/route";
 import { atmosphere, MATS } from "../materials";
@@ -97,16 +97,30 @@ function SignText({
  * (a two-storey one with a clock tower at Departure and Terminus), furniture, fences, name
  * boards at both platform ends and on the canopy fascia, and the solar field at Solar.
  * Procedural, flat-shaded like the world; two draw calls for all geometry.
+ * The lettering (drei Text) fetches its font and suspends until it is parsed; it sits in its
+ * own Suspense so that a slow or failed font load only ever costs the names, never the
+ * stations themselves.
  */
 export function Stations({ shadows, post }: { shadows: boolean; post: boolean }) {
   const geo = useMemo(() => buildStations(), []);
   const material = useMemo(() => stationMaterial(), []);
   useFrame(() => retint(material, post));
-  const { width, height, bottom } = END_SIGN;
   return (
     <group>
       <mesh geometry={geo.kit} material={material} castShadow={shadows} receiveShadow={shadows} />
       <mesh geometry={geo.panels} material={MATS.panel} castShadow={shadows} receiveShadow={shadows} />
+      <Suspense fallback={null}>
+        <StationNames />
+      </Suspense>
+    </group>
+  );
+}
+
+/** Every station's name boards (both platform ends + the canopy fascia). */
+function StationNames() {
+  const { width, height, bottom } = END_SIGN;
+  return (
+    <>
       {STATIONS.map((st, i) => {
         const f = fasciaPlacement(i);
         return (
@@ -131,6 +145,6 @@ export function Stations({ shadows, post }: { shadows: boolean; post: boolean })
           </group>
         );
       })}
-    </group>
+    </>
   );
 }

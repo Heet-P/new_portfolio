@@ -22,6 +22,14 @@
  *     runs along +X (like the train), rails centred on z = 0 with rail tops at y = 0,
  *     span centred on x = 0, and scaled so its rail gauge equals the train's (1.5 units).
  *  4. Flatten + join meshes per material (a handful of draw calls instead of ~48), weld, meshopt.
+ *
+ * subway-interior/source/subway.glb -> public/models/cabin.glb
+ *   ("Subway_[interior]" by Comicaroid, CC BY 4.0: the on-board cabin seen at each stop)
+ *  1. Re-centre so the car runs along +X centred on x/z = 0 with the cabin floor at y = 0.
+ *  2. Flatten + join by material: 573 meshes in 11 flat-colour materials become 11 draw calls.
+ *  3. Weld, drop the unused UVs (no textures), meshopt.
+ *
+ * Usage: `npm run model` builds every target; `npm run model -- cabin` builds only the named ones.
  */
 import { mkdirSync, statSync } from "node:fs";
 import { dirname } from "node:path";
@@ -162,5 +170,46 @@ async function bridge() {
   console.log("bridge bounds min", b.min.map(round), "max", b.max.map(round), "scale", round(s));
 }
 
-await train();
-await bridge();
+async function cabin() {
+  const SRC = "media-inbox/train/subway-interior/source/subway.glb";
+  const OUT = "public/models/cabin.glb";
+  /** Top of the floor slab in the source (the slab's underside sits 0.1 lower). */
+  const SRC_FLOOR_TOP = -0.66;
+
+  const doc = await io.read(SRC);
+  const root = doc.getRoot();
+  const scene = root.getDefaultScene() ?? root.listScenes()[0];
+  console.log("cabin before:", stats(doc));
+
+  // 1. One root carrying the re-centring offset (the source sits at x -3..14, z -10.8..-7.4).
+  const kids = scene.listChildren();
+  const rig = doc.createNode("CABIN");
+  for (const k of kids) {
+    scene.removeChild(k);
+    rig.addChild(k);
+  }
+  scene.addChild(rig);
+  const b0 = getBounds(rig);
+  rig.setTranslation([-(b0.min[0] + b0.max[0]) / 2, -SRC_FLOOR_TOP, -(b0.min[2] + b0.max[2]) / 2]);
+
+  // 2-3. Bake transforms, join per material, clean up (UVs go: there are no textures), compress.
+  await doc.transform(
+    flatten(),
+    join({ keepNamed: false }),
+    dedup(),
+    weld(),
+    prune({ keepAttributes: false }),
+    meshopt({ encoder: MeshoptEncoder, level: "medium" }),
+  );
+  await write(doc, SRC, OUT);
+  console.log("cabin after:", stats(doc));
+  const b = getBounds(scene);
+  console.log("cabin bounds min", b.min.map(round), "max", b.max.map(round));
+}
+
+// `npm run model -- cabin` rebuilds only the named targets; no names = all of them.
+const TARGETS = { train, bridge, cabin };
+const only = process.argv.slice(2);
+for (const [name, build] of Object.entries(TARGETS)) {
+  if (only.length === 0 || only.includes(name)) await build();
+}
