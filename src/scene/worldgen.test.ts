@@ -74,6 +74,29 @@ describe("generateWorld", () => {
     expect(dot).toBeGreaterThan(Math.cos((1 * Math.PI) / 180));
   });
 
+  it("keeps every station's platform patch flat (left of the track, ±24 along)", () => {
+    for (const st of world.stationS) {
+      for (let along = -24; along <= 24; along += 4) {
+        const i = Math.round((st + along) / TRACK.step);
+        // Left of travel = -(right normal) = (tz, -tx).
+        for (let d = 2; d <= 24; d += 2) {
+          const x = TRACK.px[i] + TRACK.tz[i] * d;
+          const z = TRACK.pz[i] - TRACK.tx[i] * d;
+          expect(Math.abs(heightAt(world, x, z) - (TRACK.py[i] - 0.35))).toBeLessThan(0.6);
+        }
+      }
+    }
+  });
+
+  it("puts a trestle over a waterfall stream, then a tunnel, just ahead of the Departure train", () => {
+    const dep = world.stationS[0];
+    const trestle = world.bridges.find((b) => b.kind === "trestle")!;
+    expect(trestle.s0).toBeGreaterThan(dep + 15);
+    expect(trestle.s1).toBeLessThan(dep + 100);
+    expect(world.tunnels.some((t) => t.s0 > trestle.s1 && t.s0 < world.stationS[1])).toBe(true);
+    expect(world.waterfalls.length).toBeGreaterThan(0);
+  });
+
   it("carves water under every bridge and raises a hill over every tunnel", () => {
     const at = (s: number) => {
       const i = Math.round(s / TRACK.step);

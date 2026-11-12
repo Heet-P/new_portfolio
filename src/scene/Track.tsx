@@ -36,14 +36,16 @@ function pieces(gaps: Span[], length: number): [number, number][] {
 /**
  * Static track along the curve: ballast bed, two rails and instanced sleepers. It does not
  * move; the train runs along it. Skips the steel bridge (the model carries its own rails
- * and sleepers); the wooden trestle keeps rails and sleepers but no ballast.
+ * and sleepers); the wooden trestle and tunnel bores keep rails and sleepers but no ballast.
  */
 export function Track({ world, shadows }: { world: WorldLayout; shadows: boolean }) {
   const sleepers = useRef<THREE.InstancedMesh>(null);
   const geo = useMemo(() => {
     const steel = world.bridges.filter((b) => b.kind === "steel");
     const railPieces = pieces(steel, ROUTE.length);
-    const bedPieces = pieces(world.bridges, ROUTE.length);
+    // No ballast on bridges, nor deep inside tunnels (it would catch light in the dark bore).
+    const bores = world.tunnels.map((t) => ({ s0: t.s0 + 3, s1: t.s1 - 3 }));
+    const bedPieces = pieces([...world.bridges, ...bores], ROUTE.length);
     const { gauge, railWidth: w, railHeight: h, ballastTop: bt, ballastBottom: bb } = TRACK_DIM;
     // Rail cross-section, walked so the faces point outwards (left side, top, right side).
     const rail = (c: number): [number, number][] => [

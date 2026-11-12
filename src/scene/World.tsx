@@ -3,20 +3,26 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { hash2 } from "./noise";
-import { pineGeometry, rockGeometry, terrainChunk, TERRAIN_STEP } from "./geometry";
+import { pineGeometry, rockGeometry, terrainChunk } from "./geometry";
 import { MATS } from "./materials";
 import { Structures } from "./Structures";
 import { generateWorld, type Placement, type WorldLayout } from "./worldgen";
 
 /** World seed: change it to reshuffle every tree and rock (the route itself is hand-placed). */
 const SEED = 1;
-/** Terrain chunk size in grid cells (x, z): each chunk is one culled group (terrain + its pines). */
-const CHUNK_X = 30;
-const CHUNK_Z = 46;
+/**
+ * Terrain chunk size in world units (x, z): each chunk is one culled group (terrain + its
+ * pines). Multiples of both grid steps (6 desktop, 9 phone) so chunks hold whole cells.
+ */
+const CHUNK_W = 360;
+const CHUNK_D = 288;
 /** Pines are drawn 1.3x their modelled size: the reference's forests tower over the train. */
 const PINE_SCALE = 1.3;
 
-/** Build once per page load; ~0.1 s. Shared by every mount (the layout never changes). */
+/**
+ * Build once per page load (about 30 ms) and share across mounts: the layout never
+ * changes, so re-entering the ride costs nothing.
+ */
 let cached: WorldLayout | null = null;
 export function getWorld(): WorldLayout {
   return (cached ??= generateWorld(SEED));
@@ -29,36 +35,42 @@ interface Chunk {
 }
 
 /** Split the terrain grid into chunks and bucket the (density-thinned) pines into them. */
-function buildChunks(w: WorldLayout, density: number): Chunk[] {
+function buildChunks(w: WorldLayout, density: number, step: number): Chunk[] {
   const { x0, x1, z0, z1 } = w.bounds;
-  const nx = Math.ceil((x1 - x0) / TERRAIN_STEP);
-  const nz = Math.ceil((z1 - z0) / TERRAIN_STEP);
-  const cw = CHUNK_X * TERRAIN_STEP;
-  const cd = CHUNK_Z * TERRAIN_STEP;
+  const nx = Math.ceil((x1 - x0) / step);
+  const nz = Math.ceil((z1 - z0) / step);
+  const cx = CHUNK_W / step;
+  const cz = CHUNK_D / step;
   const chunks: Chunk[] = [];
   const buckets = new Map<string, Placement[]>();
   w.pines.forEach((p, i) => {
     // Golden-ratio sequence: an even thinning for any density, the same trees every time.
     if (((i * 0.618034) % 1) >= density) return;
-    const key = `${Math.floor((p.x - x0) / cw)},${Math.floor((p.z - z0) / cd)}`;
+    const key = `${Math.floor((p.x - x0) / CHUNK_W)},${Math.floor((p.z - z0) / CHUNK_D)}`;
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(p);
   });
-  for (let cx = 0; cx * CHUNK_X < nx; cx++) {
-    for (let cz = 0; cz * CHUNK_Z < nz; cz++) {
-      const terrain = terrainChunk(
-        w,
-        cx * CHUNK_X,
-        Math.min(nx, (cx + 1) * CHUNK_X),
-        cz * CHUNK_Z,
-        Math.min(nz, (cz + 1) * CHUNK_Z),
-      );
+  for (let a = 0; a * cx < nx; a++) {
+    for (let b = 0; b * cz < nz; b++) {
+      const terrain = terrainChunk(w, a * cx, Math.min(nx, (a + 1) * cx), b * cz, Math.min(nz, (b + 1) * cz), step);
       if (!terrain) continue;
-      const key = `${cx},${cz}`;
+      const key = `${a},${b}`;
       chunks.push({ key, terrain, pines: buckets.get(key) ?? [] });
     }
   }
   return chunks;
+}
+
+/**
+ * Built chunks per (density, step), kept for the page's lifetime: building them is the
+ * single biggest mount cost (~0.1-0.2 s), so leaving and re-entering the ride reuses them.
+ */
+const chunkCache = new Map<string, Chunk[]>();
+function getChunks(density: number, step: number): Chunk[] {
+  const key = `${density}:${step}`;
+  let c = chunkCache.get(key);
+  if (!c) chunkCache.set(key, (c = buildChunks(getWorld(), density, step)));
+  return c;
 }
 
 const m4 = new THREE.Matrix4();
@@ -80,14 +92,15 @@ function Instances({
   items,
   scale = 1,
   shadows,
-  flatten = 1,
+  sink = 0,
 }: {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
   items: Placement[];
   scale?: number;
   shadows: boolean;
-  flatten?: number;
+  /** Lower each copy by this much: hides gaps where a coarse terrain mesh dips below the true height. */
+  sink?: number;
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
@@ -97,15 +110,15 @@ function Instances({
       q.setFromAxisAngle(yAxis, p.rot);
       const s = p.scale * scale;
       // Slight per-instance height variation keeps rows of trees from looking cloned.
-      sc.set(s, s * flatten * (0.9 + hash2(i, 3, 1) * 0.25), s);
-      m4.compose(v.set(p.x, p.y, p.z), q, sc);
+      sc.set(s, s * (0.9 + hash2(i, 3, 1) * 0.25), s);
+      m4.compose(v.set(p.x, p.y - sink, p.z), q, sc);
       mesh.setMatrixAt(i, m4);
       mesh.setColorAt(i, col.copy(forest).lerp(olive, p.tint));
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
-  }, [items, scale, flatten]);
+  }, [items, scale, sink]);
   if (items.length === 0) return null;
   return (
     <instancedMesh
@@ -120,29 +133,22 @@ function Instances({
 /**
  * The low-poly world: chunked flat-shaded terrain with instanced pines per chunk (so whole
  * chunks frustum-cull), one batch of boulders, plus rivers, bridges and tunnels.
- * `density` (0..1) thins vegetation on weaker devices; `shadows` toggles shadow casting.
+ * `density` (0..1) thins vegetation on weaker devices, `step` is the terrain grid spacing,
+ * `shadows` toggles shadow casting. Geometry is cached at module level (never disposed).
  */
-export function World({ density, shadows }: { density: number; shadows: boolean }) {
+export function World({ density, step, shadows }: { density: number; step: number; shadows: boolean }) {
   const world = getWorld();
-  const chunks = useMemo(() => buildChunks(world, density), [world, density]);
+  const chunks = getChunks(density, step);
   const pine = useMemo(() => pineGeometry(), []);
   const rock = useMemo(() => rockGeometry(SEED), []);
   const rocks = useMemo(() => world.rocks.filter((_, i) => ((i * 0.618034) % 1) < Math.max(0.5, density)), [world, density]);
-
-  // Free GPU buffers if the scene unmounts (switching to Express).
-  useLayoutEffect(
-    () => () => {
-      for (const c of chunks) c.terrain.dispose();
-    },
-    [chunks],
-  );
 
   return (
     <group>
       {chunks.map((c) => (
         <group key={c.key}>
           <mesh geometry={c.terrain} material={MATS.terrain} receiveShadow={shadows} />
-          <Instances geometry={pine} material={MATS.foliage} items={c.pines} scale={PINE_SCALE} shadows={shadows} />
+          <Instances geometry={pine} material={MATS.foliage} items={c.pines} scale={PINE_SCALE} sink={step / 10} shadows={shadows} />
         </group>
       ))}
       <Instances geometry={rock} material={MATS.rock} items={rocks} shadows={shadows} />

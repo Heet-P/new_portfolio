@@ -54,6 +54,8 @@ export interface River {
   half: number;
   /** Extra distance over which the banks rise back to the surrounding terrain. */
   bank: number;
+  /** Bounding box of the polyline grown by everything a river affects: [x0, z0, x1, z1]. */
+  box: [number, number, number, number];
 }
 
 /** A waterfall drop: lip centre, height of the drop and the flow direction on the ground. */
@@ -107,7 +109,16 @@ function makeRiver(s: number, half: number, bank: number, bedAt: (d: number) => 
     pts.push(cx - tz * d + tx * w, cz + tx * d + tz * w);
     bed.push(ty + bedAt(d));
   }
-  return { pts, bed, half, bank };
+  // Grown by the banks plus the 30-unit levee fade: outside it a river changes nothing.
+  const grow = half + bank + 30;
+  const box: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (let k = 0; k < pts.length; k += 2) {
+    box[0] = Math.min(box[0], pts[k] - grow);
+    box[1] = Math.min(box[1], pts[k + 1] - grow);
+    box[2] = Math.max(box[2], pts[k] + grow);
+    box[3] = Math.max(box[3], pts[k + 1] + grow);
+  }
+  return { pts, bed, half, bank, box };
 }
 
 /** Output scratch for river queries. */
@@ -118,6 +129,13 @@ interface RiverHit {
 
 /** Distance from (x, z) to a river's centreline and the bed height at the closest point. */
 function riverQuery(r: River, x: number, z: number, out: RiverHit): RiverHit {
+  const [bx0, bz0, bx1, bz1] = r.box;
+  if (x < bx0 || x > bx1 || z < bz0 || z > bz1) {
+    // Far from this river: skip the per-segment search (the common case by far).
+    out.dist = Infinity;
+    out.bed = 0;
+    return out;
+  }
   let best = Infinity;
   let bed = 0;
   const p = r.pts;
@@ -149,9 +167,15 @@ const rhit: RiverHit = { dist: 0, bed: 0 };
  * Terrain height at (x, z). Flat railbed along the track, rolling hills that grow into a
  * snow-capped mountain wall with distance (steeper on the platform/far side), river
  * valleys cut through everything, and a hill raised over each tunnel. Allocation-free.
+ * `trackOut`, if given, receives the nearest track point (saves callers a second lookup).
  */
-export function heightAt(w: WorldLayout, x: number, z: number): number {
+export function heightAt(w: WorldLayout, x: number, z: number, trackOut?: TrackHit): number {
   nearestOnTrack(x, z, hit);
+  if (trackOut) {
+    trackOut.s = hit.s;
+    trackOut.d = hit.d;
+    trackOut.y = hit.y;
+  }
   const ad = Math.abs(hit.d);
   const far = hit.d < 0;
   const ty = hit.y;
@@ -159,18 +183,14 @@ export function heightAt(w: WorldLayout, x: number, z: number): number {
   const detail = fbm(x * 0.045, z * 0.045, w.seed + 7, 2);
 
   // Hills: ramp up past the railbed; the far side climbs into mountains sooner.
-  const hills = smoothstep(FLAT, FLAT + 45, ad) * (far ? 16 : 10) * (0.35 + n);
+  const hills = smoothstep(FLAT, FLAT + 45, ad) * (far ? 13 : 10) * (0.35 + n);
   // Mountains use their own, broader noise so they form ridges and massifs, not lone spikes.
   const ridge = fbm(x * 0.0045, z * 0.0045, w.seed + 13, 3);
-  const mountains = smoothstep(far ? 70 : 120, far ? 260 : 320, ad) * 150 * (0.15 + ridge * ridge * 1.9) * (0.75 + n * 0.5);
+  // Set well back from the track so the station framings keep a band of sky above them.
+  const mountains = smoothstep(far ? 110 : 140, far ? 330 : 360, ad) * 150 * (0.15 + ridge * ridge * 1.9) * (0.75 + n * 0.5);
   const wild = ty - 0.6 + hills + mountains + detail * 4 * smoothstep(FLAT, FLAT + 30, ad);
 
-  let k = smoothstep(FLAT, FLAT + 20, ad);
-  // Station clearings: flat ground on the far side where Task 10's platforms will stand.
-  for (const s of w.stationS) {
-    const along = Math.abs(hit.s - s);
-    if (along < 50 && far) k *= 1 - (1 - smoothstep(24, 50, along)) * (1 - smoothstep(26, 40, ad));
-  }
+  const k = smoothstep(FLAT, FLAT + 20, ad);
   let h = ty - 0.35 + (wild - (ty - 0.35)) * k;
 
   // Tunnels: a hill over the bore, with shoulders flanking the portals.
@@ -196,6 +216,17 @@ export function heightAt(w: WorldLayout, x: number, z: number): number {
     h += Math.max(0, rhit.bed + 3 - h) * (1 - smoothstep(reach, reach + 30, rhit.dist));
     if (rhit.dist < reach && h > rhit.bed) h = rhit.bed + (h - rhit.bed) * smoothstep(r.half, reach, rhit.dist);
   }
+
+  // Station clearings last, so nothing (tunnel shoulders, hills) can lift them: flat ground
+  // on the far side where Task 10's platforms will stand (+-24 along, out to 24 units).
+  if (far) {
+    for (const s of w.stationS) {
+      const along = Math.abs(hit.s - s);
+      if (along >= 44) continue;
+      const m = (1 - smoothstep(24, 44, along)) * (1 - smoothstep(26, 42, ad));
+      h += (ty - 0.35 - h) * m;
+    }
+  }
   return h;
 }
 
@@ -210,8 +241,9 @@ function features(seed: number): Omit<WorldLayout, "pines" | "rocks"> {
   // Main crossing: Heet's steel bridge between MCT and Vaani over a wide river valley.
   // The route's control points make the track straight here (see route3d.ts).
   const steelS = mid(1);
-  // Stream with a waterfall, crossed by a short wooden trestle, just after Departure.
-  const trestleS = stationS[0] + ROUTE.spacing * 0.45;
+  // Stream with a waterfall, crossed by a short wooden trestle, just ahead of the Departure
+  // train: the chase camera sees it (and the tunnel beyond) waiting up the line.
+  const trestleS = stationS[0] + 58;
   const rivers = [
     makeRiver(steelS, 26, 46, (d) => -13 - Math.max(0, d) * 0.01 + Math.max(0, -d - 80) * 0.12, seed),
     makeRiver(
@@ -249,8 +281,8 @@ function features(seed: number): Omit<WorldLayout, "pines" | "rocks"> {
   const steelSpan = { kind: "steel" as const, s0: steelS - STEEL_HALF, s1: steelS + STEEL_HALF };
   const trestleSpan = { kind: "trestle" as const, s0: trestleS - 22, s1: trestleS + 22 };
   const tunnels: Span[] = [
-    // The train waits at Departure having just emerged from this one (like the reference).
-    { s0: 2, s1: stationS[0] - 26 },
+    // Right after the trestle: the train crosses the stream, then dives into the hillside.
+    { s0: trestleS + 40, s1: trestleS + 110 },
     // Between QuizzX and Solar.
     { s0: mid(5) - 42, s1: mid(5) + 42 },
   ];

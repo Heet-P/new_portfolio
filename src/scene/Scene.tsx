@@ -7,6 +7,7 @@ import { STATIONS } from "@/content/route";
 import { useRide } from "@/ride/rideStore";
 import { Atmosphere } from "./Atmosphere";
 import { CameraRig } from "./CameraRig";
+import { Catenary } from "./Catenary";
 import { getQuality } from "./quality";
 import { updateTrainPose } from "./route3d";
 import { Track } from "./Track";
@@ -65,6 +66,8 @@ export default function Scene() {
   const [ready, setReady] = useState(false);
   const shadows = quality.post;
   const density = Math.min(1, quality.sceneryLayers / 4);
+  // Phone tier (fewer scenery layers): coarser terrain grid, ~2.3x fewer triangles to build and draw.
+  const terrainStep = quality.sceneryLayers >= 4 ? 6 : 9;
 
   return (
     <div
@@ -88,8 +91,9 @@ export default function Scene() {
         <TravelTracker />
         <CameraRig reducedMotion={reducedMotion} />
         <Atmosphere shadows={shadows} />
-        <World density={density} shadows={shadows} />
+        <World density={density} step={terrainStep} shadows={shadows} />
         <Track world={getWorld()} shadows={shadows} />
+        <Catenary world={getWorld()} shadows={shadows} />
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} />
           <FirstFrame onReady={() => setReady(true)} />

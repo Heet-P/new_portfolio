@@ -6,17 +6,17 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { hash2, mulberry32 } from "./noise";
 import { blendPalette } from "./palette";
-import { atmosphere, MATS, tintWorld } from "./materials";
+import { atmosphere, MATS, tintWorld, waterTime } from "./materials";
 import { trainPose } from "./route3d";
 import { travel } from "./travel";
 
 /**
- * Horizontal direction the sun/moon sits in (x, z), seen from the scene: low in the
- * direction the follow camera looks (back along the track), a little toward the camera
- * side. Golden hour backlight with long shadows reaching toward the viewer, like the
- * reference, and the sun's glow in frame; camera-facing slopes still catch some light.
+ * Horizontal direction the sun sits in (x, z), seen from the scene: low ahead of the
+ * train (where the chase camera looks), a little to the left of the line: golden-hour
+ * backlight with long shadows reaching toward the viewer, like the reference, and the
+ * sun's glow in frame.
  */
-const SUN_AZIMUTH = new THREE.Vector2(-1, 0.3).normalize();
+const SUN_AZIMUTH = new THREE.Vector2(1, -0.4).normalize();
 /** Half-size (units) of the sun's shadow box around the train. */
 const SHADOW_BOX = 70;
 
@@ -36,11 +36,6 @@ const skyFragment = /* glsl */ `
   uniform vec3 sunDir;
   uniform float stars;
   varying vec3 vDir;
-  float hash(vec3 p) {
-    p = fract(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-  }
   void main() {
     vec3 d = normalize(vDir);
     float h = d.y;
@@ -50,12 +45,8 @@ const skyFragment = /* glsl */ `
     // Glow around the sun (wide warm halo + tighter bloom), fading as night falls.
     float g = max(dot(d, sunDir), 0.0);
     col += sunColor * (pow(g, 5.0) * 0.28 + pow(g, 48.0) * 0.5) * (1.0 - stars * 0.75);
-    // The disc itself: the sun, later the moon.
-    col += sunColor * smoothstep(0.99935, 0.9997, g) * 2.5;
-    // Stars: sparse hashed cells, only above the horizon haze.
-    vec3 cell = floor(d * 420.0);
-    float s = hash(cell);
-    col += vec3(step(0.9972, s) * stars * smoothstep(0.03, 0.3, h) * (0.4 + 0.6 * hash(cell + 7.0)));
+    // The sun's disc; at night the faceted moon mesh takes over, so the disc fades out.
+    col += sunColor * smoothstep(0.99935, 0.9997, g) * 2.5 * (1.0 - stars);
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -73,7 +64,7 @@ function backdropGeometry() {
   for (let k = 0; k < 28; k++) {
     const a = (k / 28) * Math.PI * 2 + rand() * 0.15;
     const r = 1300 + rand() * 250;
-    const height = 240 + rand() * 260;
+    const height = 170 + rand() * 170;
     const g = new THREE.ConeGeometry(180 + rand() * 160, height, 7, 3).toNonIndexed();
     const pos = g.getAttribute("position") as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
@@ -120,7 +111,53 @@ function backdropGeometry() {
   return { mountains: m, clouds: cl };
 }
 
+/** Star field: random directions on the upper sky, drawn as screen-sized points. */
+function starGeometry(): THREE.BufferGeometry {
+  const rand = mulberry32(9);
+  const n = 1400;
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    // Uniform on the sphere, folded to the upper hemisphere and kept clear of the horizon haze.
+    const y = 0.04 + rand() * 0.96;
+    const a = rand() * Math.PI * 2;
+    const r = Math.sqrt(1 - y * y);
+    pos.set([Math.cos(a) * r * STAR_R, y * STAR_R, Math.sin(a) * r * STAR_R], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  return g;
+}
+
+/** Distance of the stars and moon from the camera (inside the far plane, beyond everything). */
+const STAR_R = 2600;
+/** Moon: radians to the right (+) of where the camera looks, and above the view's centre. */
+const MOON_YAW = -0.22;
+const MOON_RISE = 0.24;
+
 const sunDir = new THREE.Vector3();
+const dayDir = new THREE.Vector3();
+const moonDir = new THREE.Vector3();
+const nightDir = new THREE.Vector3();
+/** Moonlight direction relative to the camera's heading (radians): behind and to the right. */
+const MOONLIGHT_YAW = 2.4;
+const fwd = new THREE.Vector3();
+const starMat = new THREE.PointsMaterial({
+  color: "#ffffff",
+  size: 2,
+  sizeAttenuation: false,
+  transparent: true,
+  depthWrite: false,
+  fog: false,
+});
+// Faceted, self-lit moon; opacity follows the palette's star visibility.
+const moonMat = new THREE.MeshStandardMaterial({
+  color: "#1a1d2a",
+  emissive: "#e6ebff",
+  flatShading: true,
+  transparent: true,
+  depthWrite: false,
+  fog: false,
+});
 /** Sky dome shader inputs, rewritten every frame from the palette (one sky per page). */
 const uniforms = {
   top: { value: new THREE.Color() },
@@ -142,16 +179,30 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
   const fog = useRef<THREE.FogExp2>(null);
   const backdrop = useRef<THREE.Group>(null);
   const sky = useRef<THREE.Mesh>(null);
-  const geo = useMemo(() => backdropGeometry(), []);
+  const stars = useRef<THREE.Points>(null);
+  const moon = useRef<THREE.Mesh>(null);
+  const geo = useMemo(() => ({ ...backdropGeometry(), stars: starGeometry() }), []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, clock }) => {
+    waterTime.value = clock.elapsedTime;
     const p = travel.position;
     const index = Math.floor(p);
     const pal = blendPalette(atmosphere.palette, index, p - index);
     tintWorld(pal);
 
     const el = (pal.sunElevation * Math.PI) / 180;
-    sunDir.set(SUN_AZIMUTH.x * Math.cos(el), Math.sin(el), SUN_AZIMUTH.y * Math.cos(el));
+    dayDir.set(SUN_AZIMUTH.x * Math.cos(el), Math.sin(el), SUN_AZIMUTH.y * Math.cos(el));
+    // The moon hangs in the upper part of whatever the camera looks at, so every night
+    // framing has it; its light comes from there too. Day: the fixed low sun.
+    camera.getWorldDirection(fwd);
+    const yaw = Math.atan2(fwd.z, fwd.x) + MOON_YAW;
+    const pitch = Math.asin(Math.max(-1, Math.min(1, fwd.y))) + MOON_RISE;
+    moonDir.set(Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch));
+    // Moonlight is cheated to come from behind the camera's right shoulder (a moon in front
+    // would leave every camera-facing surface black): high, so shadows stay short.
+    const back = Math.atan2(fwd.z, fwd.x) + MOONLIGHT_YAW;
+    nightDir.set(Math.cos(back) * 0.6, 0.8, Math.sin(back) * 0.6);
+    sunDir.lerpVectors(dayDir, nightDir, pal.stars).normalize();
     uniforms.top.value.setRGB(...pal.skyTop);
     uniforms.horizon.value.setRGB(...pal.skyHorizon);
     uniforms.sunColor.value.setRGB(...pal.sun);
@@ -176,8 +227,15 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
       light.position.copy(trainPose.pos).addScaledVector(sunDir, 250);
       light.target.updateMatrixWorld();
     }
-    // Sky dome and far ranges ride with the camera: always at "infinity".
+    starMat.opacity = pal.stars;
+    moonMat.opacity = pal.stars;
+    moonMat.emissiveIntensity = 0.6 + pal.stars * 0.6;
+    moon.current?.position.copy(camera.position).addScaledVector(moonDir, STAR_R * 0.95);
+    if (moon.current) moon.current.visible = pal.stars > 0.02;
+    if (stars.current) stars.current.visible = pal.stars > 0.02;
+    // Sky dome, stars and far ranges ride with the camera: always at "infinity".
     sky.current?.position.copy(camera.position);
+    stars.current?.position.copy(camera.position);
     backdrop.current?.position.set(camera.position.x, 0, camera.position.z);
   });
 
@@ -195,8 +253,8 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
         shadow-camera-bottom={-SHADOW_BOX}
         shadow-camera-near={50}
         shadow-camera-far={500}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.35}
+        shadow-bias={-0.0015}
+        shadow-normalBias={0.6}
         shadow-radius={5}
       />
       <mesh ref={sky} renderOrder={-1} frustumCulled={false} scale={3000}>
@@ -209,6 +267,10 @@ export function Atmosphere({ shadows }: { shadows: boolean }) {
           vertexShader={skyVertex}
           fragmentShader={skyFragment}
         />
+      </mesh>
+      <points ref={stars} geometry={geo.stars} material={starMat} frustumCulled={false} />
+      <mesh ref={moon} material={moonMat} frustumCulled={false}>
+        <icosahedronGeometry args={[48, 1]} />
       </mesh>
       <group ref={backdrop}>
         <mesh geometry={geo.mountains} material={MATS.mountain} frustumCulled={false} />

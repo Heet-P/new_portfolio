@@ -1,10 +1,10 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { foamGeometry, riverGeometry, sweep } from "./geometry";
+import { foamGeometry, riverGeometry, splashGeometry, sweep } from "./geometry";
 import { MATS } from "./materials";
 import { hash2 } from "./noise";
 import { TRACK } from "./route3d";
@@ -23,6 +23,8 @@ for (let k = 0; k <= 8; k++) {
   BORE_PROFILE.push([Math.cos(a) * BORE_HALF, BORE_SPRING + Math.sin(a) * BORE_HALF]);
 }
 BORE_PROFILE.push([BORE_HALF, -0.5]);
+// Close the loop along the bottom: the bore gets a (black) floor, so nothing lit shows inside.
+BORE_PROFILE.push([-BORE_HALF, -0.5]);
 
 /** Track frame (position, tangent, right) at arc length s, as plain numbers. */
 function frameAt(s: number) {
@@ -49,49 +51,79 @@ function bare(g: THREE.BufferGeometry): THREE.BufferGeometry {
   return n;
 }
 
+/** Rock colours for the portal (sRGB as authored), picked per facet. */
+const ROCK_COLS = ["#a39c8d", "#8f8a80", "#b4a68a", "#7d7a74", "#c2b496"].map((h) => new THREE.Color(h));
+
 /**
- * Rocky portal for one tunnel mouth: a cliff face with a jagged top and an arched opening,
- * a stone arch ring with jambs, and a few boulders breaking up its outline so it reads as
- * a mouth cut into the hillside rather than a wall. Tilted back a little into the hill.
+ * Rocky portal for one tunnel mouth: rings of jittered vertices offset outward from the
+ * bore's outline (walls + arch), each ring set further back into the hill, so the mouth
+ * reads as an arch cut into a faceted rock face. Plus a few boulders on its shoulders.
+ * Vertex-coloured per facet in warm and cool greys.
  */
 function portal(s: number, inward: 1 | -1, seed: number): THREE.BufferGeometry {
-  const W = TUNNEL_HOLE + 7;
-  const shape = new THREE.Shape();
-  shape.moveTo(-W, -1.5);
-  shape.lineTo(W, -1.5);
-  shape.lineTo(W - 1, 7);
-  // Jagged crest: heights hashed per point, always at least the hill height at the centre.
-  for (let x = W - 3, k = 0; x > -W + 2; x -= 3.4, k++) {
-    shape.lineTo(x, TUNNEL_HILL - 3 + hash2(seed, k, 1) * 4 - Math.abs(x) * 0.12);
+  // Bore outline (local x = lateral, y = up) with outward normals: left wall, arch, right wall.
+  const path: [number, number, number, number][] = [];
+  const edge = BORE_HALF + 0.25;
+  for (const y of [-1.5, 1.5]) path.push([-edge, y, -1, 0]);
+  for (let k = 0; k <= 10; k++) {
+    const a = Math.PI - (k / 10) * Math.PI;
+    path.push([Math.cos(a) * edge, BORE_SPRING + Math.sin(a) * edge, Math.cos(a), Math.sin(a)]);
   }
-  shape.lineTo(-W + 1, 7);
-  shape.closePath();
-  const hole = new THREE.Path();
-  // Stops just short of the wall's bottom edge (a hole touching the outline won't triangulate);
-  // that sliver is below the ground.
-  hole.moveTo(-BORE_HALF, -1.2);
-  hole.lineTo(-BORE_HALF, BORE_SPRING);
-  hole.absarc(0, BORE_SPRING, BORE_HALF, Math.PI, 0, true);
-  hole.lineTo(BORE_HALF, -1.2);
-  hole.closePath();
-  shape.holes.push(hole);
-  const wall = new THREE.ExtrudeGeometry(shape, { depth: 3, bevelEnabled: false, curveSegments: 5 });
-  // Lean the face back into the hill (shear z by height) so it reads as a cliff.
-  wall.applyMatrix4(new THREE.Matrix4().set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0.3, 1, 0, 0, 0, 0, 1));
-  // Keystone ring standing proud of the wall, and two jamb pillars below it.
-  const ring = new THREE.TorusGeometry(BORE_HALF + 0.45, 0.55, 4, 9, Math.PI).translate(0, BORE_SPRING, -0.3);
-  const jambL = new THREE.BoxGeometry(1.1, BORE_SPRING + 1.5, 1.1).translate(-BORE_HALF - 0.45, BORE_SPRING / 2 - 0.75, -0.3);
-  const jambR = jambL.clone().translate(2 * (BORE_HALF + 0.45), 0, 0);
-  // Boulders along the crest and flanks.
-  const boulders: THREE.BufferGeometry[] = [];
-  for (let k = 0; k < 9; k++) {
-    const x = (k / 8 - 0.5) * 2 * (W - 1);
-    const r = 1.8 + hash2(seed, k, 2) * 2.4;
-    const y = Math.abs(x) > W - 4 ? 2 + hash2(seed, k, 3) * 5 : TUNNEL_HILL - 3 + hash2(seed, k, 4) * 3;
-    if (Math.abs(x) < BORE_HALF + 2 && y < 9) continue; // never in front of the opening
-    boulders.push(new THREE.IcosahedronGeometry(r, 0).scale(1.2, 0.8, 1).translate(x, y, 1 + y * 0.3));
+  for (const y of [1.5, -1.5]) path.push([edge, y, 1, 0]);
+  // Ring offsets outward and how far back into the hill each ring sits.
+  const rings: [number, number][] = [
+    [0, -0.7],
+    [1.6, 0.2],
+    [4, 1.6],
+    [7, 3.4],
+    [10.5, 5.5],
+  ];
+  const verts: THREE.Vector3[][] = rings.map(([off, back], r) =>
+    path.map(([px, py, nx, ny], j) => {
+      const jit = r === 0 ? 0 : (hash2(seed * 31 + r, j, 7) - 0.5) * 1.8;
+      const y = Math.min(py + ny * (off + jit), TUNNEL_HILL + 1 + hash2(seed, j, r) * 1.5);
+      return new THREE.Vector3(px + nx * (off + jit), y, back + (hash2(seed, r, j) - 0.5) * 1.2);
+    }),
+  );
+  const pos: number[] = [];
+  const col: number[] = [];
+  const face = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, h: number) => {
+    pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    const colour = ROCK_COLS[Math.floor(h * ROCK_COLS.length)];
+    for (let v = 0; v < 3; v++) col.push(colour.r, colour.g, colour.b);
+  };
+  for (let r = 0; r + 1 < rings.length; r++) {
+    for (let j = 0; j + 1 < path.length; j++) {
+      const a = verts[r][j];
+      const b = verts[r][j + 1];
+      const c = verts[r + 1][j];
+      const d = verts[r + 1][j + 1];
+      face(a, c, b, hash2(seed, r * 50 + j, 1));
+      face(b, c, d, hash2(seed, r * 50 + j, 2));
+    }
   }
-  const g = mergeGeometries([wall, ring, jambL, jambR, ...boulders].map(bare));
+  const face3 = new THREE.BufferGeometry();
+  face3.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  face3.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+
+  // Boulders on the shoulders, never in front of the opening.
+  const parts: THREE.BufferGeometry[] = [face3];
+  for (let k = 0; k < 6; k++) {
+    const side = k % 2 ? 1 : -1;
+    const x = side * (edge + 7 + hash2(seed, k, 3) * 5);
+    const y = hash2(seed, k, 4) * 8;
+    const r = 1.6 + hash2(seed, k, 2) * 2.2;
+    const g = new THREE.IcosahedronGeometry(r, 0).scale(1.2, 0.85, 1).translate(x, y, 1 + y * 0.4); // polyhedra are already non-indexed
+    g.deleteAttribute("uv");
+    g.deleteAttribute("normal");
+    const c = ROCK_COLS[k % ROCK_COLS.length];
+    const n = g.getAttribute("position").count;
+    const arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) c.toArray(arr, i * 3);
+    g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+    parts.push(g);
+  }
+  const g = mergeGeometries(parts);
 
   // Local frame: +Z points into the bore, +Y up.
   const f = frameAt(s);
@@ -102,7 +134,7 @@ function portal(s: number, inward: 1 | -1, seed: number): THREE.BufferGeometry {
   return g.applyMatrix4(m);
 }
 
-/** Tunnels: dark bore lining, grassy roof over the terrain's hole, floor, stone portals. */
+/** Tunnels: dark bore lining, grassy roof over the terrain's hole, floor, rocky portals. */
 function Tunnels({ tunnels, shadows }: { tunnels: Span[]; shadows: boolean }) {
   const geo = useMemo(() => {
     const W = TUNNEL_HOLE + 7;
@@ -116,8 +148,12 @@ function Tunnels({ tunnels, shadows }: { tunnels: Span[]; shadows: boolean }) {
     const out = {
       bore: mergeGeometries(tunnels.map((t) => bare(sweep(BORE_PROFILE, t.s0, t.s1)))),
       roof: mergeGeometries(tunnels.map((t) => bare(painted(sweep(roofProfile, t.s0, t.s1, 4), "#8f973e")))),
+      // Ground in front of each mouth, under the terrain's hole (inside, the bore has its own floor).
       floor: mergeGeometries(
-        tunnels.map((t) => bare(sweep([[-W, -0.45], [W, -0.45]], Math.max(0, t.s0 - 8), t.s1 + 8))),
+        tunnels.flatMap((t) => [
+          bare(sweep([[-W, -0.45], [W, -0.45]], Math.max(0, t.s0 - 8), t.s0 + 1)),
+          bare(sweep([[-W, -0.45], [W, -0.45]], t.s1 - 1, t.s1 + 8)),
+        ]),
       ),
       stone: mergeGeometries(tunnels.flatMap((t, k) => [portal(t.s0, 1, k * 2), portal(t.s1, -1, k * 2 + 1)])),
     };
@@ -129,7 +165,7 @@ function Tunnels({ tunnels, shadows }: { tunnels: Span[]; shadows: boolean }) {
       <mesh geometry={geo.bore} material={MATS.tunnel} />
       <mesh geometry={geo.roof} material={MATS.terrain} receiveShadow={shadows} castShadow={shadows} />
       <mesh geometry={geo.floor} material={MATS.ballast} receiveShadow={shadows} />
-      <mesh geometry={geo.stone} material={MATS.stone} receiveShadow={shadows} castShadow={shadows} />
+      <mesh geometry={geo.stone} material={MATS.rockFace} receiveShadow={shadows} castShadow={shadows} />
     </group>
   );
 }
@@ -227,15 +263,22 @@ export function Structures({ world, shadows }: { world: WorldLayout; shadows: bo
     () => mergeGeometries(world.rivers.map((r) => riverGeometry(r.pts, r.bed, r.half))),
     [world],
   );
-  const foam = useMemo(() => foamGeometry(world.rivers, world.waterfalls), [world]);
+  const foam = useMemo(() => foamGeometry(world.rivers), [world]);
+  const splash = useMemo(() => splashGeometry(world.waterfalls), [world]);
   const steel = world.bridges.find((b) => b.kind === "steel");
   const trestles = useMemo(() => world.bridges.filter((b) => b.kind === "trestle"), [world]);
   return (
     <group>
       <mesh geometry={water} material={MATS.water} receiveShadow={shadows} />
       <mesh geometry={foam} material={MATS.foam} />
+      <mesh geometry={splash} material={MATS.splash} />
       <Trestles world={world} spans={trestles} shadows={shadows} />
-      {steel && <SteelBridge span={steel} shadows={shadows} />}
+      {/* Own boundary: while the model loads, everything else stays mounted (no remount/rebuild). */}
+      {steel && (
+        <Suspense fallback={null}>
+          <SteelBridge span={steel} shadows={shadows} />
+        </Suspense>
+      )}
       <Tunnels tunnels={world.tunnels} shadows={shadows} />
     </group>
   );

@@ -112,6 +112,8 @@ export const STATION_PALETTES: Record<StationId, Palette> = {
 };
 
 const ORDER: Palette[] = STATIONS.map((s) => STATION_PALETTES[s.id]);
+/** Palette fields, listed once (blendPalette runs every frame). */
+const FIELDS = Object.keys(STATION_PALETTES.departure) as (keyof Palette)[];
 
 function lerpRGB(out: RGB, a: RGB, b: RGB, t: number): RGB {
   out[0] = a[0] + (b[0] - a[0]) * t;
@@ -135,7 +137,7 @@ export function blendPalette(out: Palette, index: number, t: number): Palette {
   const b = ORDER[Math.min(ORDER.length - 1, i + 1)];
   const c = Math.max(0, Math.min(1, t));
   const e = c * c * (3 - 2 * c);
-  for (const key of Object.keys(a) as (keyof Palette)[]) {
+  for (const key of FIELDS) {
     const av = a[key];
     const bv = b[key];
     if (Array.isArray(av)) lerpRGB(out[key] as RGB, av, bv as RGB, e);

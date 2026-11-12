@@ -12,6 +12,8 @@ import { STATIONS } from "@/content/route";
  * bridge sits (a CatmullRom segment is straight when its 4 neighbouring points are).
  */
 const CONTROL: [number, number, number][] = [
+  [-170, 2.5, 6],
+  [-130, 2, 3],
   [-90, 2, 0],
   [-40, 2, 0],
   [20, 1.5, -6],
@@ -40,8 +42,11 @@ const CONTROL: [number, number, number][] = [
   [1800, 2, 10],
 ];
 
-/** Arc length (units) before Departure: room for the train's tail and the first tunnel. */
-const START_S = 75;
+/**
+ * Arc length (units) before Departure: room behind the train for the chase camera and the
+ * view back down the line when reversing.
+ */
+const START_S = 155;
 /** Arc length (units) kept after the Terminus so the parked train never runs off the end. */
 const END_S = 70;
 
@@ -51,8 +56,22 @@ const curve = new THREE.CatmullRomCurve3(
   "centripetal",
 );
 // getPointAt/getTangentAt use an arc-length table; dense = accurate spacing between cars.
-curve.arcLengthDivisions = 4000;
+curve.arcLengthDivisions = 3000;
 const length = curve.getLength();
+const ta = new THREE.Vector3();
+const tb = new THREE.Vector3();
+/**
+ * Unit tangent at arc-length parameter u, written into `out`. Central difference of two
+ * getPointAt samples half a unit apart: three's own getTangentAt allocates two vectors per
+ * call, which adds up at several calls per frame.
+ */
+export function tangentAt(u: number, out: THREE.Vector3): THREE.Vector3 {
+  const e = 0.5 / length;
+  curve.getPointAt(Math.min(1, u + e), ta);
+  curve.getPointAt(Math.max(0, u - e), tb);
+  return out.subVectors(ta, tb).normalize();
+}
+
 /** Equal distance between consecutive stations, so every leg of the ride feels the same. */
 const spacing = (length - START_S - END_S) / (STATIONS.length - 1);
 
@@ -103,7 +122,7 @@ export const TRACK = (() => {
   for (let i = 0; i < count; i++) {
     const u = Math.min(1, (i * step) / length);
     curve.getPointAt(u, p);
-    curve.getTangentAt(u, t);
+    tangentAt(u, t);
     const h = Math.hypot(t.x, t.z) || 1;
     px[i] = p.x;
     py[i] = p.y;
@@ -172,5 +191,5 @@ export const trainPose = { u: 0, pos: new THREE.Vector3(), tan: new THREE.Vector
 export function updateTrainPose(position: number): void {
   trainPose.u = trainU(position);
   curve.getPointAt(trainPose.u, trainPose.pos);
-  curve.getTangentAt(trainPose.u, trainPose.tan);
+  tangentAt(trainPose.u, trainPose.tan);
 }
