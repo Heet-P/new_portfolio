@@ -1,0 +1,13 @@
+# dependencies & builds
+node_modules/
+.next/
+out/
+# env & secrets
+.env*
+# local scratch / tooling
+.superpowers/
+media-inbox/
+test-results/
+playwright-report/
+*.tsbuildinfo
+next-env.d.ts
