@@ -31,9 +31,9 @@
   gap: 12px;
   margin: 0;
   font-family: var(--font-mono), monospace;
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
-  letter-spacing: 0.08em;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--amber);
 }
@@ -101,9 +101,9 @@
 
 .skillGroup dt {
   font-family: var(--font-mono), monospace;
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
-  letter-spacing: 0.08em;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -177,7 +177,7 @@
 .marker {
   position: absolute;
   z-index: 1;
-  top: calc(var(--card-pad) + 2px);
+  top: calc(var(--card-pad) + 4px);
   left: 0;
   width: 16px;
   height: 16px;
@@ -294,9 +294,9 @@
   gap: 8px;
   margin: 0;
   font-family: var(--font-mono), monospace;
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
-  letter-spacing: 0.08em;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -321,8 +321,8 @@
   gap: 12px;
   margin: 4px 0 0;
   font-family: var(--font-mono), monospace;
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
   color: var(--fg-muted);
 }
 
@@ -406,8 +406,8 @@
 }
 
 .statLabel {
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
   color: var(--fg-muted);
 }
 
@@ -425,8 +425,8 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--surface-raised);
-  font-size: var(--text-xs);
-  line-height: var(--text-xs-lh);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
   color: var(--fg);
 }
 
@@ -442,6 +442,8 @@
 }
 
 .button {
+  position: relative;
+  isolation: isolate; /* keeps the hover overlay (z-index: -1) inside the button */
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -452,10 +454,22 @@
   font-weight: 500;
   color: var(--amber);
   text-decoration: none;
-  transition:
-    transform var(--dur-press) var(--ease-out),
-    background-color var(--dur-hover) ease,
-    color var(--dur-hover) ease;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+/*
+ * Hover fill: a pseudo-element behind the label whose OPACITY fades in, so the
+ * hover never animates background-color or color (transform/opacity only).
+ */
+.button::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(243 178 94 / 0.12);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-out);
 }
 
 /* Downloads get a small arrow that dips on hover, hinting at "take it with you". */
@@ -470,15 +484,14 @@
   color: var(--amber-ink);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .button:hover {
-    background-color: rgb(243 178 94 / 0.12);
-    color: var(--amber-strong);
-  }
+/* The primary button brightens to the stronger lamp tone instead of tinting. */
+.button[data-primary]::before {
+  background: var(--amber-strong);
+}
 
-  .button[data-primary]:hover {
-    background-color: var(--amber-strong);
-    color: var(--amber-ink);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover::before {
+    opacity: 1;
   }
 
   .button[download]:hover::after {

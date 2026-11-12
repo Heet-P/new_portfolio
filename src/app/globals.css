@@ -15,12 +15,10 @@
   --fg: #ede6d8; /* warm paper white: headings and body */
   --fg-muted: #a8b0c8; /* secondary text (dates, labels) */
   --amber: #f3b25e; /* lamp light: accents, links, the current stop */
-  --amber-strong: #ffc97f; /* hover state for amber text */
+  --amber-strong: #ffc97f; /* brighter lamp tone: taglines, primary hover */
   --amber-ink: #1a1208; /* text placed on an amber fill */
 
   /* --- Type: Major Third scale (x1.25); px line-heights at 1.4-1.6x --- */
-  --text-xs: 13px; /* one step below body (16 / 1.25), for eyebrows and labels */
-  --text-xs-lh: 20px;
   --text-body: 16px;
   --text-body-lh: 24px;
   --text-sub: 20px;
