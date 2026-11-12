@@ -22,11 +22,17 @@ personal hobby/aesthetic theme. Anything that reads as a template is a failure.
 
 ## 2. The concept: the Night Train
 
-**Camera: a side view of the whole 3D train from outside** (changed 2026-11-12 at Heet's request; earlier drafts
-had the camera inside a carriage). The visitor watches a stylized night train — locomotive plus several carriages
-with warm lit windows — glide across the screen side-on through a night landscape. Scrolling moves the train
-forward. Each chapter of Heet's career is a **station**. The world scrolls past in parallax layers and **morphs**
-between stops. Heet is gathering visual references for the train and scene; scene look will be refined against them.
+**Look (final, from Heet's reference image + Animation.mov, 2026-11-12):** a **low-poly, flat-shaded diorama
+world** — faceted mountains with snow caps, pine forests, rocks, a river with a waterfall, wooden **trestle
+bridges**, and **tunnels** the train emerges from. The train (Heet's tram-style model, restyled with flat faceted
+shading) travels *through* this world along a winding track.
+
+**Camera:** raised **three-quarter view**, following the train with a little lag so it can sweep toward and past
+the camera like the reference video. Not inside a carriage, not strictly side-on.
+
+**Time of day = career timeline:** Departure is **golden hour**; each station gets darker through dusk and
+twilight; the final stations are **night**, where the train's windows glow warm. Colours morph smoothly between
+stations. Each chapter of Heet's career is a **station** along the route.
 
 ### Route (stations, in order)
 
@@ -67,11 +73,10 @@ Phone number stays in the downloadable PDF (Heet approved); it is **not** printe
 
 - **Opening:** short soft fade in on the train waiting at Departure. A route map draws itself. A small sound
   toggle is visible, **off by default**.
-- **Scroll = travel.** Scroll progress drives the train between stations. The train stays roughly framed while
-  the world moves past it in parallax (foreground posts/fences fast, hills/towns/city lights slower, sky slowest);
-  wheels turn, carriages sway slightly, window light flickers past poles, light rain falls across the scene.
-  Bridges and tunnels along the route. At a stop: the train eases to a halt beside a platform, the platform sign
-  shows the station name, and that station's content card morphs in.
+- **Scroll = travel.** Scroll progress drives the train along the track between stations; the camera follows.
+  Carriages sway slightly; the route passes tunnels, trestle bridges over the river, forests and mountain sides.
+  Rain / mist only in the later, night-time stretch (optional, builder's call). At a stop: the train eases to a
+  halt beside a platform, the platform sign shows the station name, and that station's content card morphs in.
 - **Scenery morphs between stations** rather than cutting — e.g. colour of the night sky and lights shifts
   per station; the platform props hint at the content (Vaani stop: a glowing waveform sign; YieldGuard: a
   silicon-wafer-patterned sign; Solar: solar panels on the platform roofs). Exact props are builder's choice.
@@ -94,7 +99,9 @@ Express is also what renders:
 
 - **Stylized, not photoreal.** Warm, soft, low-detail shapes with good real-time lighting and gentle bloom.
   The richness comes from lighting and atmosphere, not model detail.
-- Palette: deep night blues/indigos for the world; warm amber light glowing from the train's windows and lamps. Night-only — **no light/dark toggle**
+- Palette: golden-hour (warm sky, olive/pine greens, sandy rock, teal water) at Departure, shifting through dusk
+  to deep night blues/indigos at the end; warm amber light from the train's windows grows as it gets darker.
+  UI chrome (cards, route map, Express) keeps the night palette. Night-only — **no light/dark toggle**
   (Heet's global rule for theme toggles is Skiper26; not used because there is one theme by design).
 - Motion: smooth and morphing; nothing snaps. UI follows Emil Kowalski's rules (skill at
   `.claude/skills/emil-design-eng`): custom ease-out curves, UI animations < 300 ms, `scale(0.97)` press
