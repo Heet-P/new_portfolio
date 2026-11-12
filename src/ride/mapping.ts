@@ -56,6 +56,16 @@ export function progressToStation(p: number, count: number): StationPosition {
 }
 
 /**
+ * The station the visitor is "at" for UI purposes (route map highlight, URL hash):
+ * the stopped station while in a dwell, otherwise whichever station is closer.
+ * Dwell zones are centred on anchors, so rounding gives both answers at once.
+ */
+export function nearestStation(p: number, count: number): number {
+  if (count <= 1) return 0;
+  return Math.round(clamp01(p) * (count - 1));
+}
+
+/**
  * Station index for a URL hash like "#vaani". Matching is exact (case
  * sensitive) on purpose; anything unknown or empty lands on the first station.
  */

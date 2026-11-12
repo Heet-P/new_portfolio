@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STATIONS } from "@/content/route";
 import {
   STOP_HOLD,
+  nearestStation,
   parseHash,
   progressToStation,
   stationToProgress,
@@ -80,5 +81,21 @@ describe("parseHash", () => {
     expect(parseHash("#Vaani", ids)).toBe(0);
     expect(parseHash("", ids)).toBe(0);
     expect(parseHash("#", ids)).toBe(0);
+  });
+});
+
+describe("nearestStation", () => {
+  it("is the stopped station at a stop and the closer station while travelling", () => {
+    expect(nearestStation(0, N)).toBe(0);
+    expect(nearestStation(stationToProgress(2, N), N)).toBe(2);
+    // Just past the midpoint between stations 2 and 3: station 3 is closer.
+    expect(nearestStation((2.51 / 8), N)).toBe(3);
+    expect(nearestStation((2.49 / 8), N)).toBe(2);
+    expect(nearestStation(1, N)).toBe(8);
+  });
+
+  it("clamps out-of-range progress", () => {
+    expect(nearestStation(-1, N)).toBe(0);
+    expect(nearestStation(2, N)).toBe(8);
   });
 });

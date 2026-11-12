@@ -1,0 +1,264 @@
+/*
+ * Route map: a metro-line diagram that doubles as navigation.
+ * Geometry is built on a fixed 44px step (one row/column per station = the touch target),
+ * so the dots, the line segments and the train marker's travel all line up by construction:
+ * dot centre = 22px into each step; the marker's carriage spans (count - 1) steps.
+ * Motion: only transform/opacity animate, plus a one-time clip-path draw-in (decorative,
+ * < 800ms, skipped under reduced motion).
+ */
+
+.map {
+  --step: 44px;
+  --pad: 12px; /* track padding; inner radius = 24 - 12 = 12px */
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 50; /* above the (future) ride canvas, below the mode toggle (100) */
+}
+
+.track {
+  position: relative;
+  padding: var(--pad) 20px var(--pad) var(--pad);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  /* Mostly opaque so labels stay readable over the 3D scene; no backdrop blur (costly every frame). */
+  background: rgb(18 26 48 / 0.88);
+}
+
+.rail {
+  position: relative;
+  width: max-content;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  position: relative;
+}
+
+/* Line segment from this stop's dot to the next one (drawn under the dots). */
+.segment {
+  position: absolute;
+  left: calc(var(--step) / 2 - 1px);
+  top: calc(var(--step) / 2);
+  height: var(--step);
+  border-left: 2px solid rgb(168 176 200 / 0.4);
+}
+
+/* Not built yet: the stretch to/from an upcoming station is dashed. */
+.segment[data-dashed] {
+  border-left-style: dashed;
+  border-left-color: rgb(168 176 200 / 0.7);
+}
+
+.button {
+  position: relative; /* paints above the absolutely positioned segment that precedes it */
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--step); /* 44px touch target even though the dot is 12px */
+  margin: 0;
+  padding: 0 8px 0 0;
+  border: 0;
+  border-radius: var(--radius-inner);
+  background: none;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--fg-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 44x44 box that centres the visible dot. */
+.dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--step);
+  height: var(--step);
+}
+
+.dot::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--fg-muted);
+  border-radius: 50%;
+  background: var(--surface); /* masks the line behind it */
+}
+
+.button[data-upcoming] .dot::before {
+  border-style: dashed;
+}
+
+.button[aria-current] .dot::before {
+  border-color: var(--amber);
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.button[aria-current] .label {
+  color: var(--fg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover .label {
+    color: var(--fg);
+  }
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+/*
+ * The train marker. The carriage runs from the first dot centre to the last along one axis and is
+ * 0px on the other; JS moves the train along it every frame (see RouteMap.tsx).
+ */
+.carriage {
+  position: absolute;
+  top: calc(var(--step) / 2);
+  left: calc(var(--step) / 2);
+  width: 0;
+  height: calc((var(--count) - 1) * var(--step));
+  pointer-events: none;
+}
+
+.train {
+  position: absolute;
+  will-change: transform; /* it moves on every scroll frame */
+  top: -8px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgb(243 178 94 / 0.25), 0 0 16px rgb(243 178 94 / 0.6);
+}
+
+/* ---------- Phones (and short landscape screens): compact bottom strip ---------- */
+
+@media (max-width: 640px), (max-height: 600px) {
+  .map {
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .track {
+    --pad: 8px;
+    overflow-x: auto;
+    padding: var(--pad) 16px calc(var(--pad) + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: rgb(10 14 26 / 0.92);
+    scrollbar-width: none;
+    /* Soft edges hint that the strip scrolls sideways instead of cutting dots off hard. */
+    mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  }
+
+  /* Dots mask the line with the strip's own (darker) background. */
+  .dot::before {
+    background: var(--bg);
+  }
+
+  .track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail {
+    margin: 0 auto; /* centred when the screen is wide enough to fit every stop */
+  }
+
+  .list {
+    flex-direction: row;
+  }
+
+  .segment {
+    left: calc(var(--step) / 2);
+    top: calc(var(--step) / 2 - 1px);
+    width: var(--step);
+    height: 0;
+    border-left: 0;
+    border-top: 2px solid rgb(168 176 200 / 0.4);
+  }
+
+  .segment[data-dashed] {
+    border-top-style: dashed;
+    border-top-color: rgb(168 176 200 / 0.7);
+  }
+
+  .button {
+    width: var(--step);
+    padding: 0;
+  }
+
+  /* Names live in aria-labels (and the big station label above the strip). */
+  .label {
+    display: none;
+  }
+
+  .carriage {
+    width: calc((var(--count) - 1) * var(--step));
+    height: 0;
+  }
+}
+
+/* ---------- Motion (only for visitors fine with it) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .button {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+
+  /* One-time entrance: the line draws itself downwards, then the train appears on it.
+     `backwards` fill = no clip after the end, so focus rings are never cut off. */
+  .track[data-draw] .list {
+    animation: draw-down 640ms var(--ease-out) backwards;
+  }
+
+  .track[data-draw] .train {
+    animation: train-in 200ms var(--ease-out) 520ms backwards;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (max-width: 640px),
+  (prefers-reduced-motion: no-preference) and (max-height: 600px) {
+  .track[data-draw] .list {
+    animation-name: draw-across;
+  }
+}
+
+@keyframes draw-down {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes draw-across {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes train-in {
+  from {
+    opacity: 0;
+  }
+}
