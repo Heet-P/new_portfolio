@@ -9,6 +9,7 @@ import { atmosphere, MATS } from "../materials";
 import { TRAIN_PARAMS } from "../Train";
 import { travel } from "../travel";
 import { buildStations } from "./build";
+import { droneBobY } from "./drone";
 import { END_SIGN, endSignPlacements, fasciaPlacement } from "./placement";
 
 /**
@@ -93,8 +94,6 @@ function SignText({
 
 /** Station index of SAHARA, where the drone hovers (drawn only while the train is near it). */
 const SAHARA = STATIONS.findIndex((s) => s.id === "sahara");
-/** The drone's hover bob: peak height (units) and angular speed (radians/s). */
-const DRONE_BOB = { amplitude: 0.22, speed: 1.7 } as const;
 
 /**
  * SAHARA's quadcopter: one mesh sharing the station material (so its nav lights follow the
@@ -107,7 +106,7 @@ function Drone({ geometry, material, shadows, reducedMotion }: { geometry: THREE
     const m = ref.current;
     if (!m) return;
     m.visible = Math.abs(SAHARA - travel.position) < 1.5;
-    m.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * DRONE_BOB.speed) * DRONE_BOB.amplitude;
+    m.position.y = droneBobY(clock.elapsedTime, reducedMotion);
   });
   return <mesh ref={ref} geometry={geometry} material={material} castShadow={shadows} />;
 }

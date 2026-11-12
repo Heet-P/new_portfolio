@@ -174,7 +174,7 @@ export function stationPlan(i: number): StationPlan {
   // helipad is ahead of it, and a building there would hide the pad (and the drone over it) from
   // the chase camera.
   const ahead = rng() < 0.7;
-  const dir = id === "sahara" ? -1 : ahead ? 1 : -1;
+  const dir = id === "sahara" || office ? -1 : ahead ? 1 : -1;
   let centre = main ? 2 : Math.floor(rng() * 4);
   // Main: centred in front of the porch tower (the camera looks over the train toward the
   // platform and the route map covers the left of the screen, so it stands a little ahead).
@@ -184,9 +184,10 @@ export function stationPlan(i: number): StationPlan {
     along -= Math.sign(along) * excess;
     centre -= Math.sign(along) * excess;
   }
-  // SAHARA: as far back as the platform allows (its facade ends at -14.2), so the pad stays
-  // clear of the roofline from the camera.
-  if (id === "sahara") along = -(14.2 - width / 2);
+  // SAHARA and the office: as far back as the platform allows (facade ends at -14.2). At SAHARA
+  // that keeps the pad clear of the roofline; the tall office would otherwise stand in front of
+  // the far end board and hide half of its lettering from the chase camera.
+  if (id === "sahara" || office) along = -(14.2 - width / 2);
   const half = width / 2;
   const doorAt = main || office ? along : along + (rng() - 0.5) * width * 0.3;
   const from = Math.max(-19, centre - length / 2);

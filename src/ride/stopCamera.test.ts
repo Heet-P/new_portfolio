@@ -27,6 +27,8 @@ describe("stopBlend", () => {
   });
 
   it("rises monotonically toward each stop and falls monotonically after it", () => {
+    // Count violations in plain loops and assert once (thousands of expect calls are slow).
+    let violations = 0;
     for (let i = 0; i < COUNT; i++) {
       // Approach half: i - 0.5 -> i (non-decreasing). Departure half: i -> i + 0.5 (non-increasing).
       let prevIn = -1;
@@ -35,34 +37,41 @@ describe("stopBlend", () => {
         const d = 0.5 - (k / 2000) * 0.5; // 0.5 -> 0
         if (i > 0) {
           const v = stopBlend(i - d);
-          expect(v).toBeGreaterThanOrEqual(prevIn);
+          if (v < prevIn) violations++;
           prevIn = v;
         }
         const w = stopBlend(i + 0.5 - d); // i -> i + 0.5 as k grows
         if (i < COUNT - 1) {
-          expect(w).toBeLessThanOrEqual(prevOut);
+          if (w > prevOut) violations++;
           prevOut = w;
         }
       }
     }
+    expect(violations).toBe(0);
   });
 
   it("is continuous (no jumps anywhere along the route)", () => {
-    const step = 1e-5;
+    const step = 1e-4;
     let prev = stopBlend(0);
+    let maxJump = 0;
     for (let p = step; p <= COUNT - 1; p += step) {
       const v = stopBlend(p);
-      expect(Math.abs(v - prev)).toBeLessThan(0.01);
+      maxJump = Math.max(maxJump, Math.abs(v - prev));
       prev = v;
     }
+    expect(maxJump).toBeLessThan(0.01);
   });
 
   it("always lies in 0..1", () => {
+    let lo = Infinity;
+    let hi = -Infinity;
     for (let p = -0.5; p <= COUNT - 0.5; p += 0.001) {
       const v = stopBlend(p);
-      expect(v).toBeGreaterThanOrEqual(0);
-      expect(v).toBeLessThanOrEqual(1);
+      lo = Math.min(lo, v);
+      hi = Math.max(hi, v);
     }
+    expect(lo).toBeGreaterThanOrEqual(0);
+    expect(hi).toBeLessThanOrEqual(1);
   });
 });
 

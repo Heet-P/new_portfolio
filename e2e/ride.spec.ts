@@ -100,6 +100,7 @@ test("/#sahara shows the SAHARA display with GitHub and two demos", async ({ pag
   for (const name of ["GitHub", "Watch demo", "Watch demo 2"]) {
     const link = display.getByRole("link", { name, exact: true });
     await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", /noopener/);
   }
 });
 

@@ -58,6 +58,8 @@ describe("stationPlan", () => {
     expect(office.building.flatRoof).toBe(true);
     expect(office.building.tower).toBe(false);
     expect(office.building.chimney).toBeNull();
+    // Pinned to the near end of the platform: ahead of the train it would hide the far end board.
+    expect(office.building.along).toBeLessThan(0);
     const count = (p: StationPlan) => p.building.windows.length * p.building.floors;
     for (const p of plans) {
       if (p !== office) expect(p.building.flatRoof, idOf(p.index)).toBe(false);
@@ -90,6 +92,25 @@ describe("stationPlan", () => {
         expect(Math.abs(heightAt(world, x, z) - (f.y - 0.35)), `angle ${k}`).toBeLessThan(0.6);
       }
     }
+  });
+
+  it("varies the stops: colours, building widths and prop sets differ", () => {
+    expect(new Set(plans.map((p) => p.building.wall)).size).toBeGreaterThanOrEqual(4);
+    expect(new Set(plans.map((p) => p.building.roof)).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(plans.map((p) => p.building.width)).size).toBeGreaterThanOrEqual(4);
+    expect(new Set(plans.map((p) => p.props.map((q) => q.kind).sort().join())).size).toBeGreaterThanOrEqual(5);
+  });
+
+  it("puts the special features where they belong: solar field at Solar, waveform at Vaani, wafer at YieldGuard, helipad at SAHARA, office at Work Experience", () => {
+    plans.forEach((p, i) => {
+      const kinds = p.props.map((q) => q.kind);
+      expect(p.panels.length > 0, idOf(i)).toBe(idOf(i) === "solar");
+      expect(p.roofPanels, idOf(i)).toBe(idOf(i) === "solar");
+      expect(kinds.includes("waveSign"), idOf(i)).toBe(idOf(i) === "vaani");
+      expect(kinds.includes("waferSign"), idOf(i)).toBe(idOf(i) === "yieldguard");
+      expect(p.helipad !== null, idOf(i)).toBe(idOf(i) === "sahara");
+      expect(p.building.flatRoof, idOf(i)).toBe(idOf(i) === "experience");
+    });
   });
 
   it("keeps the door clear of benches and planters", () => {
