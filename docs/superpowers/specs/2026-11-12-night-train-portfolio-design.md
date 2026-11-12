@@ -22,8 +22,11 @@ personal hobby/aesthetic theme. Anything that reads as a template is a failure.
 
 ## 2. The concept: the Night Train
 
-The visitor sits inside a warm, dim train carriage at night. Rain runs down the window. Scrolling moves the train
-forward. Each chapter of Heet's career is a **station**. Scenery outside glides past and **morphs** between stops.
+**Camera: a side view of the whole 3D train from outside** (changed 2026-11-12 at Heet's request; earlier drafts
+had the camera inside a carriage). The visitor watches a stylized night train — locomotive plus several carriages
+with warm lit windows — glide across the screen side-on through a night landscape. Scrolling moves the train
+forward. Each chapter of Heet's career is a **station**. The world scrolls past in parallax layers and **morphs**
+between stops. Heet is gathering visual references for the train and scene; scene look will be refined against them.
 
 ### Route (stations, in order)
 
@@ -62,12 +65,13 @@ Phone number stays in the downloadable PDF (Heet approved); it is **not** printe
 
 ### The ride
 
-- **Opening:** short soft fade in to the carriage. A route map draws itself. A small sound toggle is visible,
-  **off by default**.
-- **Scroll = travel.** Scroll progress drives the train between stations. Between stops: scenery moves past
-  (layered silhouettes — hills, towns, city lights, bridges, tunnels), lights sweep through the carriage.
-  At a stop: the train eases to a halt, the platform sign shows the station name, and that station's content
-  card morphs in.
+- **Opening:** short soft fade in on the train waiting at Departure. A route map draws itself. A small sound
+  toggle is visible, **off by default**.
+- **Scroll = travel.** Scroll progress drives the train between stations. The train stays roughly framed while
+  the world moves past it in parallax (foreground posts/fences fast, hills/towns/city lights slower, sky slowest);
+  wheels turn, carriages sway slightly, window light flickers past poles, light rain falls across the scene.
+  Bridges and tunnels along the route. At a stop: the train eases to a halt beside a platform, the platform sign
+  shows the station name, and that station's content card morphs in.
 - **Scenery morphs between stations** rather than cutting — e.g. colour of the night sky and lights shifts
   per station; the platform props hint at the content (Vaani stop: a glowing waveform sign; YieldGuard: a
   silicon-wafer-patterned sign; Solar: solar panels on the platform roofs). Exact props are builder's choice.
@@ -90,7 +94,7 @@ Express is also what renders:
 
 - **Stylized, not photoreal.** Warm, soft, low-detail shapes with good real-time lighting and gentle bloom.
   The richness comes from lighting and atmosphere, not model detail.
-- Palette: deep night blues/indigos outside; warm amber lamp light inside. Night-only — **no light/dark toggle**
+- Palette: deep night blues/indigos for the world; warm amber light glowing from the train's windows and lamps. Night-only — **no light/dark toggle**
   (Heet's global rule for theme toggles is Skiper26; not used because there is one theme by design).
 - Motion: smooth and morphing; nothing snaps. UI follows Emil Kowalski's rules (skill at
   `.claude/skills/emil-design-eng`): custom ease-out curves, UI animations < 300 ms, `scale(0.97)` press
@@ -106,7 +110,7 @@ Express is also what renders:
 - Character: **mellow, soothing, lo-fi**. Explicitly *not* harsh/clicky (the one thing Heet disliked about Jesse's site).
 - Layers when on:
   - lo-fi music loop (low volume),
-  - rain on glass + soft train rumble (ambient, rumble swells while moving, settles at stops),
+  - soft rain + soft train rumble / wheel clatter (ambient, rumble swells while moving, settles at stops),
   - soft station chime on arrival,
   - very soft UI sounds (muffled taps/pops) on buttons, map clicks, ticket.
 - All audio must be properly licensed (CC0 / royalty-free with commercial-use OK, e.g. Pixabay, Freesound CC0)
@@ -117,7 +121,8 @@ Express is also what renders:
 
 - **Next.js** (latest, App Router, TypeScript) — Heet's own stack. Static export; host on Vercel.
 - **React Three Fiber + drei** for the scene; postprocessing for bloom/vignette on desktop.
-- Scene built **mostly in code** (carriage = simple geometry; rain-on-glass and scenery as shaders/layered planes).
+- Scene built **mostly in code** (train = locomotive + carriages from simple geometry with emissive windows;
+  rain as a particle/streak layer; scenery as shaders/layered planes).
   Props from **CC0 libraries** (Poly Haven, Kenney, Quaternius, Poly Pizza); AI-generated props allowed for one-offs.
   **No Blender** in v1. (Optional later: Blender MCP to bake lighting for extra polish.)
 - Motion (`motion/react`) for UI. Smooth scroll library allowed if it helps scroll→ride feel.
@@ -130,7 +135,7 @@ Express is also what renders:
 - Target smooth ~60 fps on a mid laptop. Phones: same scene, simplified (lower pixel ratio, no postprocessing,
   fewer rain drops / scenery layers).
 - 3D scene lazy-loaded; Express-view HTML paints first so there is never a blank screen.
-- Loading state: no generic spinner; the carriage fades up from the Express-coloured background while the route
+- Loading state: no generic spinner; the train scene fades up from the Express-coloured background while the route
   map draws (skeleton-style placeholder matching real layout).
 - Images below the fold lazy-loaded.
 

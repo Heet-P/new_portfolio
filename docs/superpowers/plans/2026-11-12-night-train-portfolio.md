@@ -51,8 +51,8 @@ src/ride/mapping.ts                  # progress<->station, hash parsing (pure)
 src/ride/mode.ts                     # chooseInitialMode (pure)
 src/ride/useScrollDriver.ts          # lenis -> store, hash sync
 src/ride/RouteMap.tsx  src/ride/RideOverlay.tsx  src/ride/StationCard.tsx
-src/scene/Scene.tsx (lazy)  src/scene/Carriage.tsx  src/scene/Scenery.tsx
-src/scene/RainGlass.tsx  src/scene/Platform.tsx  src/scene/quality.ts  src/scene/palette.ts
+src/scene/Scene.tsx (lazy)  src/scene/Train.tsx  src/scene/Scenery.tsx
+src/scene/Rain.tsx  src/scene/Atmosphere.tsx  src/scene/Platform.tsx  src/scene/quality.ts  src/scene/palette.ts
 src/sound/audioEngine.ts  src/sound/SoundToggle.tsx  src/sound/*.test.ts
 src/components/skiper67/*            # vendored Skiper67 video player
 e2e/*.spec.ts
@@ -144,12 +144,12 @@ export const useRide: UseBoundStore<StoreApi<RideState>>;
 
 ### Task 7: Scene shell — carriage, lighting, camera, quality tiers
 
-**Files:** Create `src/scene/Scene.tsx` (default export, loaded via `next/dynamic` with `ssr:false`), `Carriage.tsx`, `quality.ts`, `quality.test.ts`.
+**Files:** Create `src/scene/Scene.tsx` (default export, loaded via `next/dynamic` with `ssr:false`), `Train.tsx`, `quality.ts`, `quality.test.ts`.
 **Interfaces — Produces:** `getQuality(env:{ width:number; dpr:number; coarsePointer:boolean; cores:number }): { dpr:number; post:boolean; rainDrops:number; sceneryLayers:number }`. Scene reads `useRide.progress` via `useFrame` (no React re-render per frame — read store with `getState()`).
 - [ ] **Step 1: Failing tests:** phone (`width 390, coarsePointer true`) → `post:false`, `dpr<=1.5`, `rainDrops` < desktop's, `sceneryLayers` < desktop's; desktop (`width 1440, cores 8`) → `post:true`.
 - [ ] **Step 2–4:** FAIL → implement → PASS.
-- [ ] **Step 3b:** Carriage built from primitives: interior walls, seats facing window, small table, warm lamp (point + emissive), window frame; camera seated looking out the window with a subtle idle sway. Express HTML stays underneath; Canvas fades in (opacity 0→1, 600 ms) once first frame renders — no spinner.
-- [ ] **Step 5:** Manual check in browser: carriage renders, 60 fps in devtools performance on desktop. e2e: in ride mode a `canvas` exists; in express mode none. Commit `feat: train carriage scene shell`.
+- [ ] **Step 3b:** *(Revised 2026-11-12: exterior side view.)* `src/scene/Train.tsx` (replaces Carriage.tsx): stylized locomotive + 3–4 carriages built from primitives (rounded box bodies, roof, undercarriage, bogies with wheels that rotate with travel velocity, couplings, headlamp), warm emissive window panes with soft interior glow, subtle per-carriage sway/bob while moving. Camera: side-on, slightly elevated, perspective, framing the whole train; gentle drift. A ground strip with rails + sleepers under the train. Expose `TRAIN_PARAMS` (carriage count, colours) at the top of the file so the look can be tuned against Heet's references. Express HTML stays underneath; Canvas fades in (opacity 0→1, 600 ms) once first frame renders — no spinner.
+- [ ] **Step 5:** Manual check in browser: train renders side-on, 60 fps in devtools performance on desktop. e2e: in ride mode a `canvas` exists; in express mode none. Commit `feat: side-view train scene shell`.
 
 ### Task 8: Scenery travel + palette morph
 
@@ -157,14 +157,14 @@ export const useRide: UseBoundStore<StoreApi<RideState>>;
 **Interfaces — Produces:** `STATION_PALETTES: Record<StationId,{ sky:string; horizon:string; lights:string }>`; `paletteAt(index:number, t:number): { sky; horizon; lights }` (linear-RGB lerp between station index and index+1 using eased `t`).
 - [ ] **Step 1: Failing tests:** `paletteAt(i,0)` equals `STATION_PALETTES[ids[i]]`; `paletteAt(i,1)` equals next station's; `t=0.5` lies strictly between both per channel; last index with any t returns last palette.
 - [ ] **Step 2–4:** FAIL → implement → PASS.
-- [ ] **Step 5:** Scenery: N parallax layers (count from `getQuality`) of silhouette planes (hills, towns, city lights, bridge, tunnel) scrolling past the window at speeds proportional to travel velocity; velocity eases to 0 inside a stop's dwell (train glides to a halt, ease-in-out). Sky/horizon/lights colours from `paletteAt`. Light sweeps through the carriage while moving. Manual check, then commit `feat: moving scenery with palette morph`.
+- [ ] **Step 5:** Scenery: N parallax layers (count from `getQuality`) behind and in front of the train — foreground (poles, fences, bushes) fastest, mid (trees, towns, bridge, tunnel mouth), far (hills, city lights), sky slowest — scrolling horizontally at speeds proportional to travel velocity; rails/sleepers scroll with the ground. Velocity eases to 0 inside a stop's dwell (train glides to a halt, ease-in-out). Sky/horizon/lights colours from `paletteAt`. Pole shadows/light flicker across the carriage windows while moving. Manual check, then commit `feat: moving scenery with palette morph`.
 
-### Task 9: Rain on glass + post-processing
+### Task 9: Rain + atmosphere + post-processing
 
-**Files:** Create `src/scene/RainGlass.tsx`.
-- [ ] **Step 1:** Window-pane shader material: drops sliding and merging, slight refraction of scenery behind (sample a render target or a blurred colour field); drop count from `getQuality().rainDrops`. Drops streak more diagonally while the train moves.
-- [ ] **Step 2:** `@react-three/postprocessing` Bloom (lamp + city lights) + Vignette, only when `getQuality().post`.
-- [ ] **Step 3:** Verify desktop ≥ 55 fps sustained in devtools; phone emulation (375×812, 4× CPU throttle) stays usable. Commit `feat: rain on glass and bloom`.
+**Files:** Create `src/scene/Rain.tsx`, `src/scene/Atmosphere.tsx`.
+- [ ] **Step 1:** Rain: instanced thin streaks falling across the scene (one draw call), count from `getQuality().rainDrops`, slanting more as travel velocity rises; faint splash flicker on the train roof line optional. Light mist/fog between depth layers; headlamp cone + warm window light spill onto the ground/rails.
+- [ ] **Step 2:** `@react-three/postprocessing` Bloom (windows, headlamp, city lights) + Vignette, only when `getQuality().post`.
+- [ ] **Step 3:** Verify desktop ≥ 55 fps sustained in devtools; phone emulation (375×812, 4× CPU throttle) stays usable. Commit `feat: rain, atmosphere and bloom`.
 
 ### Task 10: Stations — platforms, signs, cards
 
@@ -172,7 +172,7 @@ export const useRide: UseBoundStore<StoreApi<RideState>>;
 **Interfaces — Consumes:** `progressToStation`, `STATIONS`, `StationMedia`. **Produces:** `<StationCard station />` (shown by RideOverlay when `atStop`), reusing Express's content components so text is identical.
 - [ ] **Step 1: Failing test:** RideOverlay with progress at `stationToProgress(2)` shows the Vaani card heading; at mid-travel (`t=0.5` between 2 and 3) shows no card.
 - [ ] **Step 2–4:** FAIL → implement → PASS. Card entrance: opacity + translateY(8px) + blur(4px→0), 240 ms `--ease-out`, children staggered 40 ms; exit 160 ms. 
-- [ ] **Step 5:** Platform per station slides into view near each stop: station-name sign (canvas texture / drei `Text`), with a hint prop: Vaani glowing waveform sign, YieldGuard wafer-grid sign, Solar panels on roofs, `next` an empty lit platform with sign "Next stop: your team?", terminus buffer stop + ticket booth. Terminus card's primary action is the ticket = resume download.
+- [ ] **Step 5:** Platform per station slides into view (side-on, in front of/behind the rails) near each stop: station-name sign (canvas texture / drei `Text`), with a hint prop: Vaani glowing waveform sign, YieldGuard wafer-grid sign, Solar panels on roofs, `next` an empty lit platform with sign "Next stop: your team?", terminus buffer stop + ticket booth. Terminus card's primary action is the ticket = resume download.
 - [ ] **Step 6:** Commit `feat: station platforms and cards`.
 
 ### Task 11: Media pipeline + Skiper67 video
