@@ -2,7 +2,8 @@ import { progressToStation } from "@/ride/mapping";
 
 /**
  * Where the train is along the route and how fast it is going, shared by every scene
- * system that reacts to motion (carriage sway now; scenery speed in T8, rumble sound in T12).
+ * system that reacts to motion (carriage sway, the train's place on the track via
+ * route3d.trainU, rumble sound in T12).
  *
  * Units: "stations". position 2.5 = halfway between station 2 and station 3.
  * Updated once per frame by <TravelTracker/> (Scene.tsx) before anything else reads it,
@@ -60,9 +61,3 @@ export function resetTravel(progress: number, count: number): void {
   travel.speed = 0;
 }
 
-/**
- * World distance (units) between two stations. Anything that scrolls past the train
- * (sleepers now, scenery in T8) moves by travel.position * UNITS_PER_STATION so it all
- * agrees on speed.
- */
-export const UNITS_PER_STATION = 120;

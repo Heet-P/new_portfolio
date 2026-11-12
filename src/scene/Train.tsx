@@ -4,6 +4,8 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
+import { atmosphere } from "./materials";
+import { ROUTE, trainPose } from "./route3d";
 import { travel } from "./travel";
 
 /**
@@ -21,11 +23,6 @@ export const TRAIN_PARAMS = {
    * and warmer than this hex (about #ffbf4a on screen).
    */
   windowColor: "#ff9a3c",
-  /**
-   * Emissive strength of the windows. Not tone-mapped, so values > 1 stay HDR and land
-   * above the bloom threshold T9 will use: the windows glow, the body does not.
-   */
-  windowIntensity: 1.6,
   /** Body paint: the model's flat grey re-tinted to a deep night-train blue. */
   bodyColor: "#55608a",
   /** Sideways roll (radians) of each car at full speed. */
@@ -34,53 +31,36 @@ export const TRAIN_PARAMS = {
   bobHeight: 0.035,
   /** Sway frequency in Hz; each car gets its own phase so they never move in lockstep. */
   swayHz: 1.6,
-  camera: {
-    /** Vertical field of view (deg). Narrow-ish = flatter, more "diorama" perspective. */
-    fov: 30,
-    /** Camera looks down at the train by this much (deg). */
-    pitchDeg: 12,
-    /** World width kept in frame on wide screens: whole train plus margin. */
-    wideFrameWidth: 38,
-    /** World width kept in frame on narrow screens: locomotive + first wagon or so. */
-    narrowFrameWidth: 17,
-    /** Aspect ratio (w/h) at or below which the narrow framing is fully applied. */
-    narrowAspect: 0.6,
-    /** Aspect ratio at or above which the wide framing is fully applied. */
-    wideAspect: 1.3,
-    /**
-     * Screen px on the left covered by the desktop route-map panel (RouteMap.module.css).
-     * Wide framing centres the train in the space to its right. Ignored on phones, where
-     * the map is a bottom strip.
-     */
-    wideLeftInsetPx: 260,
-    /** Height of the look-at point above the rails (train is ~4 tall). */
-    lookHeight: 2.6,
-    /** Idle drift amplitude (units) and period (s). */
-    driftAmount: 0.35,
-    driftPeriod: 14,
-  },
 } as const;
 
-/** Car nodes in the model that sway independently (the coupling mesh stays put). */
+/** Model nodes placed along the curve one by one; the four cars also sway. */
 const CARS = ["Driving", "wagon_1", "wagon_2", "wagon_3"] as const;
+const PARTS = [...CARS, "Connection"] as const;
 
-/** Per-car resting transform, captured once so sway is applied as an offset, never accumulated. */
+/**
+ * Per-part rest pose, captured once (in node.userData, so a remount never adopts a moved
+ * pose as "rest"): offset along the train from its centre, height, and original rotation.
+ */
 interface CarRig {
   node: THREE.Object3D;
-  baseY: number;
+  restX: number;
+  restY: number;
+  restQ: THREE.Quaternion;
   phase: number;
+  sways: boolean;
 }
 
 useGLTF.preload(TRAIN_PARAMS.modelUrl);
 
 /**
- * Re-dress the flat Blender materials (glowing windows, night-blue body) and collect the
- * swaying cars. Safe to run on every mount even though useGLTF caches and shares one scene:
- * materials only receive fixed values, and each car's rest height is recorded in
- * node.userData the first time, so a remount mid-sway never adopts a swayed pose as "rest".
+ * Re-dress the Blender materials (flat-shaded, glowing windows, night-blue body) and collect
+ * the parts to place along the track. Safe to run on every mount even though useGLTF
+ * caches and shares one scene: materials only receive fixed values, and each part's rest
+ * pose is recorded in node.userData the first time, so a remount never adopts a moved pose.
  */
-function rigTrain(scene: THREE.Object3D): CarRig[] {
+function rigTrain(scene: THREE.Object3D): { cars: CarRig[]; windowMats: THREE.MeshStandardMaterial[] } {
   const seen = new Set<THREE.Material>();
+  const windowMats: THREE.MeshStandardMaterial[] = [];
   scene.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -88,11 +68,15 @@ function rigTrain(scene: THREE.Object3D): CarRig[] {
       if (seen.has(mat)) continue;
       seen.add(mat);
       const m = mat as THREE.MeshStandardMaterial;
+      // Low-poly restyle: every surface reads as flat facets, like the world around it.
+      m.flatShading = true;
+      m.needsUpdate = true;
       if (m.name === "trainwindow") {
         m.color.set("#1a1208"); // dark glass base so the glow reads as light, not paint
         m.emissive.set(TRAIN_PARAMS.windowColor);
-        m.emissiveIntensity = TRAIN_PARAMS.windowIntensity;
+        m.emissiveIntensity = atmosphere.palette.windowGlow; // updated per frame from the palette
         m.toneMapped = false;
+        windowMats.push(m);
       } else if (m.name === "trainbase") {
         m.color.set(TRAIN_PARAMS.bodyColor);
         m.roughness = 0.55;
@@ -103,43 +87,90 @@ function rigTrain(scene: THREE.Object3D): CarRig[] {
       }
     }
   });
-  return CARS.flatMap((name, i) => {
+  // The model's root carries the recentring offset (see compress-model.mjs); zero it once and
+  // fold it into each part's rest x so parts can be positioned in world space directly.
+  const root = scene.getObjectByName("TRAIN");
+  if (root && root.userData.rootX === undefined) {
+    root.userData.rootX = root.position.x;
+    root.position.set(0, 0, 0);
+  }
+  const rootX = (root?.userData.rootX as number | undefined) ?? 0;
+  const cars = PARTS.flatMap((name, i) => {
     const node = scene.getObjectByName(name);
-    // Phases spread over the cycle; i*2.1 rad avoids any two cars lining up.
     if (!node) return [];
-    node.userData.restY ??= node.position.y;
-    return [{ node, baseY: node.userData.restY as number, phase: i * 2.1 }];
+    node.userData.rest ??= { x: node.position.x + rootX, y: node.position.y, q: node.quaternion.clone() };
+    const rest = node.userData.rest as { x: number; y: number; q: THREE.Quaternion };
+    // Phases spread over the cycle; i*2.1 rad avoids any two cars lining up.
+    return [{ node, restX: rest.x, restY: rest.y, restQ: rest.q, phase: i * 2.1, sways: i < CARS.length }];
   });
+  return { cars, windowMats };
 }
 
-/** Apply this frame's sway: roll about the travel axis plus a vertical bob, per car. */
-function swayCars(cars: CarRig[], w: number, amount: number) {
+const pt = new THREE.Vector3();
+const tg = new THREE.Vector3();
+const side = new THREE.Vector3();
+const upv = new THREE.Vector3();
+const basis = new THREE.Matrix4();
+const roll = new THREE.Quaternion();
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+/**
+ * Place every part on the curve: each sits at the train centre's arc length plus its rest
+ * offset (cars keep their spacing along the bends), turned to the local tangent. Cars add
+ * a subtle roll + bob scaled by `amount` (0 = parked). Reuses module temporaries: no
+ * per-frame allocations.
+ */
+function placeCars(cars: CarRig[], w: number, amount: number) {
+  const L = ROUTE.length;
+  const centre = trainPose.u * L;
   for (const car of cars) {
-    car.node.rotation.x = Math.sin(w + car.phase) * TRAIN_PARAMS.swayRoll * amount;
+    const u = Math.max(0, Math.min(1, (centre + car.restX * TRAIN_PARAMS.scale) / L));
+    ROUTE.curve.getPointAt(u, pt);
+    ROUTE.curve.getTangentAt(u, tg);
+    // Car frame: x = tangent, z = right of travel, y = their cross product (stays upright).
+    side.crossVectors(tg, WORLD_UP).normalize();
+    upv.crossVectors(side, tg).normalize();
+    basis.makeBasis(tg, upv, side);
+    car.node.quaternion.setFromRotationMatrix(basis);
+    if (car.sways) car.node.quaternion.multiply(roll.setFromAxisAngle(X_AXIS, Math.sin(w + car.phase) * TRAIN_PARAMS.swayRoll * amount));
+    car.node.quaternion.multiply(car.restQ);
     // Bob at a slightly different rate than the roll so the motion never looks mechanical.
-    car.node.position.y = car.baseY + Math.sin(w * 1.37 + car.phase) * TRAIN_PARAMS.bobHeight * amount;
+    const bob = car.sways ? Math.sin(w * 1.37 + car.phase) * TRAIN_PARAMS.bobHeight * amount : 0;
+    car.node.position.copy(pt).addScaledVector(upv, car.restY * TRAIN_PARAMS.scale + bob);
   }
 }
 
+/** Window lamp strength from the palette: faint at golden hour, strong at night. */
+function glowWindows(mats: THREE.MeshStandardMaterial[], intensity: number) {
+  for (const m of mats) m.emissiveIntensity = intensity;
+}
+
 /**
- * The side-on night train: Heet's Blender model (locomotive + 3 wagons, wheels fused into
- * the bodies) with warm emissive windows. Motion is sold by a subtle per-car sway/bob
- * that scales with travel speed and is zero when parked; scenery (T8) does the rest.
+ * The night train: Heet's Blender model (locomotive + 3 wagons, wheels fused into the
+ * bodies), restyled flat-shaded, running along ROUTE. Each car follows the curve on its
+ * own; windows glow per the palette (faint at golden hour, warm and strong at night).
  */
-export function Train({ reducedMotion }: { reducedMotion: boolean }) {
+export function Train({ reducedMotion, shadows }: { reducedMotion: boolean; shadows: boolean }) {
   const { scene } = useGLTF(TRAIN_PARAMS.modelUrl);
-  const cars = useRef<CarRig[]>([]);
+  const rig = useRef<ReturnType<typeof rigTrain>>({ cars: [], windowMats: [] });
 
   useLayoutEffect(() => {
-    cars.current = rigTrain(scene);
-  }, [scene]);
+    rig.current = rigTrain(scene);
+    scene.traverse((o) => {
+      o.castShadow = shadows;
+      o.receiveShadow = shadows;
+    });
+  }, [scene, shadows]);
 
   useFrame(({ clock }) => {
     // Amount follows travel speed, so parked = perfectly still. Reduced motion: always still.
     const amount = reducedMotion ? 0 : travel.speed;
     const w = clock.elapsedTime * Math.PI * 2 * TRAIN_PARAMS.swayHz;
-    swayCars(cars.current, w, amount);
+    placeCars(rig.current.cars, w, amount);
+    glowWindows(rig.current.windowMats, atmosphere.palette.windowGlow);
   });
 
-  return <primitive object={scene} scale={TRAIN_PARAMS.scale} />;
+  // Parts are placed in world space each frame; the container itself never moves.
+  return <primitive object={scene} />;
 }

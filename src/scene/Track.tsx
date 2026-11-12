@@ -1,72 +1,101 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { travel, UNITS_PER_STATION } from "./travel";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { sweep } from "./geometry";
+import { MATS } from "./materials";
+import { ROUTE, TRACK } from "./route3d";
+import type { Span, WorldLayout } from "./worldgen";
 
 /** Track layout. The train's wheels sit at y = 0, so the rail tops are at y = 0 too. */
-const TRACK = {
-  /** Length of the track and ground (units); wide enough for ultra-wide screens. */
-  length: 320,
+const TRACK_DIM = {
   /** Distance between rail centres (matches the model's wheel line, z = +-0.75). */
   gauge: 1.5,
-  sleeperSpacing: 1.4,
-  /** Ground depth (z): reaches past the camera in front and towards the horizon behind. */
-  groundDepth: 220,
-  /** Ground centre z: shifted towards the camera, which sits at +z (up to ~70 on phones). */
-  groundZ: 30,
+  railWidth: 0.1,
+  railHeight: 0.12,
+  sleeperSpacing: 1.2,
+  /** Ballast shoulder: top half-width, bottom half-width. */
+  ballastTop: 1.6,
+  ballastBottom: 2.3,
 } as const;
 
-const SLEEPERS = Math.ceil(TRACK.length / TRACK.sleeperSpacing);
+/** The parts of [0, length] not covered by any of `gaps`, as [s0, s1] pieces. */
+function pieces(gaps: Span[], length: number): [number, number][] {
+  const sorted = [...gaps].sort((a, b) => a.s0 - b.s0);
+  const out: [number, number][] = [];
+  let s = 0;
+  for (const g of sorted) {
+    if (g.s0 > s) out.push([s, g.s0]);
+    s = Math.max(s, g.s1);
+  }
+  if (s < length) out.push([s, length]);
+  return out;
+}
 
 /**
- * Ground strip, two rails and instanced sleepers. The rails are featureless so they never
- * need to move; the sleepers scroll with travel distance (wrapped to one spacing, so the
- * instance matrices are written once and only the group shifts each frame).
+ * Static track along the curve: ballast bed, two rails and instanced sleepers. It does not
+ * move; the train runs along it. Skips the steel bridge (the model carries its own rails
+ * and sleepers); the wooden trestle keeps rails and sleepers but no ballast.
  */
-export function Track() {
+export function Track({ world, shadows }: { world: WorldLayout; shadows: boolean }) {
   const sleepers = useRef<THREE.InstancedMesh>(null);
-  const scroller = useRef<THREE.Group>(null);
+  const geo = useMemo(() => {
+    const steel = world.bridges.filter((b) => b.kind === "steel");
+    const railPieces = pieces(steel, ROUTE.length);
+    const bedPieces = pieces(world.bridges, ROUTE.length);
+    const { gauge, railWidth: w, railHeight: h, ballastTop: bt, ballastBottom: bb } = TRACK_DIM;
+    // Rail cross-section, walked so the faces point outwards (left side, top, right side).
+    const rail = (c: number): [number, number][] => [
+      [c - w / 2, -h],
+      [c - w / 2, 0],
+      [c + w / 2, 0],
+      [c + w / 2, -h],
+    ];
+    const rails = mergeGeometries(
+      railPieces.flatMap(([a, b]) => [sweep(rail(-gauge / 2), a, b, 2), sweep(rail(gauge / 2), a, b, 2)]),
+    );
+    const ballast = mergeGeometries(
+      bedPieces.map(([a, b]) =>
+        sweep([[-bb, -0.55], [-bt, -0.2], [bt, -0.2], [bb, -0.55]], a, b, 3),
+      ),
+    );
+    // Sleeper transforms along every non-steel-bridge piece.
+    const mats: THREE.Matrix4[] = [];
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const [a, b] of railPieces) {
+      for (let s = a + 0.6; s < b; s += TRACK_DIM.sleeperSpacing) {
+        const i = Math.min(TRACK.count - 1, Math.round(s / TRACK.step));
+        q.setFromAxisAngle(up, Math.atan2(-TRACK.tz[i], TRACK.tx[i]));
+        mats.push(
+          new THREE.Matrix4().compose(new THREE.Vector3(TRACK.px[i], TRACK.py[i] - 0.17, TRACK.pz[i]), q, new THREE.Vector3(1, 1, 1)),
+        );
+      }
+    }
+    return { rails, ballast, mats };
+  }, [world]);
 
-  // Lay the sleepers out once.
   useLayoutEffect(() => {
     const mesh = sleepers.current;
     if (!mesh) return;
-    const m = new THREE.Matrix4();
-    for (let i = 0; i < SLEEPERS; i++) {
-      m.makeTranslation(-TRACK.length / 2 + i * TRACK.sleeperSpacing, -0.16, 0);
-      mesh.setMatrixAt(i, m);
-    }
+    geo.mats.forEach((m, i) => mesh.setMatrixAt(i, m));
     mesh.instanceMatrix.needsUpdate = true;
-  }, []);
-
-  useFrame(() => {
-    // Train moves +X, so the ground slides -X. Modulo keeps the offset inside one spacing.
-    const d = (travel.position * UNITS_PER_STATION) % TRACK.sleeperSpacing;
-    if (scroller.current) scroller.current.position.x = -d;
-  });
+    mesh.computeBoundingSphere();
+  }, [geo]);
 
   return (
     <group>
-      {/* Ground: dark night field, slightly lighter than the sky's bottom so the horizon reads. */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.24, TRACK.groundZ]}>
-        <planeGeometry args={[TRACK.length, TRACK.groundDepth]} />
-        <meshStandardMaterial color="#2a3254" roughness={1} />
-      </mesh>
-      {/* Two steel rails catching the moonlight. */}
-      {[-TRACK.gauge / 2, TRACK.gauge / 2].map((z) => (
-        <mesh key={z} position={[0, -0.06, z]}>
-          <boxGeometry args={[TRACK.length, 0.12, 0.1]} />
-          <meshStandardMaterial color="#8d97b5" metalness={0.8} roughness={0.35} />
-        </mesh>
-      ))}
-      <group ref={scroller}>
-        <instancedMesh ref={sleepers} args={[undefined, undefined, SLEEPERS]}>
-          <boxGeometry args={[0.28, 0.12, 2.4]} />
-          <meshStandardMaterial color="#2a2420" roughness={1} />
-        </instancedMesh>
-      </group>
+      <mesh geometry={geo.ballast} material={MATS.ballast} receiveShadow={shadows} />
+      <mesh geometry={geo.rails} material={MATS.rail} receiveShadow={shadows} />
+      <instancedMesh
+        ref={sleepers}
+        args={[undefined, MATS.sleeper, geo.mats.length]}
+        receiveShadow={shadows}
+        castShadow={shadows}
+      >
+        <boxGeometry args={[0.28, 0.12, 2.4]} />
+      </instancedMesh>
     </group>
   );
 }
