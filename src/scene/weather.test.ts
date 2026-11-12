@@ -6,14 +6,14 @@ const P = STATION_PALETTES;
 
 describe("rainAmount", () => {
   it("is dry from golden hour through dusk", () => {
-    for (const id of ["departure", "mct", "vaani", "yieldguard", "formai"] as const) {
+    for (const id of ["departure", "vaani", "yieldguard", "solar"] as const) {
       expect(rainAmount(P[id].windowGlow)).toBe(0);
     }
   });
 
   it("fades in over the night stretch and is full at the last stations", () => {
-    expect(rainAmount(P.quizzx.windowGlow)).toBeGreaterThan(0);
-    expect(rainAmount(P.quizzx.windowGlow)).toBeLessThan(rainAmount(P.solar.windowGlow));
+    expect(rainAmount(P.sahara.windowGlow)).toBeGreaterThan(0);
+    expect(rainAmount(P.sahara.windowGlow)).toBeLessThan(rainAmount(P.experience.windowGlow));
     expect(rainAmount(P.next.windowGlow)).toBe(1);
     expect(rainAmount(P.terminus.windowGlow)).toBe(1);
   });
@@ -26,7 +26,7 @@ describe("nightAmount", () => {
   });
 
   it("is noticeable by dusk", () => {
-    expect(nightAmount(P.formai.windowGlow)).toBeGreaterThan(0.3);
+    expect(nightAmount(P.solar.windowGlow)).toBeGreaterThan(0.3);
   });
 });
 

@@ -6,6 +6,8 @@ import { DisplayScreen, OnboardDisplay } from "./OnboardDisplay";
 
 const VAANI = STATIONS.findIndex((s) => s.id === "vaani");
 const TERMINUS = STATIONS.findIndex((s) => s.id === "terminus");
+const SAHARA = STATIONS.findIndex((s) => s.id === "sahara");
+const EXPERIENCE = STATIONS.findIndex((s) => s.id === "experience");
 
 /** Train parked at a station: the scene has settled the camera in front of the display. */
 function parkAt(index: number) {
@@ -40,10 +42,34 @@ describe("OnboardDisplay", () => {
 
   it("renders no See live / GitHub buttons for a station without such links", () => {
     render(<OnboardDisplay />);
-    parkAt(VAANI);
-    const region = screen.getByRole("region", { name: "Vaani AI" });
+    parkAt(EXPERIENCE);
+    const region = screen.getByRole("region", { name: "Work Experience" });
     expect(within(region).queryByRole("link", { name: "See live" })).toBeNull();
     expect(within(region).queryByRole("link", { name: "GitHub" })).toBeNull();
+  });
+
+  it("shows just GitHub (no See live) at Vaani, YieldGuard and Solar", () => {
+    for (const id of ["vaani", "yieldguard", "solar"]) {
+      const i = STATIONS.findIndex((s) => s.id === id);
+      const { unmount } = render(<DisplayScreen station={STATIONS[i]} index={i} />);
+      expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toMatch(/^https:\/\/github\.com\/Heet-P\//);
+      expect(screen.queryByRole("link", { name: "See live" }), id).toBeNull();
+      unmount();
+    }
+  });
+
+  it("shows GitHub, Watch demo and Watch demo 2 at SAHARA", () => {
+    render(<DisplayScreen station={STATIONS[SAHARA]} index={SAHARA} />);
+    expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe("https://github.com/Heet-P/SAHARA_MetaAI");
+    expect(screen.getByRole("link", { name: "Watch demo" }).getAttribute("href")).toBe("https://www.youtube.com/watch?v=foh6WNTnbp0");
+    expect(screen.getByRole("link", { name: "Watch demo 2" }).getAttribute("href")).toBe("https://youtu.be/sk_WdN6rbXo");
+    expect(screen.queryByRole("link", { name: "See live" })).toBeNull();
+  });
+
+  it("shows Work Experience without naming the company", () => {
+    const { container } = render(<DisplayScreen station={STATIONS[EXPERIENCE]} index={EXPERIENCE} />);
+    expect(screen.getByRole("heading", { name: "Work Experience" })).toBeTruthy();
+    expect(container.innerHTML).not.toMatch(/MCT/i);
   });
 
   it("renders See live, every Watch demo and GitHub as new-tab links when the station has them", () => {

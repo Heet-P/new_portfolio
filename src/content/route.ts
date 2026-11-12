@@ -9,12 +9,11 @@
 
 export type StationId =
   | "departure"
-  | "mct"
   | "vaani"
   | "yieldguard"
-  | "formai"
-  | "quizzx"
   | "solar"
+  | "sahara"
+  | "experience"
   | "next"
   | "terminus";
 
@@ -94,7 +93,8 @@ export const STATIONS: Station[] = [
     body: [
       "Heet Parikh is a third-year B.Tech student in Computer Science and Engineering at CSPIT, CHARUSAT. CGPA 8.69.",
       "He builds web products in Next.js and TypeScript, and wires AI into them: voice agents, orchestration over MCP, and ranking models.",
-      "He is President of the TechGenius Club.",
+      "He is President of the TechGenius Club. As its Web Lead he built QuizzX, a quiz platform for 200+ concurrent users.",
+      "Awards: 2nd at the IBM Hackathon (YieldGuard AI), 2nd among 100+ teams at Techathon (FormAI), Top 6 at the Chaos2Commit Hackathon (Vaani AI).",
     ],
     stats: [
       { value: "8.69", label: "CGPA" },
@@ -105,26 +105,6 @@ export const STATIONS: Station[] = [
       { label: "LinkedIn", href: PROFILE.linkedin },
       { label: "Resume", href: PROFILE.resume },
     ],
-  },
-  {
-    id: "mct",
-    kind: "internship",
-    name: "MCT IT Solutions",
-    tagline: "Payment flows that feel instant.",
-    dates: "05/2026 - 06/2026",
-    status: "done",
-    body: [
-      "Software Intern in Ahmedabad. Built payment workflow modules in Next.js and TypeScript, used across 5+ e-commerce checkouts.",
-      "Tuned payment UI rendering and interaction flows. Checkout interaction delay dropped by an estimated 25%.",
-      "Wrote reusable payment components that cut the effort of adding future payment features by about 40%.",
-    ],
-    stats: [
-      { value: "5+", label: "checkout workflows" },
-      { value: "~25%", label: "lower checkout delay" },
-      { value: "~40%", label: "less integration effort" },
-    ],
-    stack: ["Next.js", "TypeScript", "Payment workflows"],
-    // TODO(heet): add repo URL (if public) - client work may stay private.
   },
   {
     id: "vaani",
@@ -146,7 +126,7 @@ export const STATIONS: Station[] = [
       { value: "Top 6", label: "Chaos2Commit Hackathon" },
     ],
     stack: ["Next.js", "Supabase", "Twilio", "Sarvam AI"],
-    // TODO(heet): add repo URL
+    links: [{ label: "GitHub", href: "https://github.com/Heet-P/Vaani-AI" }],
   },
   {
     id: "yieldguard",
@@ -169,34 +149,7 @@ export const STATIONS: Station[] = [
       { value: "14", label: "MCP tools" },
     ],
     stack: ["Next.js", "ResNet", "Isolation Forest", "IBM Bob", "MCP", "Gemini", "watsonx.ai"],
-    // TODO(heet): add repo URL
-  },
-  {
-    id: "formai",
-    kind: "project",
-    name: "FormAI",
-    tagline: "Government forms, in your own language.",
-    dates: "02/2026",
-    status: "done",
-    body: [
-      "A multilingual assistant that walks people through government forms.",
-      "Placed 2nd among 100+ teams at Techathon.",
-    ],
-    stats: [{ value: "2nd / 100+", label: "teams at Techathon" }],
-    // TODO(heet): add repo URL and stack (not listed on the resume)
-  },
-  {
-    id: "quizzx",
-    kind: "project",
-    name: "QuizzX",
-    tagline: "A quiz platform that holds up under a crowd.",
-    dates: "2025 - 2026",
-    status: "done",
-    body: [
-      "Built as Web Lead of the TechGenius Club. QuizzX is a quiz platform designed for 200+ concurrent users.",
-    ],
-    stats: [{ value: "200+", label: "concurrent users" }],
-    // TODO(heet): add repo URL and stack (not listed on the resume)
+    links: [{ label: "GitHub", href: "https://github.com/Heet-P/bob-ai-hackathon-DuckDuckGo" }],
   },
   {
     id: "solar",
@@ -216,7 +169,51 @@ export const STATIONS: Station[] = [
       { value: "2", label: "states: Maharashtra, Gujarat" },
     ],
     stack: ["XGBoost", "Logistic Regression", "LLM enrichment", "Integer Linear Programming"],
-    // TODO(heet): add repo URL
+    links: [{ label: "GitHub", href: "https://github.com/Heet-P/SGP-II" }],
+  },
+  {
+    id: "sahara",
+    kind: "project",
+    name: "SAHARA",
+    tagline: "A search-and-rescue drone with Meta AI as co-pilot.",
+    dates: "2026",
+    status: "done",
+    flagship: true,
+    body: [
+      "SAHARA is an autonomous drone that searches a disaster zone for survivors. It flies a grid over the area and spots casualties with RGB cameras by day and thermal by night, and a Flask dashboard shows the mission live.",
+      "Meta's models do the thinking. Voice commands go to an AI Mission Commander, and the operator must confirm before the drone arms. SAM 3.1 segments hazards like smoke, Muse Spark vision acts as a second pair of eyes and triages from the air, and the mission ends with a SITREP.",
+      "It runs in simulation on ArduPilot SITL, Gazebo and ROS 2 Humble, built for the Meta AI hackathon.",
+    ],
+    stats: [
+      { value: "0.84", label: "SAM 3.1 smoke detection" },
+      { value: "0.92", label: "power line SAM missed, caught by Muse vision" },
+      { value: "RGB+IR", label: "day and night casualty detection" },
+    ],
+    stack: ["ROS 2", "ArduPilot", "Gazebo", "Python", "Flask", "YOLOv8", "SAM 3.1", "Meta Muse Spark"],
+    links: [
+      { label: "GitHub", href: "https://github.com/Heet-P/SAHARA_MetaAI" },
+      { label: "Demo video", href: "https://www.youtube.com/watch?v=foh6WNTnbp0" },
+      { label: "Demo video 2", href: "https://youtu.be/sk_WdN6rbXo" },
+    ],
+  },
+  {
+    id: "experience",
+    kind: "internship",
+    name: "Work Experience",
+    tagline: "Software internship: payment flows in Next.js.",
+    dates: "05/2026 - 06/2026",
+    status: "done",
+    body: [
+      "Software Intern in Ahmedabad. Built payment workflow modules in Next.js and TypeScript, used across 5+ e-commerce checkouts.",
+      "Tuned payment UI rendering and interaction flows. Checkout interaction delay dropped by an estimated 25%.",
+      "Wrote reusable payment components that cut the effort of adding future payment features by about 40%.",
+    ],
+    stats: [
+      { value: "5+", label: "checkout workflows" },
+      { value: "~25%", label: "lower checkout delay" },
+      { value: "~40%", label: "less integration effort" },
+    ],
+    stack: ["Next.js", "TypeScript", "Payment workflows"],
   },
   {
     id: "next",

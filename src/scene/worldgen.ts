@@ -238,9 +238,11 @@ function inWater(w: WorldLayout, x: number, z: number, margin: number): boolean 
 
 /** Bridge, tunnel and river layout: art-directed positions between stations. */
 function features(seed: number): Omit<WorldLayout, "pines" | "rocks"> {
-  // Main crossing: Heet's steel bridge between MCT and Vaani over a wide river valley.
-  // The route's control points make the track straight here (see route3d.ts).
-  const steelS = mid(1);
+  // Main crossing: Heet's steel bridge between Vaani and YieldGuard over a wide river valley.
+  // (The Departure-Vaani leg is taken by the trestle and its tunnel.) The route's control
+  // points make the track straight here (see route3d.ts); the bridge sits in the first half
+  // of the leg, where that straight run is, and clear of Vaani's parked train.
+  const steelS = stationS[1] + 100;
   // Stream with a waterfall, crossed by a short wooden trestle, just ahead of the Departure
   // train: the chase camera sees it (and the tunnel beyond) waiting up the line.
   const trestleS = stationS[0] + 58;
@@ -283,8 +285,8 @@ function features(seed: number): Omit<WorldLayout, "pines" | "rocks"> {
   const tunnels: Span[] = [
     // Right after the trestle: the train crosses the stream, then dives into the hillside.
     { s0: trestleS + 40, s1: trestleS + 110 },
-    // Between QuizzX and Solar.
-    { s0: mid(5) - 42, s1: mid(5) + 42 },
+    // Between SAHARA and Work Experience: the night stretch.
+    { s0: mid(4) - 42, s1: mid(4) + 42 },
   ];
 
   let x0 = Infinity;

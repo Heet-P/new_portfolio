@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MAX_ACCEL, MAX_SPEED, resetTravel, stepTravel, travel, trainPosition } from "./travel";
 
-const N = 9;
+const N = 8;
 const seg = 1 / (N - 1);
 
 describe("trainPosition", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STATIONS } from "@/content/route";
 import { buildStations } from "./build";
-import { stationPlan } from "./placement";
+import { stationPlan, toWorld } from "./placement";
 
 describe("buildStations", () => {
   const built = buildStations();
@@ -29,6 +29,24 @@ describe("buildStations", () => {
     for (let i = 0; i < glow.length; i += 3) if (glow[i] > 0) lit++;
     expect(lit / count).toBeGreaterThan(0.01);
     expect(lit / count).toBeLessThan(0.3);
+  });
+
+  it("adds one small drone mesh hovering over SAHARA's helipad (the only extra draw call)", () => {
+    const { drone, triangles } = built;
+    expect(drone).not.toBeNull();
+    expect(triangles.drone).toBeGreaterThan(100);
+    expect(triangles.drone).toBeLessThan(2000);
+    // A few units across, standing over the helipad's spot on the route.
+    const sphere = drone!.boundingSphere!;
+    expect(sphere.radius).toBeLessThan(3);
+    const pad = stationPlan(STATIONS.findIndex((s) => s.id === "sahara")).helipad!;
+    const [x, z] = toWorld(STATIONS.findIndex((s) => s.id === "sahara"), pad.along, -pad.u);
+    expect(Math.hypot(sphere.center.x - x, sphere.center.z - z)).toBeLessThan(1);
+  });
+
+  it("carries emissive nav lights on the drone", () => {
+    const glow = built.drone!.getAttribute("aGlow").array;
+    expect(glow.some((v) => v > 0)).toBe(true);
   });
 
   it("puts panels only at the Solar stop", () => {

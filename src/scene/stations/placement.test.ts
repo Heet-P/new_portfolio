@@ -13,6 +13,7 @@ import {
   stationPlacement,
   stationPlan,
   toWorld,
+  trackFrame,
   type StationPlan,
 } from "./placement";
 
@@ -47,25 +48,48 @@ describe("stationPlan", () => {
       const main = idOf(i) === "departure" || idOf(i) === "terminus";
       expect(p.kind, idOf(i)).toBe(main ? "main" : "halt");
       expect(p.building.tower, idOf(i)).toBe(main);
-      expect(p.building.floors, idOf(i)).toBe(main ? 2 : 1);
+      // The office at Work Experience is the one halt with upper floors (three in all).
+      expect(p.building.floors, idOf(i)).toBe(main ? 2 : idOf(i) === "experience" ? 3 : 1);
     });
   });
 
-  it("varies the stops: colours, building widths and prop sets differ", () => {
-    expect(new Set(plans.map((p) => p.building.wall)).size).toBeGreaterThanOrEqual(4);
-    expect(new Set(plans.map((p) => p.building.roof)).size).toBeGreaterThanOrEqual(3);
-    expect(new Set(plans.map((p) => p.building.width)).size).toBeGreaterThanOrEqual(4);
-    expect(new Set(plans.map((p) => p.props.map((q) => q.kind).sort().join())).size).toBeGreaterThanOrEqual(5);
+  it("builds Work Experience as a flat-roofed office with more windows than any station building", () => {
+    const office = plans[STATIONS.findIndex((s) => s.id === "experience")];
+    expect(office.building.flatRoof).toBe(true);
+    expect(office.building.tower).toBe(false);
+    expect(office.building.chimney).toBeNull();
+    const count = (p: StationPlan) => p.building.windows.length * p.building.floors;
+    for (const p of plans) {
+      if (p !== office) expect(p.building.flatRoof, idOf(p.index)).toBe(false);
+      if (p !== office) expect(count(office), idOf(p.index)).toBeGreaterThan(count(p));
+    }
   });
 
-  it("puts the special signs where they belong: solar field at Solar, waveform at Vaani, wafer at YieldGuard", () => {
+  it("gives SAHARA a helipad past the platform's far end, beside the track, and nobody else", () => {
     plans.forEach((p, i) => {
-      const kinds = p.props.map((q) => q.kind);
-      expect(p.panels.length > 0, idOf(i)).toBe(idOf(i) === "solar");
-      expect(p.roofPanels, idOf(i)).toBe(idOf(i) === "solar");
-      expect(kinds.includes("waveSign"), idOf(i)).toBe(idOf(i) === "vaani");
-      expect(kinds.includes("waferSign"), idOf(i)).toBe(idOf(i) === "yieldguard");
+      if (idOf(i) !== "sahara") return expect(p.helipad, idOf(i)).toBeNull();
+      const h = p.helipad!;
+      expect(h.radius).toBeGreaterThan(2.5);
+      // Beyond the platform slab and its end boards (so nothing hides it), on the platform side
+      // and clear of the train's side of the track.
+      expect(h.along - h.radius).toBeGreaterThan(PLATFORM.halfLength);
+      expect(h.u - h.radius).toBeGreaterThan(CLEARANCE);
+      // The station building stands behind the train's centre, so the pad is never behind it.
+      expect(p.building.along).toBeLessThan(0);
     });
+  });
+
+  it("keeps the helipad's ground level (it lies beyond the guaranteed flat patch)", () => {
+    const i = STATIONS.findIndex((s) => s.id === "sahara");
+    const h = plans[i].helipad!;
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      for (const r of [0, h.radius]) {
+        const f = trackFrame(stationS[i] + h.along + Math.cos(a) * r);
+        const [x, z] = toWorld(i, h.along + Math.cos(a) * r, -(h.u + Math.sin(a) * r));
+        expect(Math.abs(heightAt(world, x, z) - (f.y - 0.35)), `angle ${k}`).toBeLessThan(0.6);
+      }
+    }
   });
 
   it("keeps the door clear of benches and planters", () => {

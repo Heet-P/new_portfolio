@@ -16,14 +16,14 @@ describe("RouteMap", () => {
   it("renders one button per station, named after the station", () => {
     render(<RouteMap />);
     const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(9);
+    expect(buttons).toHaveLength(8);
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(STATIONS.map((s) => s.name));
   });
 
   it("asks the driver to ride to a station when its button is clicked", () => {
     render(<RouteMap />);
     fireEvent.click(screen.getByRole("button", { name: "Vaani AI" }));
-    expect(useRide.getState().target).toBe(2);
+    expect(useRide.getState().target).toBe(1);
   });
 
   // Review Focus 2: rapid clicks mid-ride retarget; the last click wins.
@@ -31,14 +31,14 @@ describe("RouteMap", () => {
     render(<RouteMap />);
     fireEvent.click(screen.getByRole("button", { name: "Vaani AI" }));
     fireEvent.click(screen.getByRole("button", { name: "YieldGuard AI" }));
-    expect(useRide.getState().target).toBe(3);
+    expect(useRide.getState().target).toBe(2);
   });
 
   it("marks only the current station with aria-current=step, following progress", () => {
     render(<RouteMap />);
     expect(screen.getByRole("button", { name: "Departure" }).getAttribute("aria-current")).toBe("step");
 
-    act(() => useRide.getState().setProgress(stationToProgress(3, STATIONS.length)));
+    act(() => useRide.getState().setProgress(stationToProgress(2, STATIONS.length)));
     const current = screen.getAllByRole("button").filter((b) => b.hasAttribute("aria-current"));
     expect(current.map((b) => b.getAttribute("aria-label"))).toEqual(["YieldGuard AI"]);
   });

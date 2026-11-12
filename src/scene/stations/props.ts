@@ -1,6 +1,6 @@
 import { Kit } from "./kit";
 import { LAMP, roofHeightAt } from "./parts";
-import { canopyHeights, END_SIGN, END_SIGN_YAW, endSigns, PLATFORM, type Prop, type StationPlan } from "./placement";
+import { canopyHeights, DRONE_HOVER, END_SIGN, END_SIGN_YAW, endSigns, GROUND_DROP, PAD_HEIGHT, PLATFORM, type Prop, type StationPlan } from "./placement";
 
 /**
  * Platform furniture, name boards, signature signs and solar panels, built into Kits.
@@ -216,5 +216,82 @@ export function solar(panels: Kit, p: StationPlan) {
       const y = roofHeightAt(yb, z) + 0.08;
       panels.group([0, y, z], [slope, 0, 0], () => panelCells(panels, 2.1, 1.25));
     }
+  }
+}
+
+/**
+ * SAHARA's helipad, past the platform's far end: a round deck on four legs (PAD_HEIGHT above
+ * the ground) with a yellow ring, a white H (its strokes run across the track so it reads
+ * upright from the camera side) and eight perimeter lights that glow at night.
+ */
+export function helipad(kit: Kit, p: StationPlan) {
+  if (!p.helipad) return;
+  const { along, u, radius: r } = p.helipad;
+  kit.at(p.s + along);
+  const ground = -GROUND_DROP;
+  // Deck surface baseline: the discs below are stacked up from here.
+  const y = ground + PAD_HEIGHT - 0.14;
+  // Legs run down into the ground (a slight slope never shows a gap) and the deck is a thick disc.
+  const legBottom = ground - 0.8;
+  const legTop = y - 0.26;
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) kit.box([sx * r * 0.62, (legBottom + legTop) / 2, -u + sz * r * 0.62], [0.35, legTop - legBottom, 0.35], "#6b7078");
+  }
+  kit.cyl([0, y - 0.06, -u], r, r, 0.4, 20, "#8d939b");
+  kit.cyl([0, y + 0.08, -u], r - 0.35, r - 0.35, 0.16, 20, "#e8b82c");
+  kit.cyl([0, y + 0.09, -u], r - 0.7, r - 0.7, 0.18, 20, "#8d939b");
+  const top = y + 0.19;
+  const white = "#f2efe6";
+  // The H catches the perimeter lights: a soft glow keeps it readable at night.
+  const lit = { glow: [0.4, 0.4, 0.36] as [number, number, number] };
+  for (const x of [-0.95, 0.95]) kit.box([x, top, -u], [0.4, 0.04, 2.8], white, lit);
+  kit.box([0, top, -u], [1.5, 0.04, 0.4], white, lit);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    kit.box([Math.cos(a) * (r - 0.17), y + 0.18, -u + Math.sin(a) * (r - 0.17)], [0.22, 0.12, 0.22], "#efe3bd", { glow: LAMP });
+  }
+}
+
+/** Nav-light tints (linear RGB, scaled by the palette's window glow): port red, starboard green, tail white. */
+const NAV_RED: [number, number, number] = [1, 0.1, 0.08];
+const NAV_GREEN: [number, number, number] = [0.1, 1, 0.25];
+const NAV_WHITE: [number, number, number] = [1, 0.95, 0.85];
+
+/**
+ * SAHARA's quadcopter, in an X frame about 2.4 units motor to motor, hovering over the helipad
+ * with its nose along the track. Built at its hover height; Stations.tsx bobs the whole mesh.
+ * One mesh: orange body, dark arms and motors, crossed rotor blades, skids, a gimbal camera
+ * under the nose and emissive nav lights (red port, green starboard, white at the tail).
+ */
+export function drone(kit: Kit, p: StationPlan) {
+  if (!p.helipad) return;
+  const { along, u } = p.helipad;
+  kit.at(p.s + along);
+  const y = -GROUND_DROP + DRONE_HOVER;
+  const dark = "#2d3a4a";
+  // Body: orange hull, a dark battery plate on top and a nose block.
+  kit.box([0, y, -u], [1.1, 0.34, 0.8], "#e8742a");
+  kit.box([-0.05, y + 0.22, -u], [0.8, 0.12, 0.56], dark);
+  kit.box([0.6, y - 0.02, -u], [0.3, 0.24, 0.5], "#d8dde3");
+  // Gimbal camera under the nose, with a faintly lit lens.
+  kit.blob([0.55, y - 0.3, -u], [0.17, 0.17, 0.17], dark, 5);
+  kit.box([0.72, y - 0.3, -u], [0.04, 0.1, 0.1], "#6fb7ff", { glow: [0.2, 0.5, 1] });
+  // Two crossed arms (the X), then a motor, a rotor and a nav light at each end.
+  for (const yaw of [Math.PI / 4, -Math.PI / 4]) kit.box([0, y + 0.02, -u], [2.5, 0.1, 0.16], dark, { rot: [0, yaw, 0] });
+  const reach = 0.85;
+  for (const [sx, sz] of [[1, -1], [1, 1], [-1, -1], [-1, 1]] as const) {
+    const cx = sx * reach;
+    const cz = -u + sz * reach;
+    kit.cyl([cx, y + 0.14, cz], 0.17, 0.15, 0.24, 8, "#1d2229");
+    // Rotor: two blades crossed, each pair turned a little so the four never line up.
+    const turn = sx * sz * 0.35;
+    for (const q of [0, Math.PI / 2]) kit.box([cx, y + 0.3, cz], [1.5, 0.02, 0.11], "#c9ced6", { rot: [0, turn + q, 0] });
+    const light = sx > 0 ? (sz < 0 ? NAV_RED : NAV_GREEN) : NAV_WHITE;
+    kit.box([cx, y + 0.31, cz], [0.14, 0.14, 0.14], "#f4f0e6", { glow: light });
+  }
+  // Landing skids on short struts.
+  for (const z of [-0.32, 0.32]) {
+    kit.box([0, y - 0.55, -u + z], [1.2, 0.05, 0.07], dark);
+    for (const x of [-0.4, 0.4]) kit.box([x, y - 0.35, -u + z], [0.05, 0.4, 0.05], dark);
   }
 }

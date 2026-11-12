@@ -69,7 +69,7 @@ export interface StationPlan {
     along: number;
     width: number;
     depth: number;
-    floors: 1 | 2;
+    floors: 1 | 2 | 3;
     /** Height of the walls above the platform top. */
     wallHeight: number;
     wall: string;
@@ -81,6 +81,8 @@ export interface StationPlan {
     ticket: number | null;
     chimney: number | null;
     tower: boolean;
+    /** Flat parapet roof of the Work Experience office, instead of the station's pitched roof. */
+    flatRoof: boolean;
   };
   canopy: { from: number; to: number; spacing: number; clock: number | null; roof: string };
   props: Prop[];
@@ -90,6 +92,8 @@ export interface StationPlan {
   panels: { along: number; u: number }[];
   /** Panels on the canopy roof (Solar only). */
   roofPanels: boolean;
+  /** SAHARA's round landing pad on the ground behind the platform (centre and radius), else null. */
+  helipad: { along: number; u: number; radius: number } | null;
 }
 
 /** Wall colours (sRGB): warm cream, terracotta, teal, sage, butter, brick. */
@@ -129,8 +133,23 @@ export function toWorld(i: number, along: number, lateral: number): [number, num
 const pick = <T,>(rng: () => number, list: T[]): T => list[Math.floor(rng() * list.length)];
 
 /** Station ids with a luggage cart or crates (the industrial feel), and the signature signs. */
-const CART: StationId[] = ["formai", "next"];
-const CRATES: StationId[] = ["mct", "formai", "quizzx"];
+const CART: StationId[] = ["solar", "next"];
+const CRATES: StationId[] = ["yieldguard", "sahara"];
+
+/**
+ * SAHARA's helipad: a round pad on the ground just past the platform's far end and well back
+ * from the track (u 18), where nothing hides it from the chase camera: the platform canopy, the
+ * end board and the station building (which stands behind the train's centre) all stand between
+ * the camera and anything nearer the platform or the track. It is beyond worldgen's guaranteed flat patch
+ * (+-24 along), but the railbed's flat ground and the patch's fade keep it level to within a
+ * few tenths, which the legs' deep footing hides. The deck stands PAD_HEIGHT above the ground:
+ * at ground level it vanished behind the station's roof ridge from the camera's angle.
+ */
+const HELIPAD = { along: 28, u: 18, radius: 3.4 } as const;
+/** Height of the pad's deck above the ground: raised on legs so it clears the roofline from the chase camera. */
+export const PAD_HEIGHT = 2.2;
+/** How far above the ground the drone hovers over the pad's centre (2.6 over the deck). */
+export const DRONE_HOVER = PAD_HEIGHT + 2.6;
 
 const cache = new Map<number, StationPlan>();
 
@@ -141,15 +160,21 @@ export function stationPlan(i: number): StationPlan {
   const id = STATIONS[i].id;
   const rng = mulberry32(7000 + i * 131);
   const main = id === "departure" || id === "terminus";
+  // Work Experience: an office block (more windows, flat roof) rather than a station house.
+  const office = id === "experience";
 
   // The canopy covers the middle of the platform. The camera looks down from the right, so a
   // roof hides what is under it: the building is offset so a good part of its facade (windows,
   // ticket window) stands past the canopy's end and stays in view.
-  const width = main ? 18 + Math.floor(rng() * 3) : 9.5 + 1.5 * Math.floor(rng() * 3);
-  const depth = main ? 6.4 : id === "solar" ? 4.4 : 4.6 + 0.4 * Math.floor(rng() * 2);
+  const width = main ? 18 + Math.floor(rng() * 3) : office ? 15 : 9.5 + 1.5 * Math.floor(rng() * 3);
+  const depth = main ? 6.4 : office ? 5.2 : id === "solar" ? 4.4 : 4.6 + 0.4 * Math.floor(rng() * 2);
   const length = main ? 22 : pick(rng, [12, 14, 16]);
   // Mostly ahead of the canopy: ahead of the train centre is where the camera and screen show it.
-  const dir = rng() < 0.7 ? 1 : -1;
+  // SAHARA's building always stands behind the train's centre, at the platform's near end: the
+  // helipad is ahead of it, and a building there would hide the pad (and the drone over it) from
+  // the chase camera.
+  const ahead = rng() < 0.7;
+  const dir = id === "sahara" ? -1 : ahead ? 1 : -1;
   let centre = main ? 2 : Math.floor(rng() * 4);
   // Main: centred in front of the porch tower (the camera looks over the train toward the
   // platform and the route map covers the left of the screen, so it stands a little ahead).
@@ -159,35 +184,41 @@ export function stationPlan(i: number): StationPlan {
     along -= Math.sign(along) * excess;
     centre -= Math.sign(along) * excess;
   }
+  // SAHARA: as far back as the platform allows (its facade ends at -14.2), so the pad stays
+  // clear of the roofline from the camera.
+  if (id === "sahara") along = -(14.2 - width / 2);
   const half = width / 2;
-  const doorAt = main ? along : along + (rng() - 0.5) * width * 0.3;
+  const doorAt = main || office ? along : along + (rng() - 0.5) * width * 0.3;
   const from = Math.max(-19, centre - length / 2);
   const to = Math.min(19, centre + length / 2);
 
-  // Windows every 2.9 units, skipping the door; the ticket window is the one nearest to it.
+  // Windows every 2.9 units (2.3 on the office), skipping the door; the ticket window is the
+  // one nearest to it (the office has no ticket window).
   const windows: number[] = [];
-  for (let a = along - half + 1.6; a <= along + half - 1.6; a += 2.9) {
+  const pitch = office ? 2.3 : 2.9;
+  for (let a = along - half + 1.6; a <= along + half - 1.6; a += pitch) {
     if (Math.abs(a - doorAt) > 1.7) windows.push(a);
   }
   const byDoor = [...windows].sort((p, q) => Math.abs(p - doorAt) - Math.abs(q - doorAt));
-  const ticket = main || byDoor.length === 0 ? null : byDoor[0];
-  const chimney = main || rng() < 0.3 ? null : along + (doorAt < along ? 1 : -1) * half * 0.55;
+  const ticket = main || office || byDoor.length === 0 ? null : byDoor[0];
+  const chimney = main || office || rng() < 0.3 ? null : along + (doorAt < along ? 1 : -1) * half * 0.55;
 
-  const trim = main ? TRIMS[1] : pick(rng, TRIMS);
+  const trim = main || office ? TRIMS[1] : pick(rng, TRIMS);
   const building: StationPlan["building"] = {
     along,
     width,
     depth,
-    floors: main ? 2 : 1,
-    wallHeight: main ? 6.4 : 3.7,
-    wall: main ? WALLS[(i % 2) * 5] : WALLS[(i + Math.floor(rng() * 2)) % WALLS.length],
+    floors: main ? 2 : office ? 3 : 1,
+    wallHeight: main ? 6.4 : office ? 9.6 : 3.7,
+    wall: main ? WALLS[(i % 2) * 5] : office ? "#aab4be" : WALLS[(i + Math.floor(rng() * 2)) % WALLS.length],
     trim,
-    roof: main ? ROOFS[0] : ROOFS[(i + Math.floor(rng() * 3)) % ROOFS.length],
+    roof: main ? ROOFS[0] : office ? "#4a5360" : ROOFS[(i + Math.floor(rng() * 3)) % ROOFS.length],
     door: doorAt,
     windows: windows.filter((w) => w !== ticket),
     ticket,
     chimney,
     tower: main,
+    flatRoof: office,
   };
 
   const props: Prop[] = [];
@@ -240,6 +271,7 @@ export function stationPlan(i: number): StationPlan {
     fence,
     panels,
     roofPanels: id === "solar",
+    helipad: id === "sahara" ? { ...HELIPAD } : null,
   };
   cache.set(i, plan);
   return plan;

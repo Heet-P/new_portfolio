@@ -65,6 +65,19 @@ describe("generateWorld", () => {
     }
   });
 
+  it("lays out eight station platforms", () => {
+    expect(world.stationS).toHaveLength(8);
+  });
+
+  it("puts the steel bridge between Vaani and YieldGuard, and a second tunnel between SAHARA and Work Experience", () => {
+    const steel = world.bridges.find((b) => b.kind === "steel")!;
+    expect(steel.s0).toBeGreaterThan(world.stationS[1]);
+    expect(steel.s1).toBeLessThan(world.stationS[2]);
+    const late = world.tunnels.find((t) => t.s0 > world.stationS[4]);
+    expect(late).toBeDefined();
+    expect(late!.s1).toBeLessThan(world.stationS[5]);
+  });
+
   it("runs the steel bridge on a straight piece of track", () => {
     const steel = world.bridges.find((b) => b.kind === "steel");
     expect(steel).toBeDefined();

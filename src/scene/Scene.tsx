@@ -126,7 +126,7 @@ export default function Scene() {
           <Track world={getWorld()} shadows={shadows} />
           <Catenary world={getWorld()} shadows={shadows} />
           {/* The stations' lettering has its own Suspense inside, so it never holds up the meshes. */}
-          <Stations shadows={shadows} post={quality.post} />
+          <Stations shadows={shadows} post={quality.post} reducedMotion={reducedMotion} />
           <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
         </Outside>
         {/* The cabin loads with the train, so a deep link opens already seated at the display. */}

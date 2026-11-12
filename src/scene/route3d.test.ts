@@ -4,8 +4,9 @@ import { STATIONS } from "@/content/route";
 import { nearestOnTrack, ROUTE, trainU, TRACK } from "./route3d";
 
 describe("ROUTE", () => {
-  it("has one stationU per station, strictly increasing inside (0, 1)", () => {
-    expect(ROUTE.stationU).toHaveLength(STATIONS.length);
+  it("has one stationU per station (eight stops), strictly increasing inside (0, 1)", () => {
+    expect(STATIONS).toHaveLength(8);
+    expect(ROUTE.stationU).toHaveLength(8);
     let last = 0;
     for (const u of ROUTE.stationU) {
       expect(u).toBeGreaterThan(last);

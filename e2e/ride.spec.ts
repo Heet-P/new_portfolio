@@ -12,7 +12,7 @@ test("ride mode hides Express and shows the route map", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Route map" })).toBeVisible();
   await expect(page.locator("#express")).toBeHidden();
-  await expect(page.getByRole("navigation", { name: "Route map" }).getByRole("button")).toHaveCount(9);
+  await expect(page.getByRole("navigation", { name: "Route map" }).getByRole("button")).toHaveCount(8);
 });
 
 test("deep link opens the ride at that station", async ({ page }) => {
@@ -24,6 +24,13 @@ test("deep link opens the ride at that station", async ({ page }) => {
 // Review Focus 1: unknown hash -> Departure, and the URL is corrected.
 test("unknown hash opens at Departure and is corrected", async ({ page }) => {
   await page.goto("/#nope");
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "Departure");
+  await expect(page).toHaveURL(/#departure$/);
+});
+
+// Task 10d: the retired internship hash (#mct) is no longer a station, so an old link opens at Departure.
+test("the old #mct link falls back to Departure", async ({ page }) => {
+  await page.goto("/#mct");
   await expect(currentStop(page)).toHaveAttribute("aria-label", "Departure");
   await expect(page).toHaveURL(/#departure$/);
 });
@@ -45,20 +52,20 @@ test("rapid route map clicks end at the last clicked station", async ({ page }) 
   await page.goto("/");
   const map = page.getByRole("navigation", { name: "Route map" });
   await map.getByRole("button", { name: "Terminus" }).click();
-  await map.getByRole("button", { name: "QuizzX" }).click();
-  await expect(currentStop(page)).toHaveAttribute("aria-label", "QuizzX", { timeout: 5000 });
-  await expect(page).toHaveURL(/#quizzx$/);
+  await map.getByRole("button", { name: "SAHARA" }).click();
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "SAHARA", { timeout: 5000 });
+  await expect(page).toHaveURL(/#sahara$/);
   // Arrived and stays there (the earlier Terminus target must not resume).
   await page.waitForTimeout(500);
-  await expect(currentStop(page)).toHaveAttribute("aria-label", "QuizzX");
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "SAHARA");
 });
 
 test("switching to Express lands on the same station's section", async ({ page }) => {
-  await page.goto("/#formai");
-  await expect(currentStop(page)).toHaveAttribute("aria-label", "FormAI");
+  await page.goto("/#sahara");
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "SAHARA");
   await page.getByRole("button", { name: /^Express/ }).click();
   await expect(page.locator("#express")).toBeVisible();
-  await expect(page.locator("#formai")).toBeInViewport();
+  await expect(page.locator("#sahara")).toBeInViewport();
 });
 
 // Task 7: the 3D scene exists only in ride mode (lazy chunk), and fades in once drawn.
@@ -81,6 +88,18 @@ test("deep link settles in the cabin in front of the station's display", async (
   for (const link of await display.locator("a[href^='http']").all()) {
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(link).toHaveAttribute("rel", /noopener/);
+  }
+});
+
+// Task 10d: SAHARA's display carries GitHub plus both demo videos, all opening in a new tab.
+test("/#sahara shows the SAHARA display with GitHub and two demos", async ({ page }) => {
+  await page.goto("/#sahara");
+  const display = page.getByRole("region", { name: "SAHARA" });
+  await expect(display).toBeVisible({ timeout: 20000 });
+  await expect(display.getByRole("heading", { name: "SAHARA" })).toBeVisible();
+  for (const name of ["GitHub", "Watch demo", "Watch demo 2"]) {
+    const link = display.getByRole("link", { name, exact: true });
+    await expect(link).toHaveAttribute("target", "_blank");
   }
 });
 

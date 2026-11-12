@@ -185,11 +185,56 @@ function door(kit: Kit, x: number, zFace: number, trim: string, colour: string) 
 }
 
 /**
+ * Work Experience: a three-storey office block instead of a station house. Concrete-grey
+ * walls, a ribbon of framed windows on every floor (all lit at night), a stone plinth and
+ * floor bands, a glazed entrance under the same door frame as the stations, and a flat roof
+ * with a parapet, a plant room, vents and an antenna.
+ */
+function office(kit: Kit, p: StationPlan) {
+  const b = p.building;
+  kit.at(p.s + b.along);
+  const W = b.width;
+  const D = b.depth;
+  const zF = -BUILD_FRONT;
+  const zm = zF - D / 2;
+  const yT = H + b.wallHeight;
+  const floorH = b.wallHeight / b.floors;
+
+  // Block and plinth, floor bands between the storeys, parapet with a darker roof slab inside it.
+  kit.box([0, (yT - 0.4) / 2, zm], [W, yT + 0.4, D], b.wall);
+  kit.box([0, (H + 0.6 - 0.4) / 2, zm], [W + 0.16, H + 1, D + 0.16], STONE);
+  for (let f = 1; f < b.floors; f++) kit.box([0, H + f * floorH, zm], [W + 0.12, 0.24, D + 0.12], b.trim);
+  kit.box([0, yT + 0.2, zm], [W + 0.3, 0.4, D + 0.3], b.trim);
+  kit.box([0, yT + 0.34, zm], [W - 0.2, 0.2, D - 0.2], b.roof);
+  // Rooftop: plant room, two vents and a thin antenna mast with a red beacon.
+  kit.box([W * 0.22, yT + 1.1, zm - 0.4], [3.4, 1.4, 2.2], "#6a727c");
+  kit.box([W * 0.22, yT + 1.85, zm - 0.4], [3.6, 0.14, 2.4], b.trim);
+  for (const x of [-W * 0.28, -W * 0.14]) kit.cyl([x, yT + 0.85, zm + 0.5], 0.4, 0.4, 0.9, 8, "#8d949c");
+  kit.cyl([-W * 0.38, yT + 2.1, zm], 0.04, 0.04, 3.4, 5, "#2d3a4a");
+  kit.box([-W * 0.38, yT + 3.85, zm], [0.14, 0.14, 0.14], "#d8473a", { glow: [1, 0.15, 0.1] });
+
+  // Entrance, then a ribbon of windows on every floor (the ground floor skips the door).
+  door(kit, b.door - b.along, zF, b.trim, "#2d3b57");
+  for (let f = 0; f < b.floors; f++) {
+    for (const a of b.windows) window(kit, a - b.along, H + 1.7 + f * floorH, 1.3, 1.6, zF, b.trim);
+  }
+  // Upper floors have a window above the entrance too.
+  for (let f = 1; f < b.floors; f++) window(kit, b.door - b.along, H + 1.7 + f * floorH, 1.3, 1.6, zF, b.trim);
+  // One window per floor in each side wall.
+  for (const s of [-1, 1]) {
+    kit.group([(s * W) / 2, 0, zm], [0, (s * Math.PI) / 2, 0], () => {
+      for (let f = 0; f < b.floors; f++) window(kit, 0, H + 1.7 + f * floorH, 1.1, 1.5, 0, b.trim);
+    });
+  }
+}
+
+/**
  * The station building: stone plinth, walls with gable ends, corner quoins, a cornice,
  * door, framed windows (one is the ticket window), a pitched roof with eaves and ridge cap,
  * and a chimney. The main station is two storeys with a clock tower.
  */
 export function building(kit: Kit, p: StationPlan) {
+  if (p.building.flatRoof) return office(kit, p);
   const b = p.building;
   kit.at(p.s + b.along);
   const W = b.width;
@@ -226,7 +271,7 @@ export function building(kit: Kit, p: StationPlan) {
   kit.box([0, yT - oh * slope - t / 2 - 0.05, zF - oh], [W + 1.1, 0.2, 0.06], b.trim);
 
   const doorX = b.door - b.along;
-  const doorColour = p.id === "mct" || p.id === "next" ? "#7a3b2e" : p.kind === "main" ? "#2f6f6c" : "#2d3b57";
+  const doorColour = p.id === "sahara" || p.id === "next" ? "#7a3b2e" : p.kind === "main" ? "#2f6f6c" : "#2d3b57";
   door(kit, doorX, zF, b.trim, doorColour);
   const winY = H + (p.kind === "main" ? 1.9 : 1.9);
   for (const a of b.windows) window(kit, a - b.along, winY, 1.2, 1.35, zF, b.trim);

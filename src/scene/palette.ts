@@ -43,9 +43,10 @@ function hex(h: string): RGB {
 }
 
 /**
- * The career as one evening: golden hour at Departure, warm late afternoon at the
- * internships, sunset into dusk for the big projects, twilight, then night (moonlight,
- * glowing windows) for "what's next" and the Terminus.
+ * The career as one evening across the eight stops: golden hour at Departure, warm late
+ * afternoon at Vaani, sunset at YieldGuard, dusk at Solar, twilight at SAHARA, deep
+ * twilight at Work Experience, then night (moonlight, glowing windows) for "what's next"
+ * and the Terminus.
  */
 export const STATION_PALETTES: Record<StationId, Palette> = {
   // Golden hour: blue upper sky, warm peach/gold horizon, long low warm sun.
@@ -56,12 +57,6 @@ export const STATION_PALETTES: Record<StationId, Palette> = {
     windowGlow: 0.12, stars: 0,
   },
   // Warm late afternoon.
-  mct: {
-    skyTop: hex("#5682bb"), skyHorizon: hex("#f5bd84"), sun: hex("#ffc488"), sunIntensity: 3.0, sunElevation: 13,
-    fog: hex("#ebc49a"), fogDensity: 0.0017, ambient: hex("#9eabc8"),
-    ground: hex("#fff6ea"), foliage: hex("#fbf7ea"), rock: hex("#fff4e6"), water: hex("#3ca2a3"),
-    windowGlow: 0.2, stars: 0,
-  },
   vaani: {
     skyTop: hex("#5079b4"), skyHorizon: hex("#f6ae72"), sun: hex("#ffb06e"), sunIntensity: 2.7, sunElevation: 10,
     fog: hex("#e8b48a"), fogDensity: 0.0018, ambient: hex("#97a2c2"),
@@ -76,20 +71,21 @@ export const STATION_PALETTES: Record<StationId, Palette> = {
     windowGlow: 0.65, stars: 0.05,
   },
   // Dusk: pink -> purple, the last of the sun.
-  formai: {
+  solar: {
     skyTop: hex("#36407f"), skyHorizon: hex("#d46d7c"), sun: hex("#f27a62"), sunIntensity: 1.4, sunElevation: 2.5,
     fog: hex("#8a6688"), fogDensity: 0.0022, ambient: hex("#666a9c"),
     ground: hex("#dccbd6"), foliage: hex("#cfc2cf"), rock: hex("#dccad4"), water: hex("#2c6288"),
     windowGlow: 1.05, stars: 0.18,
   },
   // Twilight: deep blue, the moon takes over as the key light.
-  quizzx: {
+  sahara: {
     skyTop: hex("#1c275a"), skyHorizon: hex("#565a98"), sun: hex("#8c9ad6"), sunIntensity: 1.35, sunElevation: 18,
     fog: hex("#3a4070"), fogDensity: 0.0024, ambient: hex("#5a64a2"),
     ground: hex("#d2d4e6"), foliage: hex("#c4cade"), rock: hex("#d4d6e8"), water: hex("#23497e"),
     windowGlow: 1.5, stars: 0.45,
   },
-  solar: {
+  // Deep twilight: nearly dark, windows glowing hard.
+  experience: {
     skyTop: hex("#121a46"), skyHorizon: hex("#373f7e"), sun: hex("#9aa8e0"), sunIntensity: 1.3, sunElevation: 24,
     fog: hex("#252b58"), fogDensity: 0.0025, ambient: hex("#4c5698"),
     ground: hex("#cacde4"), foliage: hex("#bcc2da"), rock: hex("#ccd0e6"), water: hex("#1c3c70"),

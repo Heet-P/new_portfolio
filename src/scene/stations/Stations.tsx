@@ -91,17 +91,39 @@ function SignText({
   );
 }
 
+/** Station index of SAHARA, where the drone hovers (drawn only while the train is near it). */
+const SAHARA = STATIONS.findIndex((s) => s.id === "sahara");
+/** The drone's hover bob: peak height (units) and angular speed (radians/s). */
+const DRONE_BOB = { amplitude: 0.22, speed: 1.7 } as const;
+
+/**
+ * SAHARA's quadcopter: one mesh sharing the station material (so its nav lights follow the
+ * palette's window glow). Bobs gently on Y; under reduced motion it hangs still. Hidden
+ * while the train is more than ~1.5 stops away, which saves its draw call for most of the ride.
+ */
+function Drone({ geometry, material, shadows, reducedMotion }: { geometry: THREE.BufferGeometry; material: THREE.Material; shadows: boolean; reducedMotion: boolean }) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    m.visible = Math.abs(SAHARA - travel.position) < 1.5;
+    m.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * DRONE_BOB.speed) * DRONE_BOB.amplitude;
+  });
+  return <mesh ref={ref} geometry={geometry} material={material} castShadow={shadows} />;
+}
+
 /**
  * Stations along the route: a platform with coping, safety line and tactile strip at every
  * stop, a canopy on columns, a station building with door, framed windows and a pitched roof
  * (a two-storey one with a clock tower at Departure and Terminus), furniture, fences, name
  * boards at both platform ends and on the canopy fascia, and the solar field at Solar.
- * Procedural, flat-shaded like the world; two draw calls for all geometry.
+ * Procedural, flat-shaded like the world; two draw calls for all geometry, plus SAHARA's
+ * hovering drone (a helipad is part of the main geometry).
  * The lettering (drei Text) fetches its font and suspends until it is parsed; it sits in its
  * own Suspense so that a slow or failed font load only ever costs the names, never the
  * stations themselves.
  */
-export function Stations({ shadows, post }: { shadows: boolean; post: boolean }) {
+export function Stations({ shadows, post, reducedMotion }: { shadows: boolean; post: boolean; reducedMotion: boolean }) {
   const geo = useMemo(() => buildStations(), []);
   const material = useMemo(() => stationMaterial(), []);
   useFrame(() => retint(material, post));
@@ -109,6 +131,7 @@ export function Stations({ shadows, post }: { shadows: boolean; post: boolean })
     <group>
       <mesh geometry={geo.kit} material={material} castShadow={shadows} receiveShadow={shadows} />
       <mesh geometry={geo.panels} material={MATS.panel} castShadow={shadows} receiveShadow={shadows} />
+      {geo.drone && <Drone geometry={geo.drone} material={material} shadows={shadows} reducedMotion={reducedMotion} />}
       <Suspense fallback={null}>
         <StationNames />
       </Suspense>

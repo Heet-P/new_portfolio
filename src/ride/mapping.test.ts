@@ -8,7 +8,7 @@ import {
   stationToProgress,
 } from "./mapping";
 
-const N = 9;
+const N = 8;
 const ids = STATIONS.map((s) => s.id);
 
 describe("stationToProgress", () => {
@@ -72,8 +72,9 @@ describe("progressToStation", () => {
 
 describe("parseHash", () => {
   it("finds a station by exact id", () => {
-    expect(parseHash("#vaani", ids)).toBe(2);
-    expect(parseHash("#terminus", ids)).toBe(8);
+    expect(parseHash("#vaani", ids)).toBe(1);
+    expect(parseHash("#sahara", ids)).toBe(4);
+    expect(parseHash("#terminus", ids)).toBe(7);
   });
 
   it("falls back to 0 for unknown, wrong-case or empty hashes", () => {
@@ -82,6 +83,10 @@ describe("parseHash", () => {
     expect(parseHash("", ids)).toBe(0);
     expect(parseHash("#", ids)).toBe(0);
   });
+
+  it("sends the retired station hashes (old links) to Departure", () => {
+    for (const old of ["#mct", "#formai", "#quizzx"]) expect(parseHash(old, ids), old).toBe(0);
+  });
 });
 
 describe("nearestStation", () => {
@@ -89,13 +94,13 @@ describe("nearestStation", () => {
     expect(nearestStation(0, N)).toBe(0);
     expect(nearestStation(stationToProgress(2, N), N)).toBe(2);
     // Just past the midpoint between stations 2 and 3: station 3 is closer.
-    expect(nearestStation((2.51 / 8), N)).toBe(3);
-    expect(nearestStation((2.49 / 8), N)).toBe(2);
-    expect(nearestStation(1, N)).toBe(8);
+    expect(nearestStation((2.51 / (N - 1)), N)).toBe(3);
+    expect(nearestStation((2.49 / (N - 1)), N)).toBe(2);
+    expect(nearestStation(1, N)).toBe(7);
   });
 
   it("clamps out-of-range progress", () => {
     expect(nearestStation(-1, N)).toBe(0);
-    expect(nearestStation(2, N)).toBe(8);
+    expect(nearestStation(2, N)).toBe(7);
   });
 });

@@ -53,9 +53,25 @@ describe("ExpressView", () => {
 
   it("ships final stat values in static HTML (count-up only enhances after hydration)", () => {
     const html = renderToStaticMarkup(<ExpressView />);
-    for (const value of ["383 ms", "0.923", "2nd / 100+", "~25%", "200+"]) {
+    for (const value of ["383 ms", "0.923", "0.84", "~25%", "200+"]) {
       expect(html).toContain(value);
     }
+  });
+
+  it("lists the projects first and Work Experience after them, without naming the company", () => {
+    const { container } = render(<ExpressView />);
+    const ids = Array.from(container.querySelectorAll("section[id]")).map((s) => s.id);
+    expect(ids.indexOf("experience")).toBeGreaterThan(ids.indexOf("sahara"));
+    expect(container.querySelector("#experience h2")?.textContent).toBe("Work Experience");
+    expect(container.innerHTML).not.toMatch(/MCT/i);
+  });
+
+  it("gives SAHARA its GitHub and both demo videos", () => {
+    const { container } = render(<ExpressView />);
+    const hrefs = Array.from(container.querySelectorAll("#sahara a")).map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("https://github.com/Heet-P/SAHARA_MetaAI");
+    expect(hrefs).toContain("https://www.youtube.com/watch?v=foh6WNTnbp0");
+    expect(hrefs).toContain("https://youtu.be/sk_WdN6rbXo");
   });
 
   it("marks the current and upcoming stops distinctly", () => {

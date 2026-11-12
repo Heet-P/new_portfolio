@@ -9,7 +9,7 @@ import type { Waterfall } from "./worldgen";
 
 /**
  * Rain strength 0..1 from the palette's window glow (our "how dark is it" dial): dry from
- * golden hour through dusk (glow <= 1.05 at FormAI), starting in the twilight, full by
+ * golden hour through dusk (glow <= 1.05 at Solar), starting in the twilight, full by
  * "Next stop" (2.2) and the Terminus.
  */
 export const RAIN_GLOW = { start: 1.25, full: 2.15 } as const;

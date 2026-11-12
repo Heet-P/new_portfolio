@@ -23,6 +23,19 @@ describe("STATION_PALETTES", () => {
     expect(STATION_PALETTES.departure.windowGlow).toBeLessThan(STATION_PALETTES.terminus.windowGlow);
   });
 
+  it("only ever gets darker down the route: window glow never drops, stars never fade", () => {
+    for (let i = 1; i < ids.length; i++) {
+      expect(STATION_PALETTES[ids[i]].windowGlow, ids[i]).toBeGreaterThanOrEqual(STATION_PALETTES[ids[i - 1]].windowGlow);
+      expect(STATION_PALETTES[ids[i]].stars, ids[i]).toBeGreaterThanOrEqual(STATION_PALETTES[ids[i - 1]].stars);
+    }
+  });
+
+  it("spreads golden hour to night over the eight stops: night is reached by the last two", () => {
+    expect(STATION_PALETTES.departure.windowGlow).toBeLessThan(0.3);
+    expect(STATION_PALETTES.next.windowGlow).toBeGreaterThan(2);
+    expect(STATION_PALETTES.terminus.stars).toBe(1);
+  });
+
   it("gets darker: terminus sky top is darker than departure's", () => {
     const lum = ([r, g, b]: number[]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
     expect(lum(STATION_PALETTES.terminus.skyTop)).toBeLessThan(lum(STATION_PALETTES.departure.skyTop) / 4);
