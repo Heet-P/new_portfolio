@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { cabinFrame, emitCabinFrame } from "@/ride/cabinStore";
@@ -123,7 +123,7 @@ const fit: PanelFit = { cx: 0, cy: 0, w: 0, h: 0, mPerPx: 0 };
  * lands on screen (cabinFrame.panel) and notifies the DOM display (emitCabinFrame).
  * Draw calls while inside: 11 (model) + 1 (window glass) + 2 (panel) + 2 (scenery) = 16.
  */
-export function Cabin() {
+export function Cabin({ post }: { post: boolean }) {
   const { scene } = useGLTF(CABIN_URL);
   const gl = useThree((s) => s.gl);
   const root = useRef<THREE.Group>(null);
@@ -148,6 +148,18 @@ export function Cabin() {
     settledQ.setFromRotationMatrix(settledM);
     return { pos: POSES.settled.pos.clone(), q: settledQ.clone() };
   }, []);
+
+  // Free the fitted panel's GPU resources when the scene goes away (the model and the scenery
+  // are shared caches and stay).
+  useEffect(
+    () => () => {
+      screenMesh.current?.geometry.dispose();
+      bodyMesh.current?.geometry.dispose();
+      panelMats.screen.dispose();
+      panelMats.body.dispose();
+    },
+    [panelMats],
+  );
 
   // Cabin loaded: from now on the camera may go inside.
   useLayoutEffect(() => {
@@ -180,8 +192,8 @@ export function Cabin() {
       panel.current?.position.set(fit.cx, fit.cy, -DISPLAY_DISTANCE);
     }
 
-    // Draw the cabin only while the camera is in it.
-    r.visible = cabinFrame.inside;
+    // Draw the cabin only while the camera is in it (or during the load-time warm-up).
+    r.visible = cabinFrame.inside || cabinFrame.warm > 0;
     if (r.visible) {
       lightCabin(looks, atmosphere.palette.windowGlow);
       // Scenery slides back as the train moves forward (+x), wrapping every tile.
@@ -220,13 +232,27 @@ export function Cabin() {
     emitCabinFrame();
   });
 
-  // Compile the cabin's shaders on the first frame, while it is still hidden (compile() covers
-  // invisible objects too), so the first trip through the window never stalls on a compile.
-  const compiled = useRef(false);
+  // Shader warm-up, once, on the first frame after load (the scene is still fading in).
+  // Every page load starts parked at a station, i.e. inside the cabin, so without it the whole
+  // outside world would compile on the first departure (and the cabin on a later arrival).
+  // 1. compile() every material in the scene, hidden ones included. A program's key includes
+  //    the tone mapping and output colour space, which differ when drawing into a render
+  //    target: with post-processing (desktop tier) the scene is drawn into the composer's
+  //    target, so compile with a render target bound to get those exact programs.
+  // 2. Then draw both the cabin and the outside world for two frames (cabinFrame.warm), which
+  //    also builds what compile() cannot: the shadow-map depth programs of the casters.
+  const warmed = useRef(false);
   useFrame(({ camera, scene: world }) => {
-    if (compiled.current || !root.current) return;
-    compiled.current = true;
-    gl.compile(root.current, camera, world);
+    if (cabinFrame.warm > 0) cabinFrame.warm--;
+    if (warmed.current) return;
+    warmed.current = true;
+    const prev = gl.getRenderTarget();
+    const target = post ? new THREE.WebGLRenderTarget(1, 1) : null;
+    gl.setRenderTarget(target);
+    gl.compile(world, camera);
+    gl.setRenderTarget(prev);
+    target?.dispose();
+    cabinFrame.warm = 2;
   });
 
   return (

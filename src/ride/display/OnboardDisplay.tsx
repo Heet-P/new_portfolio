@@ -34,29 +34,31 @@ const Out = () => (
   </span>
 );
 
-/** Projects and internships: the shared station content plus See live / GitHub buttons. */
+/**
+ * Projects and internships: the shared station content plus the primary actions, each only if
+ * such a link exists: "See live", "Watch demo" (one per demo: "Watch demo 2", ...), "GitHub".
+ * Their text comes from the kind of link, not its label; the first one is the filled button.
+ */
 function ProjectScreen({ station }: { station: Station }) {
-  const { live, repo, rest } = splitLinks(station.links);
-  const hasLinks = live || repo || rest.length > 0;
+  const { live, demos, repo, rest } = splitLinks(station.links);
+  const primary = [
+    ...(live ? [{ link: live, text: "See live" }] : []),
+    ...demos.map((link, i) => ({ link, text: i === 0 ? "Watch demo" : `Watch demo ${i + 1}` })),
+    ...(repo ? [{ link: repo, text: "GitHub" }] : []),
+  ];
   return (
     <>
       <div className={styles.columns}>
         <StationContent station={station} showLinks={false} />
       </div>
-      {hasLinks && (
+      {primary.length + rest.length > 0 && (
         <Actions>
-          {live && (
-            <Action href={live.href} primary>
-              See live
+          {primary.map(({ link, text }, i) => (
+            <Action key={link.href} href={link.href} primary={i === 0}>
+              {text}
               <Out />
             </Action>
-          )}
-          {repo && (
-            <Action href={repo.href} primary={!live}>
-              GitHub
-              <Out />
-            </Action>
-          )}
+          ))}
           {rest.map((l) => (
             <Action key={l.href} href={l.href}>
               {l.label}
@@ -240,17 +242,28 @@ export function OnboardDisplay() {
       t.y = r.top + s.offsetTop;
       t.w = s.offsetWidth;
       t.h = s.offsetHeight;
-      cabinFrame.targetVersion++;
     };
     measure();
-    window.addEventListener("resize", measure);
+    // The layer is viewport-sized (position: fixed), so this also covers window resizes.
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     ro?.observe(l);
-    return () => {
-      window.removeEventListener("resize", measure);
-      ro?.disconnect();
-    };
+    return () => ro?.disconnect();
   }, []);
+
+  // Leaving a stop while a display control has keyboard focus: hand focus to the route map's
+  // button for this station before the display empties and goes inert, so it is not dropped
+  // on <body>. The store notifies synchronously, before React re-renders the content away.
+  useEffect(
+    () =>
+      useCabin.subscribe((s, prev) => {
+        if (!prev.shown || s.shown) return;
+        if (!layer.current?.contains(document.activeElement)) return;
+        const map = document.querySelector('nav[aria-label="Route map"]');
+        const here = map?.querySelector<HTMLElement>('[aria-current="step"]') ?? map?.querySelector<HTMLElement>("button");
+        here?.focus({ preventScroll: true });
+      }),
+    [],
+  );
 
   // Per frame: fade with the blend and ride on the 3D panel until the camera settles.
   useEffect(() => {

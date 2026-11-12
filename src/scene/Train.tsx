@@ -290,7 +290,7 @@ export function Train({
   useFrame(({ clock }) => {
     // Inside the cabin the exterior train is out of sight: skip drawing it (its lights stay on,
     // so no material has to recompile for a different light count).
-    if (body.current) body.current.visible = !cabinFrame.inside;
+    if (body.current) body.current.visible = !cabinFrame.inside || cabinFrame.warm > 0;
     // Amount follows travel speed, so parked = perfectly still. Reduced motion: always still.
     const amount = reducedMotion ? 0 : travel.speed;
     const w = clock.elapsedTime * Math.PI * 2 * TRAIN_PARAMS.swayHz;

@@ -58,7 +58,7 @@ function CabinDriver() {
 function Outside({ children }: { children: ReactNode }) {
   const ref = useRef<THREE.Group>(null);
   useFrame(() => {
-    if (ref.current) ref.current.visible = !cabinFrame.inside;
+    if (ref.current) ref.current.visible = !cabinFrame.inside || cabinFrame.warm > 0;
   });
   return <group ref={ref}>{children}</group>;
 }
@@ -132,7 +132,7 @@ export default function Scene() {
         {/* The cabin loads with the train, so a deep link opens already seated at the display. */}
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
-          <Cabin />
+          <Cabin post={quality.post} />
           <FirstFrame onReady={() => setReady(true)} />
         </Suspense>
         {quality.post && (

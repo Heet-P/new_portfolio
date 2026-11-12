@@ -32,12 +32,16 @@ export const cabinFrame = {
   /** Where the 3D display panel's screen is on screen this frame (written by the Cabin). */
   panel: { x: 0, y: 0, w: 0, h: 0 } as ScreenRect,
   /**
-   * The display's laid-out rect (written by the DOM display on resize). The 3D panel is
-   * sized so that, with the camera settled, its screen covers exactly this rect.
+   * The display's laid-out rect (written by the DOM display whenever it resizes). The 3D panel
+   * is sized so that, with the camera settled, its screen covers exactly this rect.
    */
   target: { x: 0, y: 0, w: 0, h: 0 } as ScreenRect,
-  /** Bumped whenever `target` changes, so the scene refits the panel only then. */
-  targetVersion: 0,
+  /**
+   * Frames left in which the cabin AND the outside world both draw, whatever the camera does:
+   * a shader warm-up right after load (see Cabin), so neither the first trip into the cabin
+   * nor the first trip out of it stalls on compiling programs.
+   */
+  warm: 0,
 };
 
 /** The spring behind `blend` (value + velocity), integrated by stepCabin. */
@@ -113,7 +117,7 @@ export function emitCabinFrame(): void {
 
 /** Back to "outside, nothing loaded" (scene unmount, tests). */
 export function resetCabin(): void {
-  Object.assign(cabinFrame, { blend: 0, ready: false, started: false, inside: false });
+  Object.assign(cabinFrame, { blend: 0, ready: false, started: false, inside: false, warm: 0 });
   spring.value = 0;
   spring.velocity = 0;
   useCabin.setState({ shown: false, stationIndex: 0 });
