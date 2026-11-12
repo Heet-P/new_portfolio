@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import { detectWebGL, saveMode } from "./mode";
+import { useSyncExternalStore } from "react";
+import { saveMode } from "./mode";
+import { webglSupported } from "./webgl";
 import { useRide } from "./rideStore";
 import styles from "./ModeToggle.module.css";
 
@@ -11,19 +12,16 @@ const noopSubscribe = () => () => {};
 /**
  * Always-visible switch between the ride and the plain Express page.
  * The label names the destination ("Express" while riding, "Ride the train" while on Express);
- * aria-pressed reports whether Express is the active mode.
+ * It is a plain action button (no aria-pressed: a pressed state that flips along with a destination
+ * label would be announced backwards); aria-label starts with the visible text and spells out the action.
  */
 export function ModeToggle() {
   const mode = useRide((s) => s.mode);
   const setMode = useRide((s) => s.setMode);
   // WebGL support never changes, so there is nothing to subscribe to. The server snapshot is false, so the
   // static HTML has no toggle that could flash and vanish on devices without WebGL; the client snapshot
-  // is probed once per mount (creating a GL context is not free) and swapped in after hydration.
-  const [probe] = useState(() => {
-    let cached: boolean | undefined;
-    return () => (cached ??= detectWebGL());
-  });
-  const canRide = useSyncExternalStore(noopSubscribe, probe, () => false);
+  // is read from the shared one-time probe and swapped in after hydration.
+  const canRide = useSyncExternalStore(noopSubscribe, webglSupported, () => false);
 
   if (!canRide) return null;
 
@@ -34,7 +32,7 @@ export function ModeToggle() {
     <button
       type="button"
       className={styles.toggle}
-      aria-pressed={express}
+      aria-label={express ? "Ride the train: switch to the 3D train ride" : "Express: switch to the plain Express page"}
       onClick={() => {
         setMode(next);
         saveMode(next);

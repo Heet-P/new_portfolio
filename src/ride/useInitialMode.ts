@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { chooseInitialMode, detectWebGL, readSavedMode } from "./mode";
+import { chooseInitialMode, readSavedMode } from "./mode";
+import { webglSupported } from "./webgl";
 import { useRide } from "./rideStore";
 
 /**
@@ -13,7 +14,7 @@ export function useInitialMode(): void {
   useEffect(() => {
     const mode = chooseInitialMode({
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-      webgl: detectWebGL(),
+      webgl: webglSupported(),
       saved: readSavedMode(),
     });
     useRide.getState().setMode(mode);

@@ -18,7 +18,7 @@ test("no horizontal scroll at 375px", async ({ page }) => {
 test("mode toggle is visible, 44px+ and switches mode", async ({ page }) => {
   await page.goto("/");
   // Reduced motion is not emulated, so a WebGL-capable browser starts in ride mode ("Express" offered).
-  const toggle = page.getByRole("button", { name: /^(Express|Ride the train)$/ });
+  const toggle = page.getByRole("button", { name: /^(Express|Ride the train)/ });
   await expect(toggle).toBeVisible();
   const box = await toggle.boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(44);
@@ -37,6 +37,6 @@ test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
   test("starts in express mode", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Ride the train" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Ride the train/ })).toBeVisible();
   });
 });

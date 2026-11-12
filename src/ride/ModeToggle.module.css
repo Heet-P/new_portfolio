@@ -23,7 +23,6 @@
   font-weight: 500;
   color: var(--amber);
   cursor: pointer;
-  transition: transform var(--dur-press) var(--ease-out);
 }
 
 /* Hover fill fades in via opacity, never by animating background-color. */
@@ -35,7 +34,17 @@
   border-radius: inherit;
   background: rgb(243 178 94 / 0.12);
   opacity: 0;
-  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+/* Transitions only for visitors who are fine with motion; others get instant state changes. */
+@media (prefers-reduced-motion: no-preference) {
+  .toggle {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+
+  .toggle::before {
+    transition: opacity var(--dur-hover) var(--ease-out);
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
