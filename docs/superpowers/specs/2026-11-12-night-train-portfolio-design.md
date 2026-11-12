@@ -75,11 +75,27 @@ Phone number stays in the downloadable PDF (Heet approved); it is **not** printe
   toggle is visible, **off by default**.
 - **Scroll = travel.** Scroll progress drives the train along the track between stations; the camera follows.
   Carriages sway slightly; the route passes tunnels, trestle bridges over the river, forests and mountain sides.
-  Rain / mist only in the later, night-time stretch (optional, builder's call). At a stop: the train eases to a
-  halt beside a platform, the platform sign shows the station name, and that station's content card morphs in.
+  Rain / mist only in the later, night-time stretch (optional, builder's call). Camera is a **chase view from
+  behind**, raised, so the train's nose leads into the world (Heet, 2026-11-12). Wheels visibly spin; overhead
+  catenary (masts + contact wire) runs the whole route so the pantograph touches something; rivers and the
+  waterfall flow. A fast scroll never makes the train jump — its motion is smoothed (accelerate/decelerate).
+- **At a stop (Heet, 2026-11-12):** the train eases to a halt at a **railway station** (Heet's station model:
+  shelter / main station building; the solar-panel field at the Solar stop). The station sign shows the name.
+  Then the camera **glides through a window into the train's cabin** (Heet's low-poly subway interior model) and
+  settles on a **big on-board display** showing that stop's work: title, tagline, stats, short body, media, and
+  **"See live"** and **"GitHub"** buttons (whichever links exist). The display content is **real HTML locked onto
+  the 3D screen** (crisp text, real links, accessible). Scrolling on leaves the cabin back to the chase view.
+  Departure/Next/Terminus use the same display with their own content (intro + links; "your team?" CTA; contact +
+  resume ticket).
+- **Tunnels = loading zones (Heet, 2026-11-12):** like metro tunnel ads, lit panels on the tunnel walls flash past
+  as the train goes through, forming a **skills / tech-stack reel** (from PROFILE.skills). Tunnels also hide any
+  scene work (e.g. preloading the next stretch).
 - **Scenery morphs between stations** rather than cutting — e.g. colour of the night sky and lights shifts
   per station; the platform props hint at the content (Vaani stop: a glowing waveform sign; YieldGuard: a
-  silicon-wafer-patterned sign; Solar: solar panels on the platform roofs). Exact props are builder's choice.
+  silicon-wafer-patterned sign; Solar: the station model's solar-panel field). Exact props are builder's choice.
+- **Models (all in media-inbox/train, git-ignored; compressed copies go to public/models):** train.glb (TurboSquid,
+  web use OK), Rail_bridge_steel_final.glb, Train_station_3X.glb (+ colour textures in Train_station_3X/ — the GLB
+  lost them, reattach), subway-interior/source/subway.glb (licence pending — credit in CREDITS.md).
 - **Route map** stays in a corner the whole ride: shows current position, doubles as navigation (click a
   station → ride there smoothly). Upcoming station is drawn dashed.
 - **Terminus** is the end of the scroll; the ticket is the resume download.
@@ -89,6 +105,11 @@ Phone number stays in the downloadable PDF (Heet approved); it is **not** printe
 An always-visible **"Express"** button switches to a plain, fast, readable single page with all the same content
 (Josh Comeau–style: clean, but alive — soft hover reactions, soft sounds if sound is on). One click back to the
 ride. The same content data feeds both views.
+
+**Whimsy pass (Heet, 2026-11-12):** Express takes Josh Comeau's *ideas* — springy physics-based hover motion,
+wiggles, sparkles on highlights, playful micro-interactions, soft click/pop sounds, little surprises — but keeps
+Heet's own night-train identity (palette, type, layout). It must not copy joshwcomeau.com's theme, layout, branding,
+illustrations or assets.
 
 Express is also what renders:
 - when the user has `prefers-reduced-motion: reduce` (default to Express, ride still available),

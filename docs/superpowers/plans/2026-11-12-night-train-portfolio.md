@@ -171,14 +171,28 @@ export const useRide: UseBoundStore<StoreApi<RideState>>;
 - [ ] **Step 2:** `@react-three/postprocessing` Bloom (windows, headlamp, city lights) + Vignette, only when `getQuality().post`.
 - [ ] **Step 3:** Verify desktop ≥ 55 fps sustained in devtools; phone emulation (375×812, 4× CPU throttle) stays usable. Commit `feat: rain, atmosphere and bloom`.
 
-### Task 10: Stations — platforms, signs, cards
+### Task 10a: Stations (owner's station model)
 
-**Files:** Create `src/scene/Platform.tsx`, `src/ride/StationCard.tsx`, `src/ride/StationCard.test.tsx`.
-**Interfaces — Consumes:** `progressToStation`, `STATIONS`, `StationMedia`. **Produces:** `<StationCard station />` (shown by RideOverlay when `atStop`), reusing Express's content components so text is identical.
-- [ ] **Step 1: Failing test:** RideOverlay with progress at `stationToProgress(2)` shows the Vaani card heading; at mid-travel (`t=0.5` between 2 and 3) shows no card.
-- [ ] **Step 2–4:** FAIL → implement → PASS. Card entrance: opacity + translateY(8px) + blur(4px→0), 240 ms `--ease-out`, children staggered 40 ms; exit 160 ms. 
-- [ ] **Step 5:** Platform per station slides into view (side-on, in front of/behind the rails) near each stop: station-name sign (canvas texture / drei `Text`), with a hint prop: Vaani glowing waveform sign, YieldGuard wafer-grid sign, Solar panels on roofs, `next` an empty lit platform with sign "Next stop: your team?", terminus buffer stop + ticket booth. Terminus card's primary action is the ticket = resume download.
-- [ ] **Step 6:** Commit `feat: station platforms and cards`.
+*(Revised 2026-11-12.)* **Files:** extend `scripts/compress-model.mjs` → `public/models/station.glb`; create `src/scene/Stations.tsx`.
+- [ ] **Step 1:** Compress `media-inbox/train/Train_station_3X.glb`: reattach the colour atlases from `media-inbox/train/Train_station_3X/Train_station_3X/*.png` to the matching materials (`_train_station_`, `Main_train_station_`, `Truck_Working_Station_`; `_train_station_Light_` uses `_train_station_Light_.png` as emissive map), downscale textures (≤1024px, WebP), keep `_railway_photovoltaic` (the "example test" mesh — solar panel field) as a separate node, meshopt. Report size.
+- [ ] **Step 2:** Place a station at every `stationU` in the flat patch on the platform side: shelter (`_train_station_`) at most stops, the main building at Departure and Terminus, solar field beside the Solar stop. Station-name sign per stop (drei `Text`). Palette-tinted; window lights glow at night via emissive scaled by `windowGlow`. Instanced/shared geometry across stops.
+- [ ] **Step 3:** Screenshots at 3 stops. Commit `feat: stations along the route`.
+
+### Task 10b: Cabin + on-board display at each stop
+
+**Files:** extend compress script → `public/models/cabin.glb`; create `src/scene/Cabin.tsx`, `src/ride/OnboardDisplay.tsx` (+ test), `src/ride/stopCamera.ts` (+ test).
+**Interfaces — Consumes:** `progressToStation`, `STATIONS`, `StationContent` (Express). **Produces:** `stopBlend(progress): number` 0..1 = how far the camera is into the cabin (0 outside while travelling, 1 fully inside at the centre of a stop's dwell, eased).
+- [ ] **Step 1: Failing tests:** `stopBlend` is 0 at mid-travel, 1 at `stationToProgress(i)` for every i, monotonic within each half of a dwell, and continuous. OnboardDisplay at Vaani renders the Vaani heading, a "See live" link only if a live link exists, a "GitHub" link only if a repo link exists (`target=_blank rel=noopener`), and nothing at mid-travel.
+- [ ] **Step 2–4:** FAIL → implement → PASS.
+- [ ] **Step 5:** Cabin: compress `media-inbox/train/subway-interior/source/subway.glb` (573 meshes → merge by material, ≤12 draw calls, meshopt). Mounted at a fixed spot (not inside the exterior train): the world keeps rendering behind its windows at low cost (or a blurred palette-tinted backdrop on phones). Camera path: chase view → swoops to the train's side window → crossfade (opacity + slight blur) into the cabin → settles facing a large display panel mounted in the cabin. Display content = HTML via drei `<Html transform occlude>` (or an aligned DOM overlay if transform text is blurry) reusing `StationContent`, plus **See live** / **GitHub** buttons from `station.links` (labels matched case-insensitively: "live"/"demo" → See live, "github"/"repo" → GitHub). Terminus display: contact + resume ticket download. Replaces T6's minimal station-name label. Reduced motion: no swoop — instant crossfade.
+- [ ] **Step 6:** Screenshots at Vaani + Terminus displays. Commit `feat: cabin and on-board display at stops`.
+
+### Task 10c: Tunnel light panels (skills reel)
+
+**Files:** create `src/scene/TunnelPanels.tsx` (+ pure helper test).
+- [ ] **Step 1: Failing test:** `skillReel(PROFILE.skills)` returns a flat ordered list of every skill exactly once; panel layout helper places N panels evenly along each tunnel's arc-length span, alternating walls.
+- [ ] **Step 2–4:** FAIL → implement → PASS.
+- [ ] **Step 5:** Inside each tunnel, backlit panels on the walls (emissive, one instanced mesh + one texture atlas rendered from a canvas with skill names/group labels) flash past as the train passes, metro-ad style; a short light strobe as each panel passes the camera. Tunnel bore dark otherwise. Commit `feat: tunnel skills reel`.
 
 ### Task 11: Media pipeline + Skiper67 video
 
@@ -211,6 +225,12 @@ export function createAudioEngine(deps?: { storage?: Storage; doc?: Document; ct
 - [ ] **Step 2–4:** FAIL → implement (Web Audio: master gain, lofi + rain + rumble looping buffers, lowpass on music ~ "muffled lo-fi" feel; AudioContext created lazily on first user enable) → PASS.
 - [ ] **Step 5:** Source mellow lo-fi loop + rain + train rumble + soft chime + soft tap (CC0/Pixabay licence, or generated); keep each under ~1 MB, loops seamless. Record sources in `CREDITS.md`. Wire: `SoundToggle` (≥44px, aria-pressed), chime on arriving at a stop, `tap` on buttons/map/ticket, `setTravelSpeed` from scene velocity.
 - [ ] **Step 6:** Listen-test with Heet (mood must be soothing, nothing harsh). Commit `feat: lo-fi sound engine`.
+
+### Task 12b: Express whimsy pass (Josh-inspired, not copied)
+
+**Files:** modify `src/express/*`, add small components as needed (e.g. `Sparkles.tsx`, `useSpring` hover helpers).
+- [ ] **Step 1:** Add playful, physics-based micro-interactions in Josh Comeau's *spirit*: springy hover/boop on buttons and chips, sparkles on flagship stats, wiggle on the resume button, playful station markers, soft pop/click sounds via `AudioEngine.tap()` when sound is on. Keep Heet's night-train palette/type/layout; do NOT copy joshwcomeau.com's theme, layout, illustrations or assets. All motion transform/opacity only, reduced-motion respected, hover gated to fine pointers.
+- [ ] **Step 2:** Tests: reduced motion disables sparkles/boops; no sound when sound is off. Screenshots. Commit `feat: express whimsy pass`.
 
 ### Task 13: Polish, accessibility, performance pass
 
