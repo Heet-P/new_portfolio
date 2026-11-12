@@ -1,22 +1,33 @@
 /*
- * Global design tokens for the Night Train.
- * Night-only theme by design (no light/dark toggle), so colours are plain vars,
- * not light-dark() pairs. Every component reads these instead of raw values.
+ * Global design tokens for "The Project Post": the whole UI is an old, yellowed newspaper
+ * (Heet's reference, 2026-11-13). One printed look by design, with no light/dark toggle, so
+ * colours are plain vars rather than light-dark() pairs (the 3D ride keeps its own day-to-night
+ * palette). Every component reads these instead of raw values.
+ * Text contrast on paper is checked in src/newspaper/tokens.test.ts (>= 4.5:1).
  */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* --- Colour: deep night outside, warm amber lamp light inside --- */
-  --bg: #0a0e1a; /* page: the night sky */
-  --bg-glow: #1b2244; /* indigo haze near the top of the page */
-  --surface: #121a30; /* station cards */
-  --surface-raised: #182241; /* chips, pills, stat tiles */
-  --line: #26304f; /* hairlines and the route track */
-  --fg: #ede6d8; /* warm paper white: headings and body */
-  --fg-muted: #a8b0c8; /* secondary text (dates, labels) */
-  --amber: #f3b25e; /* lamp light: accents, links, the current stop */
-  --amber-strong: #ffc97f; /* brighter lamp tone: taglines, primary hover */
-  --amber-ink: #1a1208; /* text placed on an amber fill */
+  /* --- Colour: aged newsprint, ink, and one red for brush strokes and stamps --- */
+  --paper: #efe5cc; /* yellowed page */
+  --paper-shade: #e2d4b2; /* darker paper: page edges (vignette), boxes, chips */
+  --paper-light: #f8f2e2; /* fresher paper: tickets, stamp fills, text on red */
+  --ink: #1d1915; /* printing ink: headlines and body */
+  --ink-faded: #4a4239; /* faded ink: datelines, labels, captions */
+  --red: #b0352b; /* brush red: underlines, stamps, bullet squares */
+  --rule: #1d1915; /* column rules and the masthead's double rule */
+  --rule-faint: rgb(29 25 21 / 0.28); /* hairlines between minor parts */
+
+  /*
+   * Paper texture, drawn by SVG filters as tiles (no image requests), kept faint so text
+   * contrast never drops below 4.5:1:
+   * - grain: fine fibre speckle (small tile),
+   * - mottle: the blotchy tide-marks of old newsprint (large tile, so it doesn't visibly repeat).
+   */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.34 0 0 0 0 0.27 0 0 0 0 0.16 0 0 0 0.22 -0.05'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+  --paper-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3E%3Cfilter id='m' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.36 0 0 0 0 0.2 0 0 0 0.42 -0.15'/%3E%3C/filter%3E%3Crect width='720' height='720' filter='url(%23m)'/%3E%3C/svg%3E");
+  /* Soft darkening toward the edges of a sheet, like paper that has sat in the sun. */
+  --paper-vignette: radial-gradient(130% 110% at 50% 45%, transparent 55%, rgb(120 92 48 / 0.16) 100%);
 
   /* --- Type: Major Third scale (x1.25); px line-heights at 1.4-1.6x --- */
   --text-body: 16px;
@@ -27,6 +38,12 @@
   --text-heading-lh: 36px;
   --text-display: 32px;
   --text-display-lh: 48px;
+  /*
+   * Display exceptions (approved for the newspaper look): the blackletter nameplate and the big
+   * front-page headline sit above the 16/20/25/32 scale, as on a real front page. They are fluid
+   * (container units) and keep a 1.0-1.15x leading, which is how display type is set in print.
+   * Everything else stays on the scale above.
+   */
 
   /* --- Motion (Emil Kowalski's curves; UI animations stay < 300ms) --- */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -34,10 +51,8 @@
   --dur-press: 160ms;
   --dur-hover: 240ms;
 
-  /* --- Shape --- */
-  --radius-card: 24px;
-  --radius-inner: 12px; /* card radius (24) minus tile padding (12) */
-  --radius-pill: 999px;
+  /* --- Shape: newsprint is square-cornered; only tickets and stamps get a small radius --- */
+  --radius-stamp: 4px;
 }
 
 *,
@@ -64,29 +79,28 @@ html {
 }
 
 body {
-  /* A faint indigo haze at the top, like light pollution over a town at night. */
-  background:
-    radial-gradient(120% 60% at 50% -10%, var(--bg-glow) 0%, transparent 70%) no-repeat,
-    var(--bg);
-  color: var(--fg);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  /* The page is a sheet of newsprint: grain and tide-marks over a faint sun-faded edge. */
+  background: var(--paper-grain), var(--paper-mottle), var(--paper-vignette), var(--paper);
+  background-attachment: scroll, scroll, fixed, scroll;
+  color: var(--ink);
+  font-family: var(--font-body), Georgia, serif;
   font-size: var(--text-body);
   line-height: var(--text-body-lh);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Amber text selection keeps the lamp-light mood even when copying text. */
+/* Red-ink text selection, the same red as the brush strokes. */
 ::selection {
-  background: var(--amber);
-  color: var(--amber-ink);
+  background: var(--red);
+  color: var(--paper-light);
 }
 
-/* Keyboard focus is always visible and on-brand. */
+/* Keyboard focus is always visible: a red ink ring. */
 :focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--red);
   outline-offset: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-stamp);
 }
 
 /* Visually hidden but still read by screen readers. */

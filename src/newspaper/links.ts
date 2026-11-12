@@ -2,6 +2,18 @@ import type { Station } from "@/content/route";
 
 export type Link = NonNullable<Station["links"]>[number];
 
+/**
+ * Link props by destination:
+ * - the resume PDF downloads (the "ticket"),
+ * - http(s) links open in a new tab without handing the opener to the other site,
+ * - mailto: stays a plain link.
+ */
+export function linkProps(href: string) {
+  if (href.endsWith(".pdf")) return { download: "" };
+  if (href.startsWith("http")) return { target: "_blank", rel: "noopener noreferrer" };
+  return {};
+}
+
 /** Labels name what a link is; hosts only for the two sites whose links are unambiguous. */
 const REPO_LABEL = /github|repo/i;
 const LIVE_LABEL = /live|site|app/i;
@@ -19,7 +31,7 @@ const isGitHub = (l: Link) => REPO_LABEL.test(l.label) || host(l.href) === "gith
 const isYouTube = (l: Link) => ["youtube.com", "m.youtube.com", "youtu.be"].includes(host(l.href));
 
 /**
- * Sort a station's links for the on-board display into its primary actions, matched on the
+ * Sort a station's links into a front page's primary actions, matched on the
  * link's label (plus the GitHub / YouTube hosts), never on arbitrary URL text:
  * - `live`: the first "See live" link (label mentions live / site / app),
  * - `demos`: every "Watch demo" link (label mentions demo / video / watch, or a YouTube URL),

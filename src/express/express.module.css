@@ -1,509 +1,48 @@
 /*
- * Express view styles. Reads the tokens from globals.css.
- * Motion rules (Emil Kowalski): only transform/opacity animate, custom ease-out curves,
- * UI transitions < 300ms, scale(0.97) on press, hover effects only on real pointers,
- * and every looping animation is opt-in via prefers-reduced-motion: no-preference.
+ * The Express broadsheet: page frame and the rules between articles. The articles themselves
+ * are printed by the shared newspaper components (src/newspaper). Reads the tokens in globals.css.
  */
 
-/* ---------- Page frame ---------- */
-
 .page {
-  max-width: 800px;
+  /* The nameplate's narrow layout keys off this container's width. */
+  container-type: inline-size;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 64px 16px 96px; /* 16px side gutter on phones */
+  /* 16px side gutter on phones; the top clears the fixed mode toggle (16 + 44 + 12px). */
+  padding: 72px 16px 96px;
 }
 
 @media (min-width: 640px) {
   .page {
-    padding: 96px 32px 128px;
+    padding: 40px 40px 128px;
   }
 }
-
-/* ---------- Hero ---------- */
-
-.hero {
-  margin-bottom: 64px;
-}
-
-.kicker {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  font-family: var(--font-mono), monospace;
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--amber);
-}
-
-/* A little carriage lamp: an amber dot with a warm halo that slowly breathes. */
-.lamp {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--amber);
-}
-
-.lamp::after {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(243 178 94 / 0.55), transparent 70%);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .lamp::after {
-    animation: lamp-breathe 4s ease-in-out infinite;
-  }
-}
-
-@keyframes lamp-breathe {
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.title {
-  margin: 16px 0 0;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: var(--text-display);
-  line-height: var(--text-display-lh);
-  font-weight: 600;
-  font-variation-settings: "SOFT" 100, "opsz" 144;
-  letter-spacing: -0.01em;
-}
-
-.role {
-  margin: 4px 0 0;
-  font-size: var(--text-sub);
-  line-height: var(--text-sub-lh);
-  color: var(--fg-muted);
-}
-
-/* ---------- Skills strip ---------- */
-
-.skills {
-  display: grid;
-  gap: 16px;
-  margin: 40px 0 0;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-}
-
-.skillGroup {
-  display: grid;
-  gap: 8px;
-}
-
-.skillGroup dt {
-  font-family: var(--font-mono), monospace;
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-}
-
-.skillGroup dd {
-  margin: 0;
-}
-
-.skillGroup .chips {
-  margin: 0;
-}
-
-@media (min-width: 640px) {
-  .skillGroup {
-    grid-template-columns: 184px 1fr;
-    align-items: baseline;
-    gap: 16px;
-  }
-}
-
-/* ---------- The route: a railway track down the left edge ---------- */
 
 .route {
-  position: relative;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Sleepers: short ticks every 12px, like looking down at a track at night. */
-.route::before {
-  content: "";
-  position: absolute;
-  top: 32px;
-  bottom: 32px;
-  left: 2px;
-  width: 12px;
-  background: repeating-linear-gradient(to bottom, var(--line) 0 2px, transparent 2px 12px);
-  opacity: 0.6;
+/* Articles are divided like columns of print: a double rule, then air. */
+.route > li {
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 5px double var(--rule);
 }
 
-/* The rail itself. */
-.route::after {
-  content: "";
-  position: absolute;
-  top: 32px;
-  bottom: 32px;
-  left: 7px;
-  width: 2px;
-  background: var(--line);
-}
-
-.route > li + li {
+.route > li:first-child {
   margin-top: 32px;
+  padding-top: 0;
+  border-top: 0;
 }
 
+/* Deep links land just under the rule, not glued to the top edge. */
 .stop {
-  --card-pad: 24px;
-  position: relative;
-  padding-left: 32px;
+  scroll-margin-top: 24px;
 }
 
-@media (min-width: 640px) {
-  .stop {
-    --card-pad: 32px;
-    padding-left: 48px;
-  }
-}
-
-/* Station dot, vertically centred on the card's first line (the eyebrow). */
-.marker {
-  position: absolute;
-  z-index: 1;
-  top: calc(var(--card-pad) + 4px);
-  left: 0;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--amber);
-  border-radius: 50%;
-  background: var(--bg);
-  transition: transform var(--dur-hover) var(--ease-out);
-}
-
-/* Passed stops are filled with lamp light. */
-.stop[data-status="done"] .marker,
-.stop[data-status="current"] .marker {
-  background: var(--amber);
-}
-
-/* The upcoming stop is only pencilled in. */
-.stop[data-status="upcoming"] .marker {
-  border-style: dashed;
-  border-color: var(--fg-muted);
-}
-
-/* The current stop sends out a slow, soft ripple. */
-@media (prefers-reduced-motion: no-preference) {
-  .stop[data-status="current"] .marker::after {
-    content: "";
-    position: absolute;
-    inset: -4px;
-    border: 2px solid var(--amber);
-    border-radius: 50%;
-    animation: ripple 2.4s var(--ease-out) infinite;
-  }
-}
-
-@keyframes ripple {
-  from {
-    transform: scale(0.8);
-    opacity: 0.8;
-  }
-  to {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-/* ---------- Station card ---------- */
-
-.card {
-  position: relative;
-  padding: var(--card-pad);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  /* A faint wash of lamp light from the top edge. */
-  background: linear-gradient(180deg, rgb(243 178 94 / 0.04), transparent 160px), var(--surface);
-  transition: transform var(--dur-hover) var(--ease-out);
-}
-
-/* Flagships glow a little warmer. */
-.card[data-flagship] {
-  border-color: rgb(243 178 94 / 0.28);
-  background: radial-gradient(120% 80% at 100% 0%, rgb(243 178 94 / 0.09), transparent 60%),
-    var(--surface);
-}
-
-.stop[data-status="upcoming"] .card {
-  border-style: dashed;
-  border-color: var(--fg-muted);
-  background: transparent;
-}
-
-/* Hover shadow lives on a pseudo-element so only its opacity animates. */
-.card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    0 24px 48px -24px rgb(0 0 0 / 0.7),
-    0 0 0 1px rgb(243 178 94 / 0.2);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-hover) var(--ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .stop:hover .card {
-    transform: translateY(-4px);
-  }
-
-  .stop:hover .card::after {
-    opacity: 1;
-  }
-
-  .stop:hover .marker {
-    transform: scale(1.15);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card,
-  .marker {
-    transition: none;
-  }
-}
-
-/* ---------- Station content (shared with the ride's StationCard) ---------- */
-
-.content > :first-child {
-  margin-top: 0;
-}
-
-.eyebrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  font-family: var(--font-mono), monospace;
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-}
-
-.flagship {
-  color: var(--amber);
-}
-
-.name {
-  margin: 8px 0 0;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: var(--text-heading);
-  line-height: var(--text-heading-lh);
-  font-weight: 600;
-  font-variation-settings: "SOFT" 100, "opsz" 72;
-}
-
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0 0;
-  font-family: var(--font-mono), monospace;
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  color: var(--fg-muted);
-}
-
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 12px;
-  border-radius: var(--radius-pill);
-  font-weight: 500;
-}
-
-.status[data-status="current"] {
-  background: rgb(243 178 94 / 0.14);
-  color: var(--amber);
-}
-
-.status[data-status="current"]::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .status[data-status="current"]::before {
-    animation: lamp-breathe 1.6s ease-in-out infinite;
-  }
-}
-
-.status[data-status="upcoming"] {
-  border: 1px dashed var(--fg-muted);
-  color: var(--fg);
-}
-
-.tagline {
-  margin: 16px 0 0;
-  font-family: var(--font-serif), Georgia, serif;
-  font-style: italic;
-  font-size: var(--text-sub);
-  line-height: var(--text-sub-lh);
-  color: var(--amber-strong);
-}
-
-.body {
-  max-width: 64ch;
-}
-
-.body p {
-  margin: 12px 0 0;
-}
-
-/* Stats: label first in the DOM (dt), but the big number reads first visually. */
-.stats {
-  display: grid;
-  /* 112px fits two stats side by side on a 375px phone. */
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 16px;
-  margin: 24px 0 0;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-}
-
-.stat {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-}
-
-.statValue {
-  margin: 0;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: var(--text-display);
-  line-height: var(--text-display-lh);
-  font-weight: 600;
-  font-variation-settings: "SOFT" 100, "opsz" 144;
-  font-variant-numeric: lining-nums tabular-nums;
-  color: var(--amber);
-  white-space: nowrap;
-}
-
-.statLabel {
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  color: var(--fg-muted);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chips li {
-  padding: 2px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  font-size: var(--text-body);
-  line-height: var(--text-body-lh);
-  color: var(--fg);
-}
-
-/* ---------- Buttons / links ---------- */
-
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.button {
-  position: relative;
-  isolation: isolate; /* keeps the hover overlay (z-index: -1) inside the button */
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px; /* touch target */
-  padding: 0 20px;
-  border: 1px solid rgb(243 178 94 / 0.4);
-  border-radius: var(--radius-pill);
-  font-weight: 500;
-  color: var(--amber);
-  text-decoration: none;
-  transition: transform var(--dur-press) var(--ease-out);
-}
-
-/*
- * Hover fill: a pseudo-element behind the label whose OPACITY fades in, so the
- * hover never animates background-color or color (transform/opacity only).
- */
-.button::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  border-radius: inherit;
-  background: rgb(243 178 94 / 0.12);
-  opacity: 0;
-  transition: opacity var(--dur-hover) var(--ease-out);
-}
-
-/* Downloads get a small arrow that dips on hover, hinting at "take it with you". */
-.button[download]::after {
-  content: "↓" / "";
-  transition: transform var(--dur-hover) var(--ease-out);
-}
-
-.button[data-primary] {
-  border-color: var(--amber);
-  background: var(--amber);
-  color: var(--amber-ink);
-}
-
-/* The primary button brightens to the stronger lamp tone instead of tinting. */
-.button[data-primary]::before {
-  background: var(--amber-strong);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .button:hover::before {
-    opacity: 1;
-  }
-
-  .button[download]:hover::after {
-    transform: translateY(2px);
-  }
-}
-
-.button:active {
-  transform: scale(0.97);
-}
-
-/* ---------- Media (photos until Task 11 adds video) ---------- */
+/* ---------- Media (photos until video lands) ---------- */
 
 .media {
   display: grid;
@@ -515,5 +54,4 @@
 .media img {
   width: 100%;
   height: auto;
-  border-radius: var(--radius-inner);
 }

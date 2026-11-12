@@ -1,23 +1,15 @@
 import type { Station } from "@/content/route";
-import { StationContent } from "./StationContent";
+import { FrontPage } from "@/newspaper/FrontPage";
 import styles from "./express.module.css";
 
 /**
- * One stop on the Express page: an anchorable <section id="vaani"> (hash deep links land
- * here) with a marker on the route track and the station's card.
+ * One stop in the Express broadsheet: an anchorable <section id="vaani"> (hash deep links land
+ * here) holding the stop's article. Departure is printed as the front-page lead.
  */
-export function StationSection({ station }: { station: Station }) {
+export function StationSection({ station, index }: { station: Station; index: number }) {
   return (
-    <section
-      id={station.id}
-      className={styles.stop}
-      data-status={station.status}
-    >
-      {/* The dot on the track: filled = passed, pulsing = current, dashed = upcoming. */}
-      <span className={styles.marker} aria-hidden="true" />
-      <div className={styles.card} data-flagship={station.flagship || undefined}>
-        <StationContent station={station} />
-      </div>
+    <section id={station.id} className={styles.stop} data-status={station.status}>
+      <FrontPage station={station} index={index} variant={index === 0 ? "lead" : "article"} />
     </section>
   );
 }

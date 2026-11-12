@@ -1,41 +1,42 @@
 import type { Metadata } from "next";
-import { Fraunces, Instrument_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Merriweather, Newsreader, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
 
 /*
- * Fonts (self-hosted by next/font at build time, no runtime Google requests):
- * - Fraunces: a soft, slightly old-style serif for names and big numbers; warm, not corporate.
- * - Instrument Sans: a crisp, friendly sans for reading paragraphs.
- * - IBM Plex Mono: the "departure board" voice for dates, stop numbers and labels.
- * Each is exposed as a CSS variable so globals.css and modules can pick them by role.
+ * Fonts for "The Project Post" (all SIL Open Font License; self-hosted by next/font at build
+ * time, so the browser never calls Google). Each is exposed as a CSS variable and picked by role
+ * in globals.css and the modules:
+ * - UnifrakturMaguntia: the blackletter nameplate, like an old broadsheet's masthead.
+ * - Merriweather: sturdy, low-contrast news serif for headlines (heavy) and decks (italic).
+ * - Newsreader: a text face designed for news reading, for body copy, datelines and buttons.
  */
-const serif = Fraunces({
+const blackletter = UnifrakturMaguntia({
   subsets: ["latin"],
-  axes: ["SOFT", "opsz"],
+  weight: "400",
+  variable: "--font-blackletter",
+  display: "swap",
+});
+const headline = Merriweather({
+  subsets: ["latin"],
   style: ["normal", "italic"],
-  variable: "--font-serif",
+  variable: "--font-headline",
   display: "swap",
 });
-const sans = Instrument_Sans({
+const body = Newsreader({
   subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
+  style: ["normal", "italic"],
+  variable: "--font-body",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Heet Parikh",
-  description: "Portfolio of Heet Parikh, ridden as a night train.",
+  description: "Portfolio of Heet Parikh, ridden as a night train and printed as The Project Post.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${blackletter.variable} ${headline.variable} ${body.variable}`}>
       <body>{children}</body>
     </html>
   );

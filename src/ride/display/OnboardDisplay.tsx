@@ -1,228 +1,38 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
-import { PROFILE, STATIONS, type Station } from "@/content/route";
-import { linkProps, StationContent } from "@/express/StationContent";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { STATIONS, type Station } from "@/content/route";
+import { FrontPage } from "@/newspaper/FrontPage";
 import { cabinFrame, onCabinFrame, useCabin } from "../cabinStore";
 import { displayOpacity } from "../stopCamera";
-import { splitLinks } from "./links";
 import styles from "./OnboardDisplay.module.css";
 
-const LAST = STATIONS.length - 1;
-const CABIN_CREDIT_URL = "https://sketchfab.com/3d-models/subway-interior-b7f25426ac674a9291ba092fb9fe8406";
-
-/** One display button. External links open in a new tab (noopener), the PDF downloads. */
-function Action({ href, primary, children }: { href: string; primary?: boolean; children: ReactNode }) {
-  return (
-    <li>
-      <a className={styles.action} data-primary={primary || undefined} href={href} {...linkProps(href)}>
-        {children}
-      </a>
-    </li>
-  );
-}
-
-/** A row of display buttons. */
-function Actions({ children }: { children: ReactNode }) {
-  return <ul className={styles.actions}>{children}</ul>;
-}
-
-/** Arrow for links that leave the site (decorative: the link text carries the name). */
-const Out = () => (
-  <span className={styles.out} aria-hidden="true">
-    ↗
-  </span>
-);
-
 /**
- * Projects and internships: the shared station content plus the primary actions, each only if
- * such a link exists: "See live", "Watch demo" (one per demo: "Watch demo 2", ...), "GitHub".
- * Their text comes from the kind of link, not its label; the first one is the filled button.
- */
-function ProjectScreen({ station }: { station: Station }) {
-  const { live, demos, repo, rest } = splitLinks(station.links);
-  const primary = [
-    ...(live ? [{ link: live, text: "See live" }] : []),
-    ...demos.map((link, i) => ({ link, text: i === 0 ? "Watch demo" : `Watch demo ${i + 1}` })),
-    ...(repo ? [{ link: repo, text: "GitHub" }] : []),
-  ];
-  return (
-    <>
-      <div className={styles.columns}>
-        <StationContent station={station} showLinks={false} />
-      </div>
-      {primary.length + rest.length > 0 && (
-        <Actions>
-          {primary.map(({ link, text }, i) => (
-            <Action key={link.href} href={link.href} primary={i === 0}>
-              {text}
-              <Out />
-            </Action>
-          ))}
-          {rest.map((l) => (
-            <Action key={l.href} href={l.href}>
-              {l.label}
-            </Action>
-          ))}
-        </Actions>
-      )}
-    </>
-  );
-}
-
-/** Departure: who is on board, and where to find more. */
-function DepartureScreen({ station }: { station: Station }) {
-  return (
-    <div className={styles.flow}>
-      <p className={styles.eyebrow}>Boarding now</p>
-      <h2 className={styles.title}>{PROFILE.name}</h2>
-      <p className={styles.role}>{PROFILE.role}</p>
-      <div className={styles.body}>
-        {station.body.map((p) => (
-          <p key={p}>{p}</p>
-        ))}
-      </div>
-      <Actions>
-        <Action href={PROFILE.github} primary>
-          GitHub
-          <Out />
-        </Action>
-        <Action href={PROFILE.linkedin}>
-          LinkedIn
-          <Out />
-        </Action>
-        <Action href={PROFILE.resume}>Download resume</Action>
-      </Actions>
-    </div>
-  );
-}
-
-/** The open platform: the next stop could be the visitor's team. */
-function NextScreen({ station }: { station: Station }) {
-  return (
-    <div className={styles.flow}>
-      <p className={styles.eyebrow}>Platform open</p>
-      <h2 className={styles.title}>{station.tagline}</h2>
-      <div className={styles.body}>
-        {station.body.map((p) => (
-          <p key={p}>{p}</p>
-        ))}
-      </div>
-      <Actions>
-        <Action href={`mailto:${PROFILE.email}`} primary>
-          Email me
-        </Action>
-        <Action href={PROFILE.linkedin}>
-          LinkedIn
-          <Out />
-        </Action>
-      </Actions>
-    </div>
-  );
-}
-
-/**
- * The resume, handed over as a train ticket. The whole ticket is the download link; on
- * hover / press it "prints" a little further out of its slot (transform only).
- */
-function Ticket() {
-  return (
-    <div className={styles.ticketSlot}>
-      <a className={styles.ticket} href={PROFILE.resume} download="">
-        <span className={styles.ticketMain}>
-          <span className={styles.ticketKicker} aria-hidden="true">
-            Night Train · Admit one
-          </span>
-          <span className={styles.ticketTitle}>Download resume</span>
-          <span className={styles.ticketMeta} aria-hidden="true">
-            {PROFILE.name} · PDF
-          </span>
-        </span>
-        <span className={styles.ticketStub} aria-hidden="true">
-          <span>No.</span>
-          <span className={styles.ticketNo}>0816</span>
-        </span>
-      </a>
-    </div>
-  );
-}
-
-/** End of the line: contact, the ticket, and the credits for the models. */
-function TerminusScreen({ station }: { station: Station }) {
-  return (
-    <div className={styles.flow}>
-      <p className={styles.eyebrow}>Contact</p>
-      <h2 className={styles.title}>{station.tagline}</h2>
-      <div className={styles.body}>
-        {station.body.map((p) => (
-          <p key={p}>{p}</p>
-        ))}
-      </div>
-      <Actions>
-        <Action href={`mailto:${PROFILE.email}`} primary>
-          Email {PROFILE.email}
-        </Action>
-        <Action href={PROFILE.linkedin}>
-          LinkedIn
-          <Out />
-        </Action>
-        <Action href={PROFILE.github}>
-          GitHub
-          <Out />
-        </Action>
-      </Actions>
-      <Ticket />
-      <p className={styles.credits}>
-        Cabin:{" "}
-        <a href={CABIN_CREDIT_URL} target="_blank" rel="noopener noreferrer">
-          Subway_[interior]
-        </a>{" "}
-        by Comicaroid (CC BY 4.0) · Train via TurboSquid
-      </p>
-    </div>
-  );
-}
-
-/**
- * The display's screen for one station: a metro-style "Now arriving" bar, then the stop's
- * content. A `region` labelled with the station name, so screen reader users can jump to it.
+ * One stop's front page of "The Project Post", as a `region` labelled with the station name so
+ * screen reader users can jump to it. Long pages scroll inside the sheet.
  */
 export function DisplayScreen({ station, index }: { station: Station; index: number }) {
-  const next = index < LAST ? STATIONS[index + 1] : undefined;
-  const status = index === 0 ? "Now departing" : index === LAST ? "Terminus" : "Now arriving";
-  let content: ReactNode;
-  if (station.kind === "intro") content = <DepartureScreen station={station} />;
-  else if (station.kind === "open") content = <NextScreen station={station} />;
-  else if (station.kind === "end") content = <TerminusScreen station={station} />;
-  else content = <ProjectScreen station={station} />;
-
   return (
     <section className={styles.screen} aria-label={station.name}>
-      <header className={styles.bar}>
-        <span className={styles.barStatus}>
-          <span className={styles.lamp} aria-hidden="true" />
-          {status}
-        </span>
-        {next && <span className={styles.barNext}>Next stop · {next.name}</span>}
-      </header>
-      {/* Lenis must not swallow the wheel here: long content scrolls inside the screen. */}
+      {/* Lenis must not swallow the wheel here: long content scrolls inside the page. */}
       <div className={styles.scroller} data-lenis-prevent="">
-        {content}
+        <FrontPage station={station} index={index} />
       </div>
     </section>
   );
 }
 
 /**
- * The big on-board display, as HTML laid over the 3D panel in the cabin.
+ * The newspaper's front page, as HTML laid over the unfolded 3D newspaper in the cabin.
  *
- * Its CSS box is the source of truth for where the display sits on screen: it is measured
- * here (cabinFrame.target) and the scene sizes the 3D panel to cover exactly that box once
- * the camera has settled, so the text is never resampled (crisp at any DPR). While the camera
- * is still gliding in, every frame the box is translated/scaled onto wherever the 3D panel
- * currently projects (cabinFrame.panel) and faded in with the blend; settled, the transform
- * is removed entirely. All of that is written straight to the DOM from the scene's frame
- * loop; React only renders when the display is shown or hidden (useCabin).
+ * Its CSS box is the source of truth for where the page sits on screen: it is measured here
+ * (cabinFrame.target) and the scene sizes the 3D newspaper so that, unfolded in front of the
+ * settled camera, it covers exactly that box, so the text is never resampled (crisp at any
+ * DPR). While the camera is still settling, every frame the box is translated/scaled onto
+ * wherever the 3D paper currently projects (cabinFrame.panel) and faded in with the blend
+ * (only once the paper has unfolded); settled, the transform is removed entirely. All of that
+ * is written straight to the DOM from the scene's frame loop; React only renders when the
+ * page is shown or hidden (useCabin).
  */
 export function OnboardDisplay() {
   const shown = useCabin((s) => s.shown);
@@ -265,7 +75,7 @@ export function OnboardDisplay() {
     [],
   );
 
-  // Per frame: fade with the blend and ride on the 3D panel until the camera settles.
+  // Per frame: fade with the blend and ride on the 3D paper until the camera settles.
   useEffect(() => {
     const last = { opacity: -1, transform: "" };
     return onCabinFrame(() => {

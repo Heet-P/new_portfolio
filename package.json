@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "e2e": "next build && playwright test",
-    "model": "node scripts/compress-model.mjs"
+    "model": "node scripts/compress-model.mjs",
+    "illustrations": "node scripts/process-illustrations.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",

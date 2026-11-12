@@ -1,6 +1,7 @@
 /*
- * Mode toggle: fixed top-right, mirrors the Express `.button` look (pill, amber outline,
- * opacity-overlay hover, scale(0.97) press). Only transform/opacity animate.
+ * Mode toggle: fixed top-right, a paper ticket stamped in ink (double frame, a hair crooked),
+ * matching the front page's action stamps. Opacity-overlay hover, scale(0.97) press; only
+ * transform/opacity animate.
  */
 .toggle {
   position: fixed;
@@ -14,25 +15,31 @@
   min-width: 44px;
   min-height: 44px; /* touch target */
   padding: 0 20px;
-  border: 1px solid rgb(243 178 94 / 0.4);
-  border-radius: var(--radius-pill);
-  background: var(--bg); /* opaque so it stays legible over the 3D scene */
-  font-family: var(--font-sans), system-ui, sans-serif;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-stamp);
+  /* Opaque paper so it stays legible over the 3D scene; inner hairline = the stamp's frame. */
+  background: var(--paper-grain), var(--paper-light);
+  box-shadow:
+    inset 0 0 0 2px var(--paper-light),
+    inset 0 0 0 3px var(--ink),
+    0 8px 16px -8px rgb(20 12 4 / 0.5);
+  font-family: var(--font-headline), Georgia, serif;
   font-size: var(--text-body);
   line-height: var(--text-body-lh);
-  font-weight: 500;
-  color: var(--amber);
+  font-weight: 700;
+  color: var(--ink);
   cursor: pointer;
+  transform: rotate(1deg);
 }
 
-/* Hover fill fades in via opacity, never by animating background-color. */
+/* Hover: a faint ink wash fades in via opacity, never by animating background-color. */
 .toggle::before {
   content: "";
   position: absolute;
   z-index: -1;
   inset: 0;
   border-radius: inherit;
-  background: rgb(243 178 94 / 0.12);
+  background: rgb(29 25 21 / 0.07);
   opacity: 0;
 }
 
@@ -54,5 +61,5 @@
 }
 
 .toggle:active {
-  transform: scale(0.97);
+  transform: rotate(1deg) scale(0.97);
 }

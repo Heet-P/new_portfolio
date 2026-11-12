@@ -1,28 +1,45 @@
 /*
- * Route map: a metro-line diagram that doubles as navigation.
+ * Route map: a printed timetable card that doubles as navigation.
  * Geometry is built on a fixed 44px step (one row/column per station = the touch target),
- * so the dots, the line segments and the train marker's travel all line up by construction:
- * dot centre = 22px into each step; the marker's carriage spans (count - 1) steps.
+ * so the stops, the line segments and the train marker's travel all line up by construction:
+ * stop centre = 22px into each step; the marker's carriage spans (count - 1) steps.
  * Motion: only transform/opacity animate, plus a one-time clip-path draw-in (decorative,
  * < 800ms, skipped under reduced motion).
  */
 
 .map {
   --step: 44px;
-  --pad: 12px; /* track padding; inner radius = 24 - 12 = 12px */
+  --pad: 12px;
   position: fixed;
   left: 24px;
   bottom: 24px;
-  z-index: 50; /* above the (future) ride canvas, below the mode toggle (100) */
+  z-index: 50; /* above the ride canvas, below the mode toggle (100) */
 }
 
+/* The card: newsprint with a double ink rule just inside its edge. */
 .track {
   position: relative;
   padding: var(--pad) 20px var(--pad) var(--pad);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  /* Mostly opaque so labels stay readable over the 3D scene; no backdrop blur (costly every frame). */
-  background: rgb(18 26 48 / 0.88);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-grain), var(--paper);
+  box-shadow:
+    inset 0 0 0 3px var(--paper),
+    inset 0 0 0 4px var(--rule),
+    0 16px 32px -12px rgb(20 12 4 / 0.55);
+  color: var(--ink);
+}
+
+/* Printed title over a rule, like the head of a timetable column. */
+.title {
+  margin: 0 0 4px;
+  padding: 4px 0 4px 16px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 700;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.1em;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
 }
 
 .rail {
@@ -42,19 +59,19 @@
   position: relative;
 }
 
-/* Line segment from this stop's dot to the next one (drawn under the dots). */
+/* Ink line from this stop to the next one (drawn under the stops). */
 .segment {
   position: absolute;
   left: calc(var(--step) / 2 - 1px);
   top: calc(var(--step) / 2);
   height: var(--step);
-  border-left: 2px solid rgb(168 176 200 / 0.4);
+  border-left: 2px solid var(--ink);
 }
 
-/* Not built yet: the stretch to/from an upcoming station is dashed. */
+/* Not built yet: the stretch to/from an upcoming station is dashed, in faded ink. */
 .segment[data-dashed] {
   border-left-style: dashed;
-  border-left-color: rgb(168 176 200 / 0.7);
+  border-left-color: var(--ink-faded);
 }
 
 .button {
@@ -62,22 +79,23 @@
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: var(--step); /* 44px touch target even though the dot is 12px */
+  min-height: var(--step); /* 44px touch target even though the stop mark is 12px */
   margin: 0;
   padding: 0 8px 0 0;
   border: 0;
-  border-radius: var(--radius-inner);
+  border-radius: var(--radius-stamp);
   background: none;
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-body), Georgia, serif;
   font-size: var(--text-body);
   line-height: var(--text-body-lh);
-  color: var(--fg-muted);
+  color: var(--ink-faded);
   text-align: left;
   cursor: pointer;
 }
 
-/* 44x44 box that centres the visible dot. */
+/* 44x44 box that centres the visible stop mark. */
 .dot {
+  position: relative;
   display: grid;
   flex: none;
   place-items: center;
@@ -89,17 +107,25 @@
   content: "";
   width: 12px;
   height: 12px;
-  border: 2px solid var(--fg-muted);
+  border: 2px solid var(--ink);
   border-radius: 50%;
-  background: var(--surface); /* masks the line behind it */
+  background: var(--paper); /* masks the line behind it */
 }
 
 .button[data-upcoming] .dot::before {
   border-style: dashed;
+  border-color: var(--ink-faded);
 }
 
-.button[aria-current] .dot::before {
-  border-color: var(--amber);
+/* The current stop: circled by hand in red ink, a loose double ring. */
+.button[aria-current] .dot::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 2px solid var(--red);
+  border-radius: 50% 44% 52% 46%;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--red);
+  transform: rotate(-12deg);
 }
 
 .label {
@@ -107,12 +133,13 @@
 }
 
 .button[aria-current] .label {
-  color: var(--fg);
+  font-weight: 700;
+  color: var(--ink);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .button:hover .label {
-    color: var(--fg);
+    color: var(--ink);
   }
 }
 
@@ -121,8 +148,8 @@
 }
 
 /*
- * The train marker. The carriage runs from the first dot centre to the last along one axis and is
- * 0px on the other; JS moves the train along it every frame (see RouteMap.tsx).
+ * The train marker. The carriage runs from the first stop centre to the last along one axis and
+ * is 0px on the other; JS moves the train along it every frame (see RouteMap.tsx).
  */
 .carriage {
   position: absolute;
@@ -133,16 +160,25 @@
   pointer-events: none;
 }
 
+/* A paper chip carrying the ink locomotive, centred on the line. */
 .train {
   position: absolute;
   will-change: transform; /* it moves on every scroll frame */
-  top: -8px;
-  left: -8px;
-  width: 16px;
+  top: -12px;
+  left: -16px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 24px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.glyph {
+  width: 24px;
   height: 16px;
-  border-radius: 50%;
-  background: var(--amber);
-  box-shadow: 0 0 0 4px rgb(243 178 94 / 0.25), 0 0 16px rgb(243 178 94 / 0.6);
 }
 
 /* ---------- Phones (and short landscape screens): compact bottom strip ---------- */
@@ -159,20 +195,19 @@
     overflow-x: auto;
     padding: var(--pad) 16px calc(var(--pad) + env(safe-area-inset-bottom));
     border: 0;
-    border-top: 1px solid var(--line);
+    border-top: 5px double var(--rule);
     border-radius: 0;
-    background: rgb(10 14 26 / 0.92);
+    box-shadow: 0 -8px 24px -12px rgb(20 12 4 / 0.5);
     scrollbar-width: none;
-    /* Soft edges hint that the strip scrolls sideways instead of cutting dots off hard. */
+    /* Soft edges hint that the strip scrolls sideways instead of cutting stops off hard. */
     mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
   }
 
-  /* Dots mask the line with the strip's own (darker) background. */
-  .dot::before {
-    background: var(--bg);
+  .track::-webkit-scrollbar {
+    display: none;
   }
 
-  .track::-webkit-scrollbar {
+  .title {
     display: none;
   }
 
@@ -190,12 +225,12 @@
     width: var(--step);
     height: 0;
     border-left: 0;
-    border-top: 2px solid rgb(168 176 200 / 0.4);
+    border-top: 2px solid var(--ink);
   }
 
   .segment[data-dashed] {
     border-top-style: dashed;
-    border-top-color: rgb(168 176 200 / 0.7);
+    border-top-color: var(--ink-faded);
   }
 
   .button {
@@ -203,7 +238,7 @@
     padding: 0;
   }
 
-  /* Names live in aria-labels (and the big station label above the strip). */
+  /* Names live in aria-labels (and the front page's headline). */
   .label {
     display: none;
   }

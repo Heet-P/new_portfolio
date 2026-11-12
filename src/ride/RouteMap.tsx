@@ -14,10 +14,25 @@ const COUNT = STATIONS.length;
  */
 let hasDrawnIn = false;
 
+/** The train marker: a tiny side-view locomotive in ink, like a timetable's printed glyph. */
+function TrainGlyph() {
+  return (
+    <svg className={styles.glyph} viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+      {/* Cab, boiler and chimney in ink; windows and wheels punched out in paper. */}
+      <path fill="currentColor" d="M2 3h7v3h8V4h2v2h1.5a1.5 1.5 0 0 1 1.5 1.5V12H2z" />
+      <rect x="4" y="5" width="3" height="3" fill="var(--paper-light)" />
+      <circle cx="6" cy="13" r="2.4" fill="currentColor" stroke="var(--paper-light)" strokeWidth="1" />
+      <circle cx="12" cy="13" r="2.4" fill="currentColor" stroke="var(--paper-light)" strokeWidth="1" />
+      <circle cx="18" cy="13" r="2.4" fill="currentColor" stroke="var(--paper-light)" strokeWidth="1" />
+    </svg>
+  );
+}
+
 /**
- * The route map: a metro-line diagram of every station that doubles as navigation.
- * Desktop: a vertical line fixed bottom-left, with station names. Phones (<= 640px): a compact
- * horizontal strip of dots along the bottom edge (names stay available as aria-labels).
+ * The route map: a printed timetable card of every station that doubles as navigation.
+ * Desktop: an ink route line fixed bottom-left, with station names in serif. Phones (<= 640px):
+ * a compact horizontal strip of stops along the bottom edge (names stay available as aria-labels).
+ * The current stop is circled in red ink; the stretch to an upcoming stop is dashed.
  *
  * Performance: the train marker moves on every scroll frame, so it never goes through React.
  * A zustand `subscribe` writes its transform straight to the DOM; React only re-renders when
@@ -81,6 +96,10 @@ export function RouteMap() {
       {/* track = the panel (and, on phones, the horizontal scroller); rail = positioning context
           shared by the station list and the train marker, so the marker lines up and scrolls with the dots. */}
       <div ref={trackRef} className={styles.track} data-draw={drawIn || undefined}>
+        {/* Printed card title (decorative: the nav is already named "Route map"). */}
+        <p className={styles.title} aria-hidden="true">
+          Timetable
+        </p>
         <div className={styles.rail} style={{ "--count": COUNT } as CSSProperties}>
           <ol className={styles.list}>
             {STATIONS.map((station, i) => {
@@ -114,7 +133,9 @@ export function RouteMap() {
             })}
           </ol>
           <span ref={carriageRef} className={styles.carriage} aria-hidden="true">
-            <span ref={trainRef} className={styles.train} />
+            <span ref={trainRef} className={styles.train}>
+              <TrainGlyph />
+            </span>
           </span>
         </div>
       </div>

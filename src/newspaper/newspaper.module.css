@@ -1,0 +1,634 @@
+/*
+ * "The Project Post": the printed look shared by the cabin's front page and the Express
+ * broadsheet. Reads the tokens in globals.css. Layout follows the page's own width (container
+ * queries), so the same front page works in the cabin's frame and in the Express column.
+ *
+ * Type: body and UI on the 16/20/25/32 scale. The nameplate, the big headline and the drop cap
+ * are the approved display exceptions (fluid, tight print leading).
+ * Motion (Emil Kowalski): only transform/opacity animate, custom ease-out curves, < 300ms,
+ * scale(0.97) on press, hover effects only for real pointers.
+ * Contrast: red text only on --paper or --paper-light (4.9:1 / 5.5:1), never on --paper-shade.
+ */
+
+.front {
+  container-type: inline-size;
+  color: var(--ink);
+}
+
+/* ---------- Masthead (cabin page) ---------- */
+
+.masthead {
+  margin-bottom: 24px;
+}
+
+/* Ears either side of the nameplate, each under a thin rule, as on the reference. */
+.mastTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 24px;
+}
+
+.ear {
+  padding: 8px 0 12px;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  white-space: nowrap;
+}
+
+.ear:last-child {
+  text-align: right;
+}
+
+.nameplate {
+  margin: 0;
+  font-family: var(--font-blackletter), serif;
+  /* Display exception: the blackletter nameplate. */
+  font-size: clamp(36px, 8cqi, 72px);
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Edition line between the masthead's double rule and a hairline. */
+.edition {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 24px;
+  margin: 0;
+  padding: 4px 0;
+  border-top: 5px double var(--rule);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-style: italic;
+  color: var(--ink-faded);
+}
+
+/* Narrow pages: the nameplate gets its own row, the ears share the one below it. */
+@container (max-width: 559px) {
+  .mastTop {
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+  }
+
+  .nameplate {
+    grid-column: 1 / -1;
+    order: -1;
+    padding-bottom: 4px;
+  }
+
+  .ear {
+    padding: 4px 0;
+  }
+}
+
+/* ---------- Kicker: section, issue and stamps above the headline ---------- */
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--ink-faded);
+}
+
+.section {
+  font-weight: 700;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.kickerDate {
+  font-style: italic;
+}
+
+/* A rubber stamp in red ink, set down slightly crooked. */
+.stamp {
+  padding: 0 8px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-stamp);
+  box-shadow: inset 0 0 0 1px var(--paper), inset 0 0 0 2px currentColor;
+  font-weight: 700;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.08em;
+  color: var(--red);
+  transform: rotate(-3deg);
+}
+
+.stamp[data-status="upcoming"] {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+/* ---------- Headline + deck ---------- */
+
+.headline {
+  margin: 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 900;
+  /* Display exception: the front-page headline. */
+  font-size: clamp(40px, 8cqi, 76px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* The last word, carrying the red brush stroke just under its baseline. */
+.underlined {
+  position: relative;
+  display: inline-block;
+}
+
+.brushUnderline {
+  position: absolute;
+  left: -8%;
+  bottom: -0.18em;
+  width: 118%;
+  height: 0.32em;
+  color: var(--red);
+  pointer-events: none;
+}
+
+/* Classified notices (Situations Wanted, Terminus) set their phrase-length heads smaller. */
+.front[data-kind="open"] .headline,
+.front[data-kind="end"] .headline {
+  font-size: clamp(32px, 6cqi, 56px);
+}
+
+.deck {
+  margin: 16px 0 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-style: italic;
+  font-size: var(--text-heading);
+  line-height: var(--text-heading-lh);
+  text-wrap: pretty;
+}
+
+@container (min-width: 720px) {
+  .deck {
+    font-size: var(--text-display);
+    line-height: 44px;
+  }
+}
+
+/* ---------- Lede: text beside the clipping ---------- */
+
+.lede {
+  display: grid;
+  gap: 32px;
+}
+
+@container (min-width: 720px) {
+  .lede {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: start;
+    gap: 40px;
+  }
+}
+
+/* ---------- At a Glance ---------- */
+
+.glance {
+  position: relative;
+  margin-top: 40px;
+  padding: 32px 24px 20px;
+  border: 1px solid var(--rule);
+}
+
+/* Painted label tab on the box's top edge. */
+.glanceLabel {
+  position: absolute;
+  top: -20px;
+  left: 16px;
+  isolation: isolate;
+  margin: 0;
+  padding: 4px 24px 4px 20px;
+  font-family: var(--font-headline), Georgia, serif;
+  font-style: italic;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  color: var(--paper-light);
+}
+
+.brushTab {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--red);
+}
+
+.glanceList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glanceList li {
+  position: relative;
+  padding-left: 28px;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+}
+
+/* Small red square bullets, set by hand (a hair crooked). */
+.glanceList li::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  background: var(--red);
+  transform: rotate(-4deg);
+}
+
+.glanceValue {
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 900;
+  font-variant-numeric: lining-nums;
+}
+
+/* ---------- Clipping (illustration) ---------- */
+
+.clipping {
+  position: relative;
+  margin: 8px 0 0;
+  transform: rotate(var(--tilt, 0deg));
+}
+
+.clippingImg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Lies on the page: a tight contact shadow plus a soft lift. */
+  box-shadow:
+    0 1px 2px rgb(60 40 12 / 0.25),
+    0 16px 32px -12px rgb(60 40 12 / 0.45);
+}
+
+/* A strip of translucent paper tape holding the clipping down. */
+.clipping::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: -12px;
+  left: 50%;
+  width: 104px;
+  height: 28px;
+  background: rgb(246 238 214 / 0.62);
+  box-shadow: 0 1px 2px rgb(60 40 12 / 0.18);
+  transform: translateX(-50%) rotate(-3deg);
+}
+
+/* No illustration: an ink ornament in a ruled box of the same proportions. */
+.ornamentFrame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--rule);
+  outline: 1px solid var(--rule);
+  outline-offset: -8px;
+  background: var(--paper-shade);
+  color: var(--ink-faded);
+}
+
+.ornament {
+  width: 60%;
+  height: auto;
+}
+
+/* ---------- Story ---------- */
+
+.body {
+  margin-top: 32px;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  text-align: justify;
+  hyphens: auto;
+}
+
+.body p {
+  margin: 0 0 12px;
+}
+
+/*
+ * The main story runs in two columns with a hairline rule once the page is wide enough (one on
+ * phones); short notices inside the lede or an ad stay in one.
+ */
+@container (min-width: 720px) {
+  .front > .body {
+    columns: 2;
+    column-gap: 40px;
+    column-rule: 1px solid var(--rule-faint);
+  }
+
+  .front > .body p {
+    break-inside: avoid;
+  }
+}
+
+/*
+ * Drop cap on a story's first paragraph (display exception: three lines tall). Only for the
+ * main story (a direct child of the page), not for the classifieds' short notices.
+ */
+.front > .body > p:first-child::first-letter {
+  float: left;
+  margin: 4px 8px 0 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 900;
+  font-size: 64px;
+  line-height: 56px;
+}
+
+/* ---------- Stack: ink-stamped chips ---------- */
+
+.stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stack li {
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+}
+
+/* Stamped by hand: none of them quite straight. */
+.stack li:nth-child(odd) {
+  transform: rotate(-1deg);
+}
+
+.stack li:nth-child(3n) {
+  transform: rotate(1.2deg);
+}
+
+/* ---------- Actions: ink-stamp tickets ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action {
+  position: relative;
+  isolation: isolate; /* keeps the hover fill (z-index: -1) inside the button */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px; /* touch target */
+  padding: 0 20px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-stamp);
+  /* Double stamp frame: a paper gap, then a hairline of the same ink. */
+  box-shadow: inset 0 0 0 2px var(--paper-light), inset 0 0 0 3px currentColor;
+  background: var(--paper-light);
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 700;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+/* The primary action is stamped in red, a little crooked. */
+.action[data-primary] {
+  color: var(--red);
+  transform: rotate(-1.5deg);
+}
+
+/* Hover: a faint ink wash fades in by opacity (colours never animate). */
+.action::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(29 25 21 / 0.07);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+.action[data-primary]::before {
+  background: rgb(176 53 43 / 0.08); /* keeps red text above 4.5:1 */
+}
+
+/* Downloads get a small arrow that dips on hover: "take it with you". */
+.action[download]::after {
+  content: "↓" / "";
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+.out {
+  display: inline-block;
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .action:hover::before {
+    opacity: 1;
+  }
+
+  .action:hover .out {
+    transform: translate(2px, -2px);
+  }
+
+  .action[download]:hover::after {
+    transform: translateY(2px);
+  }
+}
+
+.action:active {
+  transform: scale(0.97);
+}
+
+.action[data-primary]:active {
+  transform: rotate(-1.5deg) scale(0.97);
+}
+
+/* ---------- Skills (Departure) ---------- */
+
+.skills {
+  display: grid;
+  gap: 8px;
+  margin: 32px 0 0;
+  padding-top: 16px;
+  border-top: 5px double var(--rule);
+}
+
+.skillGroup {
+  display: grid;
+  gap: 0 16px;
+}
+
+.skillGroup dt {
+  font-weight: 700;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.06em;
+}
+
+.skillGroup dd {
+  margin: 0;
+  color: var(--ink-faded);
+}
+
+@container (min-width: 560px) {
+  .skillGroup {
+    grid-template-columns: 208px 1fr;
+    align-items: baseline;
+  }
+}
+
+/* ---------- Classifieds (Next stop, Terminus) ---------- */
+
+.classifieds {
+  display: grid;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+@container (min-width: 720px) {
+  .classifieds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* A boxed small ad: a double rule round it, as in the classifieds pages. */
+.ad {
+  padding: 16px 24px 24px;
+  border: 5px double var(--rule);
+}
+
+.adTitle {
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 700;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.ad .body {
+  margin-top: 16px;
+}
+
+/* ---------- The resume ticket ---------- */
+
+.ticket {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  min-height: 96px;
+  margin-top: 16px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-stamp);
+  background: var(--paper-light);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform var(--dur-hover) var(--ease-out);
+}
+
+.ticketMain {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 12px 20px;
+}
+
+.ticketKicker,
+.ticketMeta {
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-variant-caps: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--ink-faded);
+}
+
+.ticketTitle {
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 900;
+  font-size: var(--text-heading);
+  line-height: var(--text-heading-lh);
+  color: var(--red);
+}
+
+/* Stub behind a perforated line. */
+.ticketStub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  width: 88px;
+  border-left: 2px dashed rgb(29 25 21 / 0.5);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--ink-faded);
+}
+
+.ticketNo {
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 700;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ticket:hover {
+    transform: translateY(-2px) rotate(-0.5deg);
+  }
+}
+
+.ticket:active {
+  transform: scale(0.97);
+}
+
+.credits {
+  margin: 32px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule-faint);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-style: italic;
+  color: var(--ink-faded);
+}
+
+.credits a {
+  color: var(--ink);
+}
+
+/* ---------- Reduced motion: no tilting or lifting on interaction ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .action,
+  .action::before,
+  .action::after,
+  .out,
+  .ticket {
+    transition: none;
+  }
+}
