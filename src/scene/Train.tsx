@@ -75,8 +75,9 @@ useGLTF.preload(TRAIN_PARAMS.modelUrl);
 
 /**
  * Re-dress the flat Blender materials (glowing windows, night-blue body) and collect the
- * swaying cars. Idempotent: it only assigns fixed values, so a remount is harmless even
- * though useGLTF caches and shares the same scene and materials.
+ * swaying cars. Safe to run on every mount even though useGLTF caches and shares one scene:
+ * materials only receive fixed values, and each car's rest height is recorded in
+ * node.userData the first time, so a remount mid-sway never adopts a swayed pose as "rest".
  */
 function rigTrain(scene: THREE.Object3D): CarRig[] {
   const seen = new Set<THREE.Material>();
@@ -105,7 +106,9 @@ function rigTrain(scene: THREE.Object3D): CarRig[] {
   return CARS.flatMap((name, i) => {
     const node = scene.getObjectByName(name);
     // Phases spread over the cycle; i*2.1 rad avoids any two cars lining up.
-    return node ? [{ node, baseY: node.position.y, phase: i * 2.1 }] : [];
+    if (!node) return [];
+    node.userData.restY ??= node.position.y;
+    return [{ node, baseY: node.userData.restY as number, phase: i * 2.1 }];
   });
 }
 

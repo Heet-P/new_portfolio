@@ -6,6 +6,7 @@ import { STATIONS } from "@/content/route";
 import { useRide } from "./rideStore";
 import { RideOverlay } from "./RideOverlay";
 import { useScrollDriver } from "./useScrollDriver";
+import { SceneBoundary } from "@/scene/SceneBoundary";
 
 // The 3D scene is client-only and heavy (three.js + model): split into its own chunk and
 // only fetched once ride mode is actually shown. No loading UI: the scene fades itself in.
@@ -23,7 +24,10 @@ export function Ride() {
   if (mode !== "ride") return null;
   return (
     <>
-      <Scene />
+      {/* A scene crash (WebGL, model load) falls back to Express instead of blanking the site. */}
+      <SceneBoundary>
+        <Scene />
+      </SceneBoundary>
       {/* overflow-anchor: none = the browser never "helpfully" shifts scroll when layout changes. */}
       <div aria-hidden="true" style={{ height: `${STATIONS.length * 100}vh`, overflowAnchor: "none" }} />
       <RideOverlay />
