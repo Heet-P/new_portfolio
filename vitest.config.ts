@@ -10,7 +10,5 @@ export default defineConfig({
     // jsdom gives component tests a DOM; pure-logic tests simply ignore it.
     environment: "jsdom",
     include: ["src/**/*.test.ts?(x)"],
-    // Task 1 ships no unit tests yet; keep `npm test` green until Task 2 adds them.
-    passWithNoTests: true,
   },
 });
