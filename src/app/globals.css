@@ -1,8 +1,45 @@
-/* Night-only theme (no light/dark toggle); real design tokens arrive in later tasks. */
+/*
+ * Global design tokens for the Night Train.
+ * Night-only theme by design (no light/dark toggle), so colours are plain vars,
+ * not light-dark() pairs. Every component reads these instead of raw values.
+ */
 :root {
   color-scheme: dark;
-  --bg: #0b0f1a;
-  --fg: #e8ecf5;
+
+  /* --- Colour: deep night outside, warm amber lamp light inside --- */
+  --bg: #0a0e1a; /* page: the night sky */
+  --bg-glow: #1b2244; /* indigo haze near the top of the page */
+  --surface: #121a30; /* station cards */
+  --surface-raised: #182241; /* chips, pills, stat tiles */
+  --line: #26304f; /* hairlines and the route track */
+  --fg: #ede6d8; /* warm paper white: headings and body */
+  --fg-muted: #a8b0c8; /* secondary text (dates, labels) */
+  --amber: #f3b25e; /* lamp light: accents, links, the current stop */
+  --amber-strong: #ffc97f; /* hover state for amber text */
+  --amber-ink: #1a1208; /* text placed on an amber fill */
+
+  /* --- Type: Major Third scale (x1.25); px line-heights at 1.4-1.6x --- */
+  --text-xs: 13px; /* one step below body (16 / 1.25), for eyebrows and labels */
+  --text-xs-lh: 20px;
+  --text-body: 16px;
+  --text-body-lh: 24px;
+  --text-sub: 20px;
+  --text-sub-lh: 28px;
+  --text-heading: 25px;
+  --text-heading-lh: 36px;
+  --text-display: 32px;
+  --text-display-lh: 48px;
+
+  /* --- Motion (Emil Kowalski's curves; UI animations stay < 300ms) --- */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 160ms;
+  --dur-hover: 240ms;
+
+  /* --- Shape --- */
+  --radius-card: 24px;
+  --radius-inner: 12px; /* card radius (24) minus tile padding (12) */
+  --radius-pill: 999px;
 }
 
 *,
@@ -17,9 +54,52 @@ body {
   padding: 0;
 }
 
+html {
+  /* Deep links (#vaani etc.) should glide, but only for people who are fine with motion. */
+  scroll-padding-top: 24px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
-  background: var(--bg);
+  /* A faint indigo haze at the top, like light pollution over a town at night. */
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--bg-glow) 0%, transparent 70%) no-repeat,
+    var(--bg);
   color: var(--fg);
-  /* 16px body text, line-height 1.5 (within the 1.4-1.6 rule). */
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Amber text selection keeps the lamp-light mood even when copying text. */
+::selection {
+  background: var(--amber);
+  color: var(--amber-ink);
+}
+
+/* Keyboard focus is always visible and on-brand. */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Visually hidden but still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
