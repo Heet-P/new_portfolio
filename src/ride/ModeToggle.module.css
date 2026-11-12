@@ -1,0 +1,49 @@
+/*
+ * Mode toggle: fixed top-right, mirrors the Express `.button` look (pill, amber outline,
+ * opacity-overlay hover, scale(0.97) press). Only transform/opacity animate.
+ */
+.toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100; /* above the ride canvas and the Express page */
+  isolation: isolate; /* keeps the hover overlay (z-index: -1) inside the button */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px; /* touch target */
+  padding: 0 20px;
+  border: 1px solid rgb(243 178 94 / 0.4);
+  border-radius: var(--radius-pill);
+  background: var(--bg); /* opaque so it stays legible over the 3D scene */
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-weight: 500;
+  color: var(--amber);
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+/* Hover fill fades in via opacity, never by animating background-color. */
+.toggle::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(243 178 94 / 0.12);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .toggle:hover::before {
+    opacity: 1;
+  }
+}
+
+.toggle:active {
+  transform: scale(0.97);
+}
