@@ -6,8 +6,10 @@ import { PROFILE, type Station } from "@/content/route";
  */
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** The edition date when a stop has no dates of its own. */
-const EDITION_DATE = "Nov 2026";
+/** This edition of The Project Post: the volume on every nameplate's left ear... */
+export const EDITION_VOLUME = "Vol. III";
+/** ...and its date (also the dateline of a stop that has no dates of its own). */
+export const EDITION_DATE = "Nov 2026";
 
 /** Newspaper section a stop is filed under (the kicker above its headline). */
 export const SECTION: Record<Station["kind"], string> = {

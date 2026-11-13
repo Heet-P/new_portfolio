@@ -278,18 +278,6 @@ export function stationPlan(i: number): StationPlan {
   return plan;
 }
 
-/** The main building's placement: base centre on the platform slab, yaw along the track (front toward it). */
-export function stationPlacement(i: number): { kind: StationPlan["kind"]; position: [number, number, number]; rotationY: number } {
-  const p = stationPlan(i);
-  const f = trackFrame(stationS[i] + p.building.along);
-  const lateral = -(BUILD_FRONT + p.building.depth / 2);
-  return {
-    kind: p.kind,
-    position: [f.x + f.nx * lateral, f.y + PLATFORM.height, f.z + f.nz * lateral],
-    rotationY: f.yaw,
-  };
-}
-
 /** The two name boards at the platform ends (along, u of the board's centre); both face back down the track. */
 export function endSigns(i: number): { along: number; u: number }[] {
   void i; // same spot at every stop: just past each end of the building's platform run

@@ -10,7 +10,13 @@ export function webglSupported(): boolean {
   return (memo ??= detectWebGL());
 }
 
-/** Test-only: forget the memo so a test can mock a different detectWebGL result. */
-export function resetWebglMemo(): void {
-  memo = undefined;
-}
+/**
+ * Test-only: forget the memo so a test can mock a different detectWebGL result. Undefined in
+ * production builds (NODE_ENV is inlined, so the bundler drops the function entirely).
+ */
+export const resetWebglMemo =
+  process.env.NODE_ENV === "test"
+    ? () => {
+        memo = undefined;
+      }
+    : undefined;

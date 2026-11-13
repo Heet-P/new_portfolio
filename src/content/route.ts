@@ -64,7 +64,7 @@ export const PROFILE: {
   github: "https://github.com/Heet-P",
   linkedin: "https://www.linkedin.com/in/heetparikh/",
   resume: "/HeetParikh_Resume.pdf",
-  // Grouped exactly as on the resume.
+  // Grouped as on the resume (its "Core Concepts" group is left out: the stops tell that story).
   skills: {
     Languages: ["JavaScript", "TypeScript", "Python", "C++", "SQL", "HTML", "CSS"],
     Frontend: ["Next.js", "React.js", "Vite", "Tailwind CSS"],

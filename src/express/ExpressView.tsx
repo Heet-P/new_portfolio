@@ -1,4 +1,5 @@
 import { PROFILE, STATIONS } from "@/content/route";
+import { EDITION_DATE, EDITION_VOLUME } from "@/newspaper/edition";
 import { Nameplate } from "@/newspaper/FrontPage";
 import { InkTrain } from "./InkTrain";
 import { StationSection } from "./StationSection";
@@ -21,8 +22,8 @@ export function ExpressView() {
     <main id="express" className={styles.page}>
       <Nameplate
         whimsy
-        left="Vol. III · Express edition"
-        right="Nov 2026"
+        left={`${EDITION_VOLUME} · Express edition`}
+        right={EDITION_DATE}
         edition={
           <>
             <span>The portfolio of {PROFILE.name}</span>

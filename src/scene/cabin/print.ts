@@ -1,6 +1,7 @@
 import { STATIONS, type Station } from "@/content/route";
-import { deckOf, formatDateline, headlineOf, nextStopLabel, SECTION } from "@/newspaper/edition";
+import { deckOf, EDITION_VOLUME, formatDateline, headlineOf, nextStopLabel, SECTION } from "@/newspaper/edition";
 import { ILLUSTRATIONS } from "@/newspaper/illustrations";
+import { FADED, INK, readFonts, RED, rng } from "../inkPrint";
 
 /**
  * Prints a stop's front page of "The Project Post" onto a canvas: the texture of the 3D
@@ -10,25 +11,10 @@ import { ILLUSTRATIONS } from "@/newspaper/illustrations";
  * Pure canvas 2D; fonts are the page's own (next/font families, read from the CSS variables).
  */
 
-/** The newspaper tokens (globals.css), for the canvas. */
-const INK = "#1d1915";
-const FADED = "#4a4239";
-const RED = "#b0352b";
 /** A touch warmer than --paper: the cabin's tone mapping greys the print slightly. */
 const PAPER = "#ecdcb4";
 const PAPER_LIGHT = "#f8f2e2";
 
-interface Fonts {
-  blackletter: string;
-  headline: string;
-  body: string;
-}
-
-function readFonts(): Fonts {
-  const css = getComputedStyle(document.documentElement);
-  const v = (name: string) => css.getPropertyValue(name).trim() || "Georgia, serif";
-  return { blackletter: v("--font-blackletter"), headline: v("--font-headline"), body: v("--font-body") };
-}
 
 /** Resolves once the page's fonts are usable in canvas (the canvas never triggers a font load). */
 export function loadPrintFonts(): Promise<unknown> {
@@ -41,17 +27,6 @@ export function loadPrintFonts(): Promise<unknown> {
   ]).catch(() => undefined);
 }
 
-/** Small deterministic PRNG (mulberry32), so a page's grain never shimmers between prints. */
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /** Greedy word wrap to `max` px. */
 function wrap(ctx: CanvasRenderingContext2D, text: string, max: number): string[] {
@@ -140,7 +115,7 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   ctx.lineTo(W - m, earRule);
   ctx.stroke();
   ctx.textAlign = "left";
-  ctx.fillText(`Vol. III, No. ${index + 1}`, m, earY);
+  ctx.fillText(`${EDITION_VOLUME}, No. ${index + 1}`, m, earY);
   ctx.textAlign = "right";
   ctx.fillText(formatDateline(station.dates), W - m, earY);
   y = earY + px(s.ear) * 0.8;

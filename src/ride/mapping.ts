@@ -3,7 +3,7 @@
  * No React, no DOM: the scroll driver, route map, 3D scene and station cards
  * all derive their state from these functions so they can never disagree.
  *
- * Timeline layout for N stations (N = 5 here). The route is split into N-1
+ * Timeline layout for N stations (N = STATIONS.length, 8 today). The route is split into N-1
  * equal segments; each station sits on a segment boundary ("anchor"). Around
  * every anchor the train dwells for STOP_HOLD of one segment's length, split
  * evenly on both sides. The first and last stations are anchored at the very

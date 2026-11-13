@@ -3,7 +3,7 @@ import { PROFILE, STATIONS, type Station } from "@/content/route";
 import { StationMedia } from "@/express/StationMedia";
 import { TapLink } from "@/sound/TapLink";
 import { Clipping } from "./Clipping";
-import { deckOf, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
+import { deckOf, EDITION_VOLUME, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
 import { linkProps, splitLinks } from "./links";
 import { BrushTab, BrushUnderline, InkSpeckles, StopPress } from "./ornaments";
 import { PressNameplate } from "./PressNameplate";
@@ -76,7 +76,7 @@ function Masthead({ station, index }: { station: Station; index: number }) {
   const status = index === 0 ? "Now departing" : index === LAST ? "End of the line" : "Now arriving";
   return (
     <Nameplate
-      left={`Vol. III, No. ${index + 1}`}
+      left={`${EDITION_VOLUME}, No. ${index + 1}`}
       right={formatDateline(station.dates)}
       edition={
         <>

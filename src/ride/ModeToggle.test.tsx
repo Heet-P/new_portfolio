@@ -6,15 +6,19 @@ import * as mode from "./mode";
 import { resetWebglMemo } from "./webgl";
 import { useInitialMode } from "./useInitialMode";
 
+/** jsdom's own matchMedia (some tests replace it), put back after each test. */
+const originalMatchMedia = window.matchMedia;
+
 // Vitest globals are off, so Testing Library cannot auto-clean between tests.
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   window.localStorage.clear();
+  window.matchMedia = originalMatchMedia;
 });
 
 beforeEach(() => {
-  resetWebglMemo();
+  resetWebglMemo!();
   useRide.setState({ mode: "express" });
   vi.spyOn(mode, "detectWebGL").mockReturnValue(true);
 });

@@ -10,7 +10,6 @@ import {
   endSigns,
   fasciaPlacement,
   PLATFORM,
-  stationPlacement,
   stationPlan,
   toWorld,
   trackFrame,
@@ -18,6 +17,18 @@ import {
 } from "./placement";
 
 const world = generateWorld(1);
+
+/**
+ * The main building's base centre and yaw, derived from its plan the way parts.ts builds it.
+ * (Task 13: this was `stationPlacement` in placement.ts, exported only for this test; the
+ * check moved here unchanged so the dead production export could go.)
+ */
+function buildingPlacement(i: number): { position: [number, number, number]; rotationY: number } {
+  const p = stationPlan(i);
+  const f = trackFrame(p.s + p.building.along);
+  const lateral = -(BUILD_FRONT + p.building.depth / 2);
+  return { position: [f.x + f.nx * lateral, f.y + PLATFORM.height, f.z + f.nz * lateral], rotationY: f.yaw };
+}
 const stationS = ROUTE.stationU.map((u) => u * ROUTE.length);
 const idOf = (i: number) => STATIONS[i].id;
 const hit: TrackHit = { s: 0, d: 0, y: 0 };
@@ -151,7 +162,7 @@ describe("placement on the platform side", () => {
 
   it("turns the building to face the track, sitting on the platform slab", () => {
     STATIONS.forEach((_, i) => {
-      const b = stationPlacement(i);
+      const b = buildingPlacement(i);
       nearestOnTrack(b.position[0], b.position[2], hit);
       const k = Math.round(hit.s / TRACK.step);
       const yaw = Math.atan2(-TRACK.tz[k], TRACK.tx[k]);

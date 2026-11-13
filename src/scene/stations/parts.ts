@@ -273,7 +273,7 @@ export function building(kit: Kit, p: StationPlan) {
   const doorX = b.door - b.along;
   const doorColour = p.id === "sahara" || p.id === "next" ? "#7a3b2e" : p.kind === "main" ? "#2f6f6c" : "#2d3b57";
   door(kit, doorX, zF, b.trim, doorColour);
-  const winY = H + (p.kind === "main" ? 1.9 : 1.9);
+  const winY = H + 1.9;
   for (const a of b.windows) window(kit, a - b.along, winY, 1.2, 1.35, zF, b.trim);
   if (p.kind === "main") {
     for (const a of [...b.windows, b.door - 3, b.door + 3]) window(kit, a - b.along, H + 5.3, 1.2, 1.55, zF, b.trim);

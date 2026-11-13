@@ -1,3 +1,4 @@
+import { FADED, type Fonts, INK, readFonts, RED, rng } from "./inkPrint";
 import { ATLAS, atlasRect, type ReelEntry, type Rect } from "./tunnelReel";
 
 /**
@@ -7,36 +8,9 @@ import { ATLAS, atlasRect, type ReelEntry, type Rect } from "./tunnelReel";
  * in the page's own fonts (read from the CSS variables, as scene/cabin/print.ts does).
  */
 
-/** The newspaper tokens (globals.css), for the canvas. */
-const INK = "#1d1915";
-const FADED = "#4a4239";
-const RED = "#b0352b";
 /** Warmer and more saturated than --paper (#efe5cc): ACES tone mapping pulls bright cream toward grey, and this lands near it. */
 const PAPER = "#e9d49b";
 
-interface Fonts {
-  blackletter: string;
-  headline: string;
-  body: string;
-}
-
-function readFonts(): Fonts {
-  const css = getComputedStyle(document.documentElement);
-  const v = (name: string) => css.getPropertyValue(name).trim() || "Georgia, serif";
-  return { blackletter: v("--font-blackletter"), headline: v("--font-headline"), body: v("--font-body") };
-}
-
-/** Small deterministic PRNG (mulberry32): a poster's grain is the same on every print. */
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /** Fill a sheet of paper: base colour, a sun-faded edge and fine grain. */
 function paper(ctx: CanvasRenderingContext2D, r: Rect, seed: number) {
