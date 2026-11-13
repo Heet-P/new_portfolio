@@ -1,11 +1,11 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type Ref, useCallback, useEffect, useRef, useState } from "react";
 import { saveMode } from "@/ride/mode";
 import { useRide } from "@/ride/rideStore";
 import { getSound } from "@/sound/sound";
-import { FEED, formatTicketDate, INTRO_TIMING, markIntroSeen, TICKET, ticketStops } from "./ticket";
+import { FEED, formatTicketDate, INTRO_TIMING, markIntroSeen, tearClipPaths, TICKET, ticketStops } from "./ticket";
 import { TicketPrinter, type TicketPrinterStage } from "./TicketPrinter";
 import gate from "./IntroGate.module.css";
 import styles from "./Intro.module.css";
@@ -32,10 +32,19 @@ const fits = (el: HTMLElement) => el.scrollHeight <= el.clientHeight;
  *
  * It is a modal dialog: the page behind is inert, Tab stays inside, Escape boards, and wheel /
  * touch / scroll keys never reach the ride's scroll driver (the train must not move behind it).
+ *
+ * Boarding on the finished ticket ("Take the journey" or Escape) tears it along the perforation:
+ * the body is pulled up and away while the stub stays put, then the night fades (~0.8 s in all).
+ * The ride is usable from the click on (inert lifted, focus moved); the tear is only the picture.
+ * Reduced motion, or boarding before the ticket is out: no tear, the dialog simply goes.
  */
 export default function Intro({ instant, onClose }: { instant: boolean; onClose: () => void }) {
   const [stage, setStage] = useState<TicketPrinterStage>(instant ? "complete" : "processing");
+  // Boarded: the ride is live again (inert lifted, focus moved), though the dialog still shows.
   const [leaving, setLeaving] = useState(false);
+  // The ticket's two pieces while it tears (null = whole), and whether the night is fading out.
+  const [tear, setTear] = useState<{ body: string; stub: string; perfY: number } | null>(null);
+  const [fading, setFading] = useState(false);
   // Reached "complete" through Skip: the rest of the paper comes out quickly, not in a 1.75 s glide.
   const [skipped, setSkipped] = useState(false);
   // Today's date for the ticket, read once (this only ever renders in the browser).
@@ -43,9 +52,19 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   const overlayRef = useRef<HTMLDivElement>(null);
   const takeRef = useRef<HTMLButtonElement>(null);
   const leavingRef = useRef(false);
+  // The stub row: its top border is the perforation the ticket tears along.
+  const stubRef = useRef<HTMLDivElement>(null);
+  // The stage as of the last render, for board() (a stable callback) to read.
+  const stageRef = useRef(stage);
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
   const animate = !instant;
 
-  /** Board the train: remember the visit, tap, and let the ticket slide away. */
+  /**
+   * Board the train: remember the visit and tap. A finished ticket (with motion) is torn along
+   * its perforation first; otherwise the night fades straight away.
+   */
   const board = useCallback(() => {
     if (leavingRef.current) return;
     leavingRef.current = true;
@@ -53,8 +72,16 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
     const sound = getSound();
     sound.stopChatter();
     sound.tap();
+    if (!instant && stageRef.current === "complete") {
+      sound.tear();
+      // The perforation is the stub's top border (2px dashed): tear through its middle.
+      const perfY = (stubRef.current?.offsetTop ?? 0) + 1;
+      setTear({ ...tearClipPaths(perfY), perfY });
+    } else {
+      setFading(true);
+    }
     setLeaving(true);
-  }, []);
+  }, [instant]);
 
   /** "In a hurry?": straight to the Express page (remembered, like the mode toggle). */
   const hurry = () => {
@@ -157,15 +184,22 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
     };
   }, [leaving]);
 
-  // Leaving: focus goes to the ride (its current stop on the route map) at once, and the dialog
-  // unmounts once its exit has played. (A timer, not an animation callback: a hidden tab pauses
-  // animations, and the ride must not stay covered.)
+  // Leaving: focus goes to the ride (its current stop on the route map) at once; a torn ticket
+  // hands over to the fade at tearHandoff, and the dialog unmounts once its exit has played.
+  // (Timers, not animation callbacks: a hidden tab pauses animations, and the ride must not
+  // stay covered.)
+  const tearing = tear !== null;
   useEffect(() => {
     if (!leaving) return;
     document.querySelector<HTMLElement>('nav[aria-label="Route map"] [aria-current="step"]')?.focus({ preventScroll: true });
-    const done = setTimeout(onClose, instant ? 0 : INTRO_TIMING.exit * 1000 + 40);
-    return () => clearTimeout(done);
-  }, [leaving, instant, onClose]);
+    const handoff = tearing ? INTRO_TIMING.tearHandoff * 1000 : 0;
+    const fade = tearing ? setTimeout(() => setFading(true), handoff) : undefined;
+    const done = setTimeout(onClose, instant ? 0 : handoff + INTRO_TIMING.exit * 1000 + 40);
+    return () => {
+      clearTimeout(fade);
+      clearTimeout(done);
+    };
+  }, [leaving, tearing, instant, onClose]);
 
   // Keyboard while open: Escape boards, Tab is trapped, scroll keys never scroll the page behind.
   // Capture phase, so it runs before the ride's own key handling.
@@ -224,6 +258,49 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
 
   const stops = ticketStops();
 
+  /**
+   * Everything printed on the ticket. Drawn once, and a second time while it tears (the stub's
+   * piece); only the first copy carries the ref to the perforation row.
+   */
+  const printed = (perforation?: Ref<HTMLDivElement>) => (
+    <>
+      <header className={styles.ticketHead}>
+        <p className={styles.ticketTitle}>{TICKET.header}</p>
+        <p className={styles.admit}>{TICKET.admit}</p>
+      </header>
+      <p className={styles.label} aria-hidden="true">
+        Route
+      </p>
+      <ol className={styles.route} aria-label="Route">
+        {stops.map((s) => (
+          <li key={s.id} className={styles.stop} data-current={s.current || undefined} data-upcoming={s.upcoming || undefined}>
+            <span className={styles.dot} aria-hidden="true" />
+            {s.name}
+            {s.current && <span className="sr-only"> (current stop)</span>}
+          </li>
+        ))}
+      </ol>
+      {/* Date and seat, with the inspector's stamp beside them (below them on a phone). */}
+      <div className={styles.validation}>
+        <dl className={styles.meta}>
+          <div>
+            <dt>Date</dt>
+            <dd>{date}</dd>
+          </div>
+          <div>
+            <dt>Seat</dt>
+            <dd>{TICKET.seat}</dd>
+          </div>
+        </dl>
+        <p className={styles.stamp}>{TICKET.stamp}</p>
+      </div>
+      <div ref={perforation} className={styles.stub}>
+        <span>{TICKET.stub}</span>
+        <span className={styles.hole} aria-hidden="true" />
+      </div>
+    </>
+  );
+
   return (
     <motion.div
       ref={overlayRef}
@@ -234,15 +311,15 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
       className={`${gate.backdrop} ${styles.overlay}`}
       data-leaving={leaving || undefined}
       initial={false}
-      animate={{ opacity: leaving ? 0 : 1 }}
+      animate={{ opacity: fading ? 0 : 1 }}
       transition={{ duration: animate ? INTRO_TIMING.exit : 0, ease: easeOut }}
     >
-      {/* Leaving: the machine and its ticket slide up and away while the night fades out. */}
+      {/* Fading: the machine and what is left of its ticket slide up and away while the night fades out. */}
       <motion.div
         className={styles.stage}
         initial={animate ? { opacity: 0, transform: "translateY(8px)" } : false}
-        animate={leaving ? { opacity: 0, transform: "translateY(-40px)" } : { opacity: 1, transform: "translateY(0px)" }}
-        transition={{ duration: animate ? (leaving ? 0.3 : 0.24) : 0, ease: easeOut }}
+        animate={fading ? { opacity: 0, transform: "translateY(-40px)" } : { opacity: 1, transform: "translateY(0px)" }}
+        transition={{ duration: animate ? (fading ? 0.3 : 0.24) : 0, ease: easeOut }}
       >
         <TicketPrinter.Root stage={stage} animate={animate} settle={skipped ? "fast" : "feed"} className={styles.printer}>
           <TicketPrinter.Machine>
@@ -265,43 +342,25 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
             </TicketPrinter.Screen>
           </TicketPrinter.Machine>
 
-          <TicketPrinter.Output>
-            <TicketPrinter.Paper className={styles.ticket}>
-              <header className={styles.ticketHead}>
-                <p className={styles.ticketTitle}>{TICKET.header}</p>
-                <p className={styles.admit}>{TICKET.admit}</p>
-              </header>
-              <p className={styles.label} aria-hidden="true">
-                Route
-              </p>
-              <ol className={styles.route} aria-label="Route">
-                {stops.map((s) => (
-                  <li key={s.id} className={styles.stop} data-current={s.current || undefined} data-upcoming={s.upcoming || undefined}>
-                    <span className={styles.dot} aria-hidden="true" />
-                    {s.name}
-                    {s.current && <span className="sr-only"> (current stop)</span>}
-                  </li>
-                ))}
-              </ol>
-              {/* Date and seat, with the inspector's stamp beside them (below them on a phone). */}
-              <div className={styles.validation}>
-                <dl className={styles.meta}>
-                  <div>
-                    <dt>Date</dt>
-                    <dd>{date}</dd>
-                  </div>
-                  <div>
-                    <dt>Seat</dt>
-                    <dd>{TICKET.seat}</dd>
-                  </div>
-                </dl>
-                <p className={styles.stamp}>{TICKET.stamp}</p>
+          <TicketPrinter.Output data-tearing={tear ? "" : undefined}>
+            {/* The ticket; once it tears, its body (above the tear), pulled up and away. */}
+            <div
+              className={styles.tearBody}
+              data-tear={tear ? "body" : undefined}
+              style={
+                tear
+                  ? { clipPath: tear.body, transformOrigin: `0px ${tear.perfY}px`, animationDuration: `${INTRO_TIMING.tear}s` }
+                  : undefined
+              }
+            >
+              <TicketPrinter.Paper className={styles.ticket}>{printed(stubRef)}</TicketPrinter.Paper>
+            </div>
+            {/* The stub (below the same tear): a copy of the ticket for the eye only, left in place. */}
+            {tear && (
+              <div className={styles.tearStub} data-tear="stub" aria-hidden="true" inert style={{ clipPath: tear.stub }}>
+                <TicketPrinter.Paper className={styles.ticket}>{printed()}</TicketPrinter.Paper>
               </div>
-              <div className={styles.stub}>
-                <span>{TICKET.stub}</span>
-                <span className={styles.hole} aria-hidden="true" />
-              </div>
-            </TicketPrinter.Paper>
+            )}
           </TicketPrinter.Output>
         </TicketPrinter.Root>
 

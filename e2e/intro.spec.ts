@@ -43,6 +43,59 @@ test("a fresh ride at / prints a ticket, then 'Take the journey' boards", async 
   await expect(page).toHaveURL(/#vaani$/, { timeout: 8000 });
 });
 
+// Task 15: boarding tears the ticket along its perforation, then the ride shows.
+test("'Take the journey' tears the ticket, then the ride is visible", async ({ page }) => {
+  await page.goto("/");
+  await expect(take(page)).toBeVisible({ timeout: 10000 });
+  // The torn pieces only live for ~0.8 s, quicker than a slow headless frame: note them as they appear.
+  await page.evaluate(() => {
+    const w = window as unknown as { torn: string[] };
+    w.torn = [];
+    new MutationObserver(() => {
+      for (const el of document.querySelectorAll("[data-tear]")) {
+        const piece = el.getAttribute("data-tear")!;
+        if (!w.torn.includes(piece)) w.torn.push(piece);
+      }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-tear"] });
+  });
+  await take(page).click();
+  // The ticket came apart in two (body above the tear, the stub left behind)...
+  await expect.poll(() => page.evaluate(() => (window as unknown as { torn: string[] }).torn.sort())).toEqual(["body", "stub"]);
+  // ...then the night fades and the ride is there.
+  await expect(dialog(page)).toHaveCount(0, { timeout: 3000 });
+  await expect(routeMap(page)).toBeVisible();
+  await expect(page).toHaveURL(/#departure$/);
+});
+
+// Task 15: a first-time rider is told how the train moves, once.
+test("after boarding at Departure the scroll hint shows, and a wheel scroll dismisses it for the session", async ({ page }) => {
+  const hint = page.getByTestId("scroll-hint");
+  await page.goto("/");
+  // Never under the intro.
+  await expect(take(page)).toBeVisible({ timeout: 10000 });
+  await expect(hint).not.toHaveAttribute("data-visible");
+  await take(page).click();
+  await expect(dialog(page)).toHaveCount(0, { timeout: 3000 });
+  await expect(hint).toHaveAttribute("data-visible", "true", { timeout: 8000 });
+  await expect(hint.getByText("Scroll to depart")).toBeVisible();
+  await expect(hint).toHaveAttribute("role", "status");
+  const size = await hint.getByText("Scroll to depart").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(size).toBeGreaterThanOrEqual(16);
+
+  await page.mouse.move(700, 400);
+  await page.mouse.wheel(0, 300);
+  await expect(hint).not.toHaveAttribute("data-visible");
+  // (Faded, then the words leave; a busy headless frame can hold the timer up for a while.)
+  await expect(hint).toHaveText("", { timeout: 8000 });
+  expect(await page.evaluate(() => sessionStorage.getItem("nt-hint-seen"))).toBe("1");
+
+  // Back at Departure on a reload in the same session: no hint.
+  await page.goto("/#departure");
+  await expect(routeMap(page)).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(hint).not.toHaveAttribute("data-visible");
+});
+
 test("a deep link skips the intro", async ({ page }) => {
   await page.goto("/#sahara");
   await expect(routeMap(page).locator("[aria-current=step]")).toHaveAttribute("aria-label", "SAHARA");

@@ -18,6 +18,9 @@ type Plan = { instant: boolean } | null;
 const useIntroPlan = create<{ plan: Plan }>(() => ({ plan: null }));
 const close = () => useIntroPlan.setState({ plan: null });
 
+/** Whether the intro is up right now (the ride's scroll hint waits until it has gone). */
+export const useIntroOpen = () => useIntroPlan((s) => s.plan !== null);
+
 /**
  * Decides, once per page load, whether the ticket-printer intro greets this visitor, and
  * mounts it if so. The page renders this after <InitialMode />, so by the time this effect runs

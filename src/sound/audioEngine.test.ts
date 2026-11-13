@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAudioEngine, SOUND_KEY } from "./audioEngine";
 import { FakeAudioContext, fakeDocument, memoryStorage, throwingStorage } from "./fakeAudioContext";
 import { SCHEDULER } from "./scheduler";
-import { MASTER, MIX, PRINT, STAMP, TAP, TEMPO } from "./soundDesign";
-import { chatterTicks } from "./synth";
+import { MASTER, MIX, PRINT, STAMP, TAP, TEAR, TEMPO } from "./soundDesign";
+import { chatterTicks, tearGrains } from "./synth";
 
 /** An engine wired to fakes, plus the fakes so a test can poke them. */
 function setup(storage: Storage = memoryStorage()) {
@@ -367,6 +367,69 @@ describe("createAudioEngine", () => {
     // Worst case: two ticks' tails overlapping at full level, through the UI bus and the master.
     const peak = 2 * PRINT.level * MIX.ui * MASTER.level;
     expect(20 * Math.log10(peak)).toBeLessThanOrEqual(-14);
+  });
+
+  // Task 15: the ticket tearing along its perforation when the visitor boards.
+  it("tear is silent while off, and never queued on a suspended clock", () => {
+    const { engine, contexts } = setup();
+    engine.tear();
+    expect(contexts).toHaveLength(0);
+    engine.setEnabled(true);
+    contexts[0].state = "suspended";
+    const before = contexts[0].sourceCount;
+    engine.tear();
+    expect(contexts[0].sourceCount).toBe(before);
+    engine.setEnabled(false);
+    contexts[0].state = "running";
+    engine.tear();
+    expect(contexts[0].sourceCount).toBe(before);
+  });
+
+  it("tear plays a noise sweep plus its fibre crackle, all inside the cue's length", () => {
+    const { engine, contexts } = setup();
+    engine.setEnabled(true);
+    const ctx = contexts[0];
+    const now = ctx.currentTime;
+    const before = ctx.starts.length;
+    const sources = ctx.sourceCount;
+    engine.tear();
+    const starts = ctx.starts.slice(before);
+    // The sweep (one noise source) and one source per crackle grain.
+    expect(ctx.sourceCount - sources).toBe(1 + TEAR.grains);
+    for (const t of starts) {
+      expect(t).toBeGreaterThanOrEqual(now);
+      expect(t).toBeLessThanOrEqual(now + TEAR.delay + TEAR.length + 0.02);
+    }
+  });
+
+  it("spreads the crackle grains over the tear, denser as it runs, with soft, bounded levels", () => {
+    let seed = 0.37;
+    // A tiny deterministic generator so the check doesn't depend on Math.random.
+    const rand = () => (seed = (seed * 9301 + 0.49297) % 1);
+    const grains = tearGrains(rand);
+    expect(grains).toHaveLength(TEAR.grains);
+    for (const g of grains) {
+      expect(g.at).toBeGreaterThanOrEqual(0);
+      expect(g.at).toBeLessThanOrEqual(TEAR.length);
+      expect(g.level).toBeGreaterThan(0);
+      expect(g.level).toBeLessThanOrEqual(TEAR.crackleLevel);
+    }
+    const sorted = [...grains].sort((a, b) => a.at - b.at);
+    expect(sorted.map((g) => g.at)).toEqual(grains.map((g) => g.at));
+    // More of the crackle in the second half than the first: the tear speeds up as it goes.
+    const firstHalf = grains.filter((g) => g.at < TEAR.length / 2).length;
+    expect(TEAR.grains - firstHalf).toBeGreaterThan(firstHalf);
+  });
+
+  it("keeps the tear short and quiet: 250-400 ms, under -14 dBFS at the speakers", () => {
+    expect(TEAR.length).toBeGreaterThanOrEqual(0.25);
+    expect(TEAR.length).toBeLessThanOrEqual(0.4);
+    // Worst case: the sweep at its peak with two grains landing on it.
+    const peak = (TEAR.level + 2 * TEAR.crackleLevel) * MIX.ui * MASTER.level;
+    expect(20 * Math.log10(peak)).toBeLessThanOrEqual(-14);
+    // A filtered sweep, never a bright hiss: it rises from mid to upper-mid and stays under the lowpass.
+    expect(TEAR.sweepFrom).toBeLessThan(TEAR.sweepTo);
+    expect(TEAR.sweepTo).toBeLessThanOrEqual(TEAR.lowpass);
   });
 
   it("keeps the stamp cue a soft, low thunk (never louder or brighter than the paper tap)", () => {

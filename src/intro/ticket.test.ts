@@ -5,10 +5,13 @@ import { chatterTicks } from "@/sound/synth";
 import {
   FEED,
   INTRO_SEEN_KEY,
+  INTRO_TIMING,
+  TEAR_EDGE,
   formatTicketDate,
   markIntroSeen,
   readIntroSeen,
   shouldShowIntro,
+  tearClipPaths,
   ticketLines,
   ticketStops,
 } from "./ticket";
@@ -119,5 +122,56 @@ describe("the paper feed", () => {
     }
     // Every move gets its own burst of chatter.
     for (const [a, b] of moves) expect(ticks.some((t) => t >= a && t <= b)).toBe(true);
+  });
+});
+
+// Task 15: boarding tears the ticket along its perforation (body away, stub left behind).
+describe("the tear", () => {
+  /** "x% ypx" pairs of a polygon(), as numbers. */
+  const points = (clip: string) =>
+    clip
+      .replace(/^polygon\(|\)$/g, "")
+      .split(",")
+      .map((p) => p.trim().split(/\s+/).map((v) => parseFloat(v)));
+
+  it("cuts body and stub along the same jagged line through the perforation", () => {
+    const { body, stub } = tearClipPaths(300);
+    // The body keeps the top corners; the tear comes back right to left along its foot.
+    const b = points(body);
+    const s = points(stub);
+    expect(b.slice(0, 2)).toEqual([
+      [0, 0],
+      [100, 0],
+    ]);
+    const bodyEdge = b.slice(2);
+    // The stub runs the same line left to right, then down to its own foot.
+    const stubEdge = s.slice(0, bodyEdge.length);
+    expect(stubEdge).toEqual([...bodyEdge].reverse());
+    expect(s.slice(bodyEdge.length)).toEqual([
+      [100, 100],
+      [0, 100],
+    ]);
+    expect(bodyEdge).toHaveLength(TEAR_EDGE.points + 1);
+  });
+
+  it("keeps the tear ragged but close to the perforation, spanning the full width", () => {
+    const edge = points(tearClipPaths(300).stub).slice(0, TEAR_EDGE.points + 1);
+    expect(edge[0][0]).toBe(0);
+    expect(edge[edge.length - 1][0]).toBe(100);
+    for (const [, y] of edge) expect(Math.abs(y - 300)).toBeLessThanOrEqual(TEAR_EDGE.depth);
+    // Ragged: not a straight cut.
+    expect(new Set(edge.map(([, y]) => y)).size).toBeGreaterThan(3);
+  });
+
+  it("is the same tear every time (no layout jitter between renders)", () => {
+    expect(tearClipPaths(120)).toEqual(tearClipPaths(120));
+  });
+
+  it("tears in about half a second, and the ride is visible within ~800 ms of the click", () => {
+    expect(INTRO_TIMING.tear).toBeGreaterThanOrEqual(0.45);
+    expect(INTRO_TIMING.tear).toBeLessThanOrEqual(0.55);
+    // The night starts fading before the tear has quite settled, and is gone by 0.8 s.
+    expect(INTRO_TIMING.tearHandoff).toBeLessThanOrEqual(INTRO_TIMING.tear);
+    expect(INTRO_TIMING.tearHandoff + INTRO_TIMING.exit).toBeLessThanOrEqual(0.8);
   });
 });

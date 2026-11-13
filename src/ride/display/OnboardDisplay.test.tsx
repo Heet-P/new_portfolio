@@ -68,10 +68,20 @@ describe("OnboardDisplay", () => {
     expect(screen.queryByRole("link", { name: "See live" })).toBeNull();
   });
 
-  it("shows Work Experience without naming the company", () => {
+  // Task 15: the stop is still called Work Experience; its article names the company.
+  it("shows Work Experience, naming the company in its article", () => {
     const { container } = render(<DisplayScreen station={STATIONS[EXPERIENCE]} index={EXPERIENCE} />);
     expect(screen.getByRole("heading", { name: "Work Experience" })).toBeTruthy();
-    expect(container.innerHTML).not.toMatch(/MCT/i);
+    expect(container.textContent).toContain("MCT IT Solutions, Ahmedabad");
+  });
+
+  it("names the company at no other stop", () => {
+    STATIONS.forEach((station, i) => {
+      if (i === EXPERIENCE) return;
+      const { container, unmount } = render(<DisplayScreen station={station} index={i} />);
+      expect(container.innerHTML, station.id).not.toMatch(/MCT/i);
+      unmount();
+    });
   });
 
   it("renders See live, every Watch demo and GitHub as new-tab links when the station has them", () => {

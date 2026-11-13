@@ -1,0 +1,128 @@
+/*
+ * "Scroll to depart": a hand-lettered paper tag pinned under the cabin's front page at
+ * Departure. Red ink (Newsreader italic) on fresh paper: 5.5:1. Never a control, so it never
+ * takes a pointer. Only transform/opacity animate, and only for visitors fine with motion.
+ */
+
+/*
+ * Desktop: centred under the newspaper (the same span as OnboardDisplay's layer: right of the
+ * route-map card), in the 48px band below the page, so it never covers the paper's text.
+ */
+.hint {
+  position: fixed;
+  z-index: 45; /* over the front page (40), under the route map (50) and the toggles (100) */
+  left: 296px;
+  right: 48px;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Hidden (scrolled away): the tag fades out before its text is removed. */
+.hint:not([data-visible]) {
+  opacity: 0;
+}
+
+/* The tag: a slip of fresh paper, a hair crooked, with the newspaper's inner hairline frame. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-stamp);
+  background: var(--paper-grain), var(--paper-light);
+  box-shadow:
+    inset 0 0 0 2px var(--paper-light),
+    inset 0 0 0 3px var(--rule-faint),
+    0 12px 24px -12px rgb(20 12 4 / 0.6);
+  color: var(--red);
+  font-family: var(--font-body), Georgia, serif;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+}
+
+/* Mouse or trackpad: "Scroll to depart" and an arrow pointing down the route. */
+.coarse {
+  display: none;
+}
+
+/* The ink arrow beside the words; it points down for a scroll, up for a swipe. */
+.arrow {
+  flex: none;
+  display: block;
+  width: 24px;
+  height: 32px;
+}
+
+/* Touch screens: "Swipe up to depart", the arrow turned to point up the screen. */
+@media (pointer: coarse) {
+  .fine {
+    display: none;
+  }
+
+  .coarse {
+    display: inline;
+  }
+
+  .arrowTurn {
+    transform: rotate(180deg);
+  }
+}
+
+.arrowTurn {
+  display: block;
+}
+
+/*
+ * Phones and short windows: the front page fills the screen above the route strip, so the tag
+ * sits just above the strip, over the page's foot (which scrolls: nothing is lost under it).
+ */
+@media (max-width: 640px), (max-height: 600px) {
+  .hint {
+    left: 16px;
+    right: 16px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- Motion (only for visitors fine with it; reduced motion = a static tag) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hint {
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  /* Pinned on after the front page has settled: rises 8px and fades in (never from nothing). */
+  .tag {
+    animation: tag-in 280ms var(--ease-out) 400ms backwards;
+  }
+
+  /* The arrow nudges along its direction, like a pen tapping the way: down, back, rest. */
+  .arrow {
+    animation: nudge 1.6s var(--ease-in-out) 900ms infinite;
+  }
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) rotate(-2deg);
+  }
+}
+
+@keyframes nudge {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(6px);
+  }
+}

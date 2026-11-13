@@ -58,12 +58,18 @@ describe("ExpressView", () => {
     }
   });
 
-  it("lists the projects first and Work Experience after them, without naming the company", () => {
+  // Task 15: the company is named in the Work Experience article, and nowhere else on the page.
+  it("lists the projects first and Work Experience after them, naming the company in that article only", () => {
     const { container } = render(<ExpressView />);
     const ids = Array.from(container.querySelectorAll("section[id]")).map((s) => s.id);
     expect(ids.indexOf("experience")).toBeGreaterThan(ids.indexOf("sahara"));
-    expect(container.querySelector("#experience h2")?.textContent).toBe("Work Experience");
+    const experience = container.querySelector("#experience")!;
+    expect(experience.querySelector("h2")?.textContent).toBe("Work Experience");
+    expect(experience.textContent).toContain("MCT IT Solutions, Ahmedabad");
+    experience.remove();
     expect(container.innerHTML).not.toMatch(/MCT/i);
+    // Still never a phone number (it lives only inside the PDF).
+    expect(container.innerHTML).not.toContain("9227011606");
   });
 
   it("gives SAHARA its GitHub and both demo videos", () => {

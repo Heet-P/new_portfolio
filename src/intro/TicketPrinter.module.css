@@ -160,6 +160,19 @@
   overflow: hidden;
 }
 
+/*
+ * While the ticket tears, its body lifts over the machine: nothing may clip it then, and the
+ * slot's shadow (drawn over the paper) lets go of it.
+ */
+.output[data-tearing] {
+  overflow: visible;
+}
+
+.output[data-tearing] .slotShadow {
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out);
+}
+
 /* The slot's shadow on the paper as it leaves the machine. */
 .slotShadow {
   position: absolute;

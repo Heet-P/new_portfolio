@@ -36,7 +36,7 @@ const body = Newsreader({
 
 const TITLE = "Heet Parikh — Full-Stack & AI Developer";
 const DESCRIPTION =
-  "Portfolio of Heet Parikh, full-stack and AI developer: ride a night train through his projects, or read every stop at once in The Project Post.";
+  "I'm Heet Parikh, a full-stack and AI developer. Ride a night train through my projects, or read every stop at once in The Project Post.";
 
 /*
  * Title, description and the social card. The card's image is app/opengraph-image.jpg (a still

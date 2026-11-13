@@ -49,6 +49,8 @@ export interface AudioEngine {
   printChatter(durationSec: number): void;
   /** Cuts the printer chatter short (Skip, boarding mid-print); a no-op when none is playing. */
   stopChatter(): void;
+  /** The intro's ticket tearing along its perforation as the visitor boards (Task 15). */
+  tear(): void;
   /** For React (useSyncExternalStore): called whenever enabled() changes. */
   subscribe(fn: () => void): () => void;
   dispose(): void;
@@ -236,6 +238,10 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
     stopChatter() {
       // Not gated on audible(): a chatter queued while on must still be cut after a switch-off.
       graph?.stopChatter();
+    },
+    tear() {
+      // Like the stamp and the chatter: only on a running clock, never queued for a later gesture.
+      if (audible() && ctx?.state === "running") graph?.tear();
     },
     subscribe(fn) {
       listeners.add(fn);

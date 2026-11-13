@@ -169,9 +169,53 @@ describe("IntroGate: the ticket printer", () => {
     const stop = screen.getByRole("button", { name: "Departure" });
     expect(stop.closest("[inert]")).toBeNull();
     expect(document.activeElement).toBe(stop);
-    await advance(400);
+    // The ticket tears first (Task 15), then the night fades: gone within ~800 ms of the click.
+    await advance(820);
     expect(dialog()).toBeNull();
     expect(useRide.getState().mode).toBe("ride");
+  });
+
+  // Task 15: boarding tears the ticket along its perforation.
+  it("tears the ticket on 'Take the journey': body and stub cut along one tear, then the night fades", async () => {
+    const tear = vi.spyOn(getSound(), "tear");
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(dialog()!.querySelector("[data-tear]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Take the journey" }));
+    expect(tear).toHaveBeenCalledTimes(1);
+    const body = dialog()!.querySelector<HTMLElement>("[data-tear='body']")!;
+    const stub = dialog()!.querySelector<HTMLElement>("[data-tear='stub']")!;
+    expect(body.style.clipPath).toMatch(/^polygon\(/);
+    expect(stub.style.clipPath).toMatch(/^polygon\(/);
+    // The stub is a visual copy only: assistive tech still reads one ticket.
+    expect(stub.getAttribute("aria-hidden")).toBe("true");
+    expect(within(dialog()!).getAllByRole("list", { name: "Route" })).toHaveLength(1);
+    // Mid-tear the night is still up; it has gone by the end.
+    await advance(400);
+    expect(dialog()).not.toBeNull();
+    await advance(420);
+    expect(dialog()).toBeNull();
+  });
+
+  it("Escape on the finished ticket tears it the same way", async () => {
+    const tear = vi.spyOn(getSound(), "tear");
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    fireEvent.keyDown(dialog()!, { key: "Escape" });
+    expect(tear).toHaveBeenCalledTimes(1);
+    expect(dialog()!.querySelector("[data-tear='body']")).not.toBeNull();
+    await advance(820);
+    expect(dialog()).toBeNull();
+  });
+
+  it("Escape before the ticket is out leaves without a tear", async () => {
+    const tear = vi.spyOn(getSound(), "tear");
+    await mount();
+    fireEvent.keyDown(dialog()!, { key: "Escape" });
+    expect(tear).not.toHaveBeenCalled();
+    expect(dialog()!.querySelector("[data-tear]")).toBeNull();
+    await advance(400);
+    expect(dialog()).toBeNull();
   });
 
   it("Escape boards too", async () => {
@@ -258,10 +302,14 @@ describe("IntroGate: the ticket printer", () => {
   });
 
   it("with reduced motion, shows the finished ticket at once with 'Take the journey' focused", async () => {
+    const tear = vi.spyOn(getSound(), "tear");
     await mount({ reduced: true });
     expect(status().textContent).toContain("Ticket ready — all aboard");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Take the journey" }));
     fireEvent.click(screen.getByRole("button", { name: "Take the journey" }));
+    // No tear under reduced motion: the dialog simply goes.
+    expect(dialog()?.querySelector("[data-tear]") ?? null).toBeNull();
+    expect(tear).not.toHaveBeenCalled();
     await advance(0);
     expect(dialog()).toBeNull();
   });

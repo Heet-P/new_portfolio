@@ -154,4 +154,44 @@ export const INTRO_TIMING = {
   settle: 0.1,
   /** The ticket slides up and away and the night fades out when boarding. */
   exit: 0.36,
+  /**
+   * Boarding on the finished ticket: it tears along its perforation first (the body pulled
+   * away, the stub left behind) over `tear` seconds; the night starts fading at `tearHandoff`,
+   * while the torn body settles, so the ride shows 0.42 + 0.36 = 0.78 s after the click.
+   */
+  tear: 0.48,
+  tearHandoff: 0.42,
 } as const;
+
+/** The tear line: this many ragged steps across the ticket, at most `depth` px off the perforation. */
+export const TEAR_EDGE = {
+  points: 28,
+  depth: 3,
+} as const;
+
+/**
+ * Where the tear wanders off the perforation at step i, in px within +/- TEAR_EDGE.depth. A fixed
+ * hash of i (not Math.random), so the same ticket always tears the same way.
+ */
+function tearOffset(i: number): number {
+  const h = Math.sin(i * 12.9898 + 4.1414) * 43758.5453;
+  const unit = h - Math.floor(h); // 0..1
+  return Math.round((unit * 2 - 1) * TEAR_EDGE.depth * 10) / 10;
+}
+
+/**
+ * The two clip-paths that split the ticket along its perforation, `perfY` px from the paper's
+ * top: the body (everything above a ragged tear) and the stub (everything below the same tear).
+ * The body's polygon runs the tear right to left, the stub's left to right, so the two pieces
+ * fit exactly until the body is pulled away.
+ */
+export function tearClipPaths(perfY: number): { body: string; stub: string } {
+  const edge = Array.from({ length: TEAR_EDGE.points + 1 }, (_, i) => {
+    const x = Math.round((i * 1000) / TEAR_EDGE.points) / 10;
+    return `${x}% ${Math.round((perfY + tearOffset(i)) * 10) / 10}px`;
+  });
+  return {
+    body: `polygon(0% 0px, 100% 0px, ${[...edge].reverse().join(", ")})`,
+    stub: `polygon(${edge.join(", ")}, 100% 100%, 0% 100%)`,
+  };
+}

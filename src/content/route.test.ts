@@ -17,8 +17,25 @@ describe("route content", () => {
     ]);
   });
 
-  it("never names the internship company anywhere in the content", () => {
-    expect(JSON.stringify({ STATIONS, PROFILE })).not.toMatch(/MCT/i);
+  // Task 15 (reversing the earlier rule): the company is named, but only in the Work Experience article.
+  it("names the internship company in the Work Experience article only", () => {
+    expect(JSON.stringify(byId("experience"))).toMatch(/MCT IT Solutions/);
+    expect(JSON.stringify(byId("experience")?.body)).toMatch(/Ahmedabad/);
+    const elsewhere = { stations: STATIONS.filter((s) => s.id !== "experience"), PROFILE };
+    expect(JSON.stringify(elsewhere)).not.toMatch(/MCT/i);
+  });
+
+  // Task 15: every stop speaks in my own voice (I / me / my), never about "Heet" or "he".
+  it("speaks in the first person: no third-person narration in any stop's copy", () => {
+    for (const s of STATIONS) {
+      for (const line of [s.tagline, ...s.body, ...(s.stats ?? []).map((st) => st.label)]) {
+        expect(line, `${s.id}: ${line}`).not.toMatch(/\b(Heet|He|he|His|his|Him|him|Parikh)\b/);
+      }
+    }
+    // And the voice is really mine: the intro, the open platform and the end of the line say "I"/"me".
+    for (const id of ["departure", "next", "terminus", "experience"]) {
+      expect(JSON.stringify(byId(id)?.body), id).toMatch(/\b(I|I'm|me|my|My)\b/);
+    }
   });
 
   it("calls the internship station Work Experience, after the projects", () => {

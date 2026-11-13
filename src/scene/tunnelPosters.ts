@@ -8,6 +8,12 @@ import { ATLAS, atlasRect, type ReelEntry, type Rect } from "./tunnelReel";
  * in the page's own fonts (read from the CSS variables, as scene/cabin/print.ts does).
  */
 
+/** The title card's printed words: the section, and the line under it (first person, like all the copy). */
+export const TITLE_CARD = {
+  kicker: "SKILLS SUPPLEMENT",
+  line: "The tools I build with",
+} as const;
+
 /** Warmer and more saturated than --paper (#efe5cc): ACES tone mapping pulls bright cream toward grey, and this lands near it. */
 const PAPER = "#e9d49b";
 
@@ -150,10 +156,10 @@ function titleCard(ctx: CanvasRenderingContext2D, r: Rect, f: Fonts) {
   ctx.fillRect(r.x + 32, y - size * 0.3 + 7, r.w - 64, 1.2);
   ctx.fillStyle = RED;
   ctx.font = `700 15px ${f.body}`;
-  tracked(ctx, "SKILLS SUPPLEMENT", cx, r.y + r.h - 44, 3.2);
+  tracked(ctx, TITLE_CARD.kicker, cx, r.y + r.h - 44, 3.2);
   ctx.fillStyle = FADED;
   ctx.font = `italic 13px ${f.headline}`;
-  ctx.fillText("Printed overnight, between stations", cx, r.y + r.h - 26);
+  ctx.fillText(TITLE_CARD.line, cx, r.y + r.h - 26);
 }
 
 /**

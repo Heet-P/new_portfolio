@@ -91,9 +91,9 @@ export const STATIONS: Station[] = [
     name: "Departure",
     tagline: "Full-stack developer. AI integrations.",
     body: [
-      "Heet Parikh is a third-year B.Tech student in Computer Science and Engineering at CSPIT, CHARUSAT. CGPA 8.69.",
-      "He builds web products in Next.js and TypeScript, and wires AI into them: voice agents, orchestration over MCP, and ranking models.",
-      "He is President of the TechGenius Club. As its Web Lead he built QuizzX, a quiz platform for 200+ concurrent users.",
+      "I'm a third-year B.Tech student in Computer Science and Engineering at CSPIT, CHARUSAT. CGPA 8.69.",
+      "I build web products in Next.js and TypeScript, and wire AI into them: voice agents, orchestration over MCP, and ranking models.",
+      "I'm President of the TechGenius Club. As its Web Lead I built QuizzX, a quiz platform for 200+ concurrent users.",
       "Awards: 2nd at the IBM Hackathon (YieldGuard AI), 2nd among 100+ teams at Techathon (FormAI), Top 6 at the Chaos2Commit Hackathon (Vaani AI).",
     ],
     stats: [
@@ -116,9 +116,9 @@ export const STATIONS: Station[] = [
     flagship: true,
     body: [
       "Sales teams lose time on lead discovery, enrichment and first calls. Vaani handles all three: it finds leads, enriches them, and calls them with an AI voice agent.",
-      "Heet built the Next.js frontend and the Supabase database, then tuned the voice pipeline on Twilio and Sarvam AI. Responses land in 383 ms, with text-to-speech under 1.5 s.",
-      "After each call, Vaani writes a WhatsApp memo the lead can forward to the decision maker.",
-      "Top 6 at the Chaos2Commit Hackathon.",
+      "I built the Next.js frontend and the Supabase database, then tuned the voice pipeline on Twilio and Sarvam AI. Responses land in 383 ms, with text-to-speech under 1.5 s.",
+      "I designed the post-call WhatsApp memo: after each call, Vaani writes one the lead can forward to the decision maker.",
+      "It placed Top 6 at the Chaos2Commit Hackathon.",
     ],
     stats: [
       { value: "383 ms", label: "voice response" },
@@ -137,11 +137,11 @@ export const STATIONS: Station[] = [
     status: "done",
     flagship: true,
     body: [
-      "Yield-loss root-cause analysis in semiconductor fabs needs wafer images and sensor data together. YieldGuard is an AI orchestrator for exactly that.",
+      "Yield-loss root-cause analysis in semiconductor fabs needs wafer images and sensor data together. I built YieldGuard, an AI orchestrator for exactly that.",
       "IBM Bob coordinates 14 YieldGuard tools over the Model Context Protocol, with Gemini for reasoning and a watsonx.ai Granite fallback.",
-      "A ResNet-style CNN trained on WM-811K reached 0.923 macro-F1 and beat a Vision Transformer baseline. An Isolation Forest flags anomalies in SECOM sensor data.",
+      "I trained a ResNet-style CNN on WM-811K that reached 0.923 macro-F1 and beat a Vision Transformer baseline. An Isolation Forest flags anomalies in SECOM sensor data.",
       "Vector search links each new defect to past root causes.",
-      "2nd place at the IBM Hackathon.",
+      "It took 2nd place at the IBM Hackathon.",
     ],
     stats: [
       { value: "2nd", label: "IBM Hackathon" },
@@ -159,10 +159,10 @@ export const STATIONS: Station[] = [
     dates: "09/2026 - Present",
     status: "current",
     body: [
-      "An SGP-II project for the solar industry. A solar farm company needs to know whom to contact first across two states, Maharashtra and Gujarat.",
-      "A data-mining pipeline with LLM enrichment scores and ranks outreach targets.",
-      "XGBoost and Logistic Regression classifiers, trained on synthetic lead data, reach an estimated 96-97% accuracy in initial evaluation.",
-      "An evaluation pipeline and a ranking interface show the sales team who to call.",
+      "My SGP-II project for the solar industry. A solar farm company needs to know whom to contact first across two states, Maharashtra and Gujarat.",
+      "I built a data-mining pipeline with LLM enrichment that scores and ranks outreach targets.",
+      "I trained XGBoost and Logistic Regression classifiers on synthetic lead data. They reach an estimated 96-97% accuracy in initial evaluation.",
+      "An evaluation pipeline and a ranking interface I built show the sales team who to call.",
     ],
     stats: [
       { value: "96-97%", label: "est. accuracy, initial eval" },
@@ -182,7 +182,7 @@ export const STATIONS: Station[] = [
     body: [
       "SAHARA is an autonomous drone that searches a disaster zone for survivors. It flies a grid over the area and spots casualties with RGB cameras by day and thermal by night, and a Flask dashboard shows the mission live.",
       "Meta's models do the thinking. Voice commands go to an AI Mission Commander, and the operator must confirm before the drone arms. SAM 3.1 segments hazards like smoke, Muse Spark vision acts as a second pair of eyes and triages from the air, and the mission ends with a SITREP.",
-      "It runs in simulation on ArduPilot SITL, Gazebo and ROS 2 Humble, built for the Meta AI hackathon.",
+      "It runs in simulation on ArduPilot SITL, Gazebo and ROS 2 Humble. I built it for the Meta AI hackathon.",
     ],
     stats: [
       { value: "0.84", label: "SAM 3.1 smoke detection" },
@@ -204,9 +204,9 @@ export const STATIONS: Station[] = [
     dates: "05/2026 - 06/2026",
     status: "done",
     body: [
-      "Software Intern in Ahmedabad. Built payment workflow modules in Next.js and TypeScript, used across 5+ e-commerce checkouts.",
-      "Tuned payment UI rendering and interaction flows. Checkout interaction delay dropped by an estimated 25%.",
-      "Wrote reusable payment components that cut the effort of adding future payment features by about 40%.",
+      "Software Intern at MCT IT Solutions, Ahmedabad. I built payment workflow modules in Next.js and TypeScript, used across 5+ e-commerce checkouts.",
+      "I tuned payment UI rendering and interaction flows. Checkout interaction delay dropped by an estimated 25%.",
+      "I wrote reusable payment components that cut the effort of adding future payment features by about 40%.",
     ],
     stats: [
       { value: "5+", label: "checkout workflows" },
@@ -222,8 +222,8 @@ export const STATIONS: Station[] = [
     tagline: "Next stop: your team?",
     status: "upcoming",
     body: [
-      "No internship is lined up yet, and Heet is actively looking.",
-      "He is open to SDE and AI engineering internships. If that sounds like your team, say hello.",
+      "I don't have an internship lined up yet, and I'm actively looking.",
+      "I'm open to SDE and AI engineering internships. If that sounds like your team, say hello.",
     ],
   },
   {
@@ -232,8 +232,8 @@ export const STATIONS: Station[] = [
     name: "Terminus",
     tagline: "End of the line. Say hello.",
     body: [
-      "The quickest way to reach Heet is email. LinkedIn and GitHub work too.",
-      "The resume is the ticket: take it with you.",
+      "The quickest way to reach me is email. LinkedIn and GitHub work too.",
+      "My resume is the ticket: take it with you.",
     ],
     links: [
       { label: "Email", href: `mailto:${PROFILE.email}` },

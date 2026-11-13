@@ -17,6 +17,7 @@ import {
   RUSTLE,
   STAMP,
   TAP,
+  TEAR,
   TEMPO,
   TUNNEL,
   VINYL,
@@ -33,7 +34,7 @@ import {
  *                                     lowpass -> reverb send -> room --+
  *   ambience: rain, rumble + hum, clacks -> tunnel lowpass -> ambience bus -> master
  *                                                 \-> reverb send (more in tunnels) -> room
- *   cues:     chime, tap, rustle, stamp, print chatter -> ui bus -> master (chime also -> room)
+ *   cues:     chime, tap, rustle, stamp, print chatter, tear -> ui bus -> master (chime also -> room)
  *
  * The master starts silent; audioEngine.ts fades it in and out.
  */
@@ -53,6 +54,8 @@ export interface SoundGraph {
   printChatter(durationSec: number): void;
   /** Cuts a running chatter short (Skip / board): a ~60 ms fade, then its ticks are stopped. */
   stopChatter(): void;
+  /** The intro's ticket tearing along its perforation: a rising noise sweep with fibre crackle. */
+  tear(): void;
 }
 
 const midiHz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
@@ -75,6 +78,29 @@ export function chatterTicks(duration: number): number[] {
     for (let t = start; t <= end; t += PRINT.tick) ticks.push(t);
   }
   return ticks;
+}
+
+/** One fibre of the tear: when it snaps (s from the cue's start), how loud, at what pitch. */
+export interface TearGrain {
+  at: number;
+  level: number;
+  freq: number;
+}
+
+/**
+ * The tear's crackle grains, in time order. Stratified (one grain per equal slice of a 0..1
+ * clock, jittered inside its slice) and then bent by TEAR.skew, so they never clump by chance
+ * and thicken toward the end, as a tear speeds up once it has started.
+ */
+export function tearGrains(random: () => number = Math.random): TearGrain[] {
+  return Array.from({ length: TEAR.grains }, (_, i) => {
+    const u = (i + random()) / TEAR.grains;
+    return {
+      at: TEAR.length * Math.pow(u, TEAR.skew),
+      level: TEAR.crackleLevel * (0.4 + 0.6 * random()),
+      freq: lerp(TEAR.crackleFreqMin, TEAR.crackleFreqMax, random()),
+    };
+  });
 }
 
 /** One second-ish of plain white noise, mono. */
@@ -642,5 +668,31 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
       }
     },
     stopChatter: cutChatter,
+    tear() {
+      const when = ctx.currentTime + TEAR.delay;
+      const end = when + TEAR.length;
+      const out = filter("lowpass", TEAR.lowpass, 0.5, uiBus);
+      // The sweep: band-passed noise whose centre rises as the tear runs across the ticket.
+      const src = ctx.createBufferSource();
+      src.buffer = white;
+      const band = filter("bandpass", TEAR.sweepFrom, TEAR.Q);
+      band.frequency.setValueAtTime(TEAR.sweepFrom, when);
+      band.frequency.exponentialRampToValueAtTime(TEAR.sweepTo, end);
+      const env = gain(0, out);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(TEAR.level, when + TEAR.attack);
+      env.gain.setTargetAtTime(0, when + TEAR.length * TEAR.release, TEAR.length * 0.12);
+      src.connect(band);
+      band.connect(env);
+      src.start(when, Math.random() * (white.duration - TEAR.length - 0.1), TEAR.length + 0.05);
+      // The fibres: tiny dry snaps on top, more of them as the tear speeds up.
+      for (const g of tearGrains()) {
+        noiseHit(
+          when + g.at,
+          { type: "bandpass", freq: g.freq, Q: TEAR.crackleQ, level: g.level, attack: 0.001, decay: TEAR.crackleDecay, length: 0.02 },
+          out,
+        );
+      }
+    },
   };
 }

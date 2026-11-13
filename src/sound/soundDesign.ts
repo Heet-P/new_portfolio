@@ -331,6 +331,37 @@ export const PRINT = {
   cutFade: 0.06,
 } as const;
 
+/**
+ * The intro's ticket tearing along its perforation as the visitor boards (Task 15): a band of
+ * noise whose centre sweeps upward as the tear runs across the paper, with a fibrous crackle of
+ * tiny grains on top that thickens toward the end. Short, dull and quiet: paper, not a zipper.
+ */
+export const TEAR = {
+  /** After the click: the ticket's tug comes first (src/intro), then the paper gives. */
+  delay: 0.08,
+  /** Whole cue, from the first fibre to the last grain (s). */
+  length: 0.34,
+  /** The sweep's peak level, its soft attack, and where its fade begins (share of the length). */
+  level: 0.16,
+  attack: 0.03,
+  release: 0.6,
+  /** Band-pass centre glides from sweepFrom up to sweepTo (Hz) as the tear crosses the ticket. */
+  sweepFrom: 700,
+  sweepTo: 2600,
+  Q: 1.1,
+  /** Over everything: nothing above this gets through (no hiss on top). */
+  lowpass: 4200,
+  /** Fibre crackle: this many grains over the tear, each at most crackleLevel. */
+  grains: 14,
+  crackleLevel: 0.07,
+  crackleFreqMin: 1800,
+  crackleFreqMax: 3400,
+  crackleQ: 1.6,
+  crackleDecay: 0.006,
+  /** Bunching toward the end (grain time = length * u^skew; 1 = even, lower = later). */
+  skew: 0.6,
+} as const;
+
 /** Newspaper unfolding: a short paper rustle made of a few overlapping noise grains. */
 export const RUSTLE = {
   grains: 6,

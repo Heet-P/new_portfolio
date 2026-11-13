@@ -302,6 +302,44 @@
   box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.8), 0 1px 0 rgb(255 255 255 / 0.5);
 }
 
+/*
+ * ---- the tear (boarding on the finished ticket) ----
+ * Two copies of the ticket cut by matching ragged clip-paths along the perforation (ticket.ts
+ * tearClipPaths). The stub stays where it is; the body gives a little tug against the paper,
+ * then lifts away up and towards the visitor, turning on the left end of the tear (its
+ * transform-origin and duration are set inline). Transform only. Never under reduced motion:
+ * the intro skips the tear entirely then.
+ */
+.tearBody[data-tear] {
+  position: relative;
+  z-index: 2; /* the piece in the visitor's hand passes over the stub */
+  animation: tear-away 0.48s var(--ease-out) forwards;
+}
+
+.tearStub {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+}
+
+@keyframes tear-away {
+  0% {
+    transform: none;
+    animation-timing-function: var(--ease-in-out);
+  }
+  /* The tug: the paper holds at the perforation for a beat... */
+  20% {
+    transform: translateY(2px) rotate(0.5deg);
+    animation-timing-function: var(--ease-out);
+  }
+  /* ...then gives, and the body comes away. */
+  100% {
+    transform: translate(8px, -28px) rotate(-4deg) scale(1.03);
+  }
+}
+
 /* ---- the ways out ---- */
 
 /* Holds the buttons' space from the start (56 + 8 + 44), so they appear without a jump. */
