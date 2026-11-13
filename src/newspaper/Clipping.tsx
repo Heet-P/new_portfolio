@@ -131,9 +131,10 @@ export function Clipping({
             <img
               className={styles.clippingImg}
               src={`/illustrations/${id}.webp`}
-              srcSet={`/illustrations/${id}-600.webp 600w, /illustrations/${id}.webp ${w}w`}
-              // Half the page on wide screens, the full column on phones.
-              sizes="(min-width: 900px) 520px, calc(100vw - 64px)"
+              srcSet={`/illustrations/${id}-600.webp 600w, /illustrations/${id}-900.webp 900w, /illustrations/${id}.webp ${w}w`}
+              // Its laid-out width (measured): about half the page on wide screens, the column
+              // minus its gutters on tablets and phones. Accurate, so phones fetch 600w/900w.
+              sizes="(min-width: 900px) 560px, (min-width: 640px) calc(100vw - 72px), calc(100vw - 28px)"
               alt={art.alt}
               width={w}
               height={h}

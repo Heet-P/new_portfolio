@@ -2,7 +2,8 @@
  * Illustration pipeline: media-inbox/newspaper/illustrations/*.png -> public/illustrations/*.webp
  *
  * Heet's ink-sketch "clippings" (one per stop) arrive as 1536x1024 PNGs of ~4 MB each. For the
- * page they become two WebP widths (1200w for desktop / retina cards, 600w for phones) that the
+ * page they become three WebP widths (1200w for desktop / retina cards, 900w for high-DPR phones,
+ * 600w for phones) that the
  * newspaper's <Clipping> serves through srcSet. Run with `npm run illustrations`; the outputs are
  * committed (media-inbox/ is git-ignored), so the build never needs the originals.
  *
@@ -20,6 +21,7 @@ const OUT = "public/illustrations";
 const RENAME = { yeildguard: "yieldguard" };
 const WIDTHS = [
   { w: 1200, suffix: "" },
+  { w: 900, suffix: "-900" },
   { w: 600, suffix: "-600" },
 ];
 const QUALITY = 78;

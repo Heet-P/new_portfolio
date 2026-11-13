@@ -110,6 +110,7 @@ describe("Clipping", () => {
     const img = screen.getByRole("img");
     expect(img.getAttribute("src")).toBe("/illustrations/sahara.webp");
     expect(img.getAttribute("srcset")).toContain("/illustrations/sahara-600.webp 600w");
+    expect(img.getAttribute("srcset")).toContain("/illustrations/sahara-900.webp 900w");
     expect(img.getAttribute("srcset")).toContain("/illustrations/sahara.webp 1200w");
     expect(img.getAttribute("sizes")).toBeTruthy();
     expect(img.getAttribute("loading")).toBe("lazy");
