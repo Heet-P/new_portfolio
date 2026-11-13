@@ -262,7 +262,9 @@
     animation: draw-down 640ms var(--ease-out) backwards;
   }
 
-  .track[data-draw] .train {
+  /* The marker settles onto the drawn line: fades in from a touch small (never from nothing).
+     On the glyph, not .train, whose transform is written every frame by RouteMap.tsx. */
+  .track[data-draw] .glyph {
     animation: train-in 200ms var(--ease-out) 520ms backwards;
   }
 }
@@ -295,5 +297,6 @@
 @keyframes train-in {
   from {
     opacity: 0;
+    transform: scale(0.9);
   }
 }
