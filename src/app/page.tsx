@@ -1,4 +1,5 @@
 import { ExpressView } from "@/express/ExpressView";
+import { IntroGate } from "@/intro/IntroGate";
 import { InitialMode } from "@/ride/InitialMode";
 import { ModeToggle } from "@/ride/ModeToggle";
 import controls from "@/ride/ModeToggle.module.css";
@@ -20,6 +21,9 @@ export default function Home() {
         <ExpressView />
       </ExpressGate>
       <Ride />
+      {/* First ride of the session at the top of the route: the ticket-printer intro, over everything.
+          After <InitialMode />, so it sees the mode that was just chosen. */}
+      <IntroGate />
     </>
   );
 }

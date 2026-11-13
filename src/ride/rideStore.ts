@@ -10,6 +10,11 @@ interface RideState {
   progress: number;
   /** Station the scroll driver should animate toward (null = free scrolling). The driver clears it on arrival. */
   target: number | null;
+  /**
+   * True once the 3D scene has drawn its first frame with the train (false again when it
+   * unmounts). The ticket-printer intro waits on it, so the world loads while the ticket prints.
+   */
+  sceneReady: boolean;
   setProgress: (p: number) => void;
   goTo: (index: number) => void;
   setMode: (m: RideMode) => void;
@@ -21,6 +26,7 @@ export const useRide = create<RideState>((set) => ({
   mode: "express",
   progress: 0,
   target: null,
+  sceneReady: false,
   setProgress: (p) => set({ progress: Math.min(1, Math.max(0, p)) }),
   // Only records the destination; the scroll driver animates progress toward it.
   goTo: (index) => set({ target: Math.min(LAST_STATION, Math.max(0, index)) }),

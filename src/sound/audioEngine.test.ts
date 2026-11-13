@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAudioEngine, SOUND_KEY } from "./audioEngine";
 import { FakeAudioContext, fakeDocument, memoryStorage, throwingStorage } from "./fakeAudioContext";
 import { SCHEDULER } from "./scheduler";
-import { STAMP, TAP, TEMPO } from "./soundDesign";
+import { MASTER, MIX, PRINT, STAMP, TAP, TEMPO } from "./soundDesign";
+import { chatterTicks } from "./synth";
 
 /** An engine wired to fakes, plus the fakes so a test can poke them. */
 function setup(storage: Storage = memoryStorage()) {
@@ -306,6 +307,47 @@ describe("createAudioEngine", () => {
     contexts[0].state = "running";
     engine.stamp();
     expect(contexts[0].sourceCount).toBeGreaterThan(before);
+  });
+
+  // Task 14: the ticket printer's dot-matrix chatter (the intro). Fires from a timer, not a gesture.
+  it("printChatter is silent while off, and never queued on a suspended clock", () => {
+    const { engine, contexts } = setup();
+    engine.printChatter(1.75);
+    expect(contexts).toHaveLength(0);
+    engine.setEnabled(true);
+    contexts[0].state = "suspended";
+    const before = contexts[0].sourceCount;
+    engine.printChatter(1.75);
+    expect(contexts[0].sourceCount).toBe(before);
+    engine.setEnabled(false);
+    contexts[0].state = "running";
+    engine.printChatter(1.75);
+    expect(contexts[0].sourceCount).toBe(before);
+  });
+
+  it("printChatter plays bursts of ticks spread over the given duration, from now", () => {
+    const { engine, contexts } = setup();
+    engine.setEnabled(true);
+    const ctx = contexts[0];
+    const now = ctx.currentTime;
+    const before = ctx.starts.length;
+    engine.printChatter(1.75);
+    const ticks = ctx.starts.slice(before);
+    expect(ticks.length).toBe(chatterTicks(1.75).length);
+    for (const t of ticks) {
+      expect(t).toBeGreaterThanOrEqual(now);
+      expect(t).toBeLessThanOrEqual(now + 1.75 + 0.05);
+    }
+    // One burst per line of paper: PRINT.lines groups separated by quiet gaps.
+    const gaps = ticks.slice(1).filter((t, i) => t - ticks[i] > PRINT.tick * 1.5);
+    expect(gaps).toHaveLength(PRINT.lines - 1);
+  });
+
+  it("keeps the chatter quiet: softer than the paper tap, and under -14 dBFS at the speakers", () => {
+    expect(PRINT.level).toBeLessThanOrEqual(TAP.level);
+    // Worst case: two ticks' tails overlapping at full level, through the UI bus and the master.
+    const peak = 2 * PRINT.level * MIX.ui * MASTER.level;
+    expect(20 * Math.log10(peak)).toBeLessThanOrEqual(-14);
   });
 
   it("keeps the stamp cue a soft, low thunk (never louder or brighter than the paper tap)", () => {

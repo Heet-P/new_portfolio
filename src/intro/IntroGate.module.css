@@ -1,0 +1,12 @@
+/*
+ * The intro's night: deep indigo with a soft vignette, nearly opaque so the 3D world can be
+ * felt waking up behind it. Also the placeholder while the printer's chunk loads, so the
+ * screen goes straight from the page to the night, with no flash of the half-loaded ride.
+ */
+.backdrop {
+  position: fixed;
+  z-index: 200; /* above the ride, its route map and the sound/mode controls (100) */
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 38%, rgb(30 32 74 / 0.965) 0%, rgb(14 15 40 / 0.98) 55%, rgb(5 5 14 / 0.995) 100%);
+}

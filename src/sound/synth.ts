@@ -9,6 +9,7 @@ import {
   MIX,
   MUSIC_FILTER,
   PARAM_EPSILON,
+  PRINT,
   RAIN,
   REDUCED_MOTION_DEPTH,
   REVERB,
@@ -32,7 +33,7 @@ import {
  *                                     lowpass -> reverb send -> room --+
  *   ambience: rain, rumble + hum, clacks -> tunnel lowpass -> ambience bus -> master
  *                                                 \-> reverb send (more in tunnels) -> room
- *   cues:     chime, tap, rustle, stamp -> ui bus -> master (chime also -> room)
+ *   cues:     chime, tap, rustle, stamp, print chatter -> ui bus -> master (chime also -> room)
  *
  * The master starts silent; audioEngine.ts fades it in and out.
  */
@@ -48,11 +49,31 @@ export interface SoundGraph {
   tap(): void;
   rustle(): void;
   stamp(): void;
+  /** The intro's ticket printer: dot-matrix chatter in bursts over `durationSec`, from now. */
+  printChatter(durationSec: number): void;
 }
 
 const midiHz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
+/**
+ * When each tick of the printer chatter lands, in seconds from its start. The feed moves the
+ * paper PRINT.lines times; the last move ends the feed and every earlier one is followed by a
+ * hold, so one move-plus-hold is `duration / (lines - 0.5)` long. Each burst fills the first
+ * PRINT.duty of its move-plus-hold, never past the end of the feed. No timing jitter: the ticks
+ * must stay inside the moves (src/intro/ticket.test.ts checks them against the feed keyframes).
+ */
+export function chatterTicks(duration: number): number[] {
+  const period = duration / (PRINT.lines - 0.5);
+  const ticks: number[] = [];
+  for (let line = 0; line < PRINT.lines; line++) {
+    const start = line * period;
+    const end = Math.min(start + period * PRINT.duty, duration);
+    for (let t = start; t <= end; t += PRINT.tick) ticks.push(t);
+  }
+  return ticks;
+}
 
 /** One second-ish of plain white noise, mono. */
 function whiteNoise(ctx: BaseAudioContext, seconds: number): AudioBuffer {
@@ -576,6 +597,26 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
       o.connect(env);
       o.start(when);
       o.stop(when + STAMP.length);
+    },
+    printChatter(durationSec) {
+      const t0 = ctx.currentTime + 0.01;
+      // One shared lowpass per run keeps the ticks dull (no click on top).
+      const out = filter("lowpass", PRINT.lowpass, 0.5, uiBus);
+      for (const offset of chatterTicks(durationSec)) {
+        noiseHit(
+          t0 + offset,
+          {
+            type: "bandpass",
+            freq: PRINT.freq * rand(1 - PRINT.jitter, 1 + PRINT.jitter),
+            Q: PRINT.Q,
+            level: PRINT.level * rand(1 - PRINT.jitter, 1),
+            attack: PRINT.attack,
+            decay: PRINT.decay,
+            length: PRINT.length,
+          },
+          out,
+        );
+      }
     },
   };
 }

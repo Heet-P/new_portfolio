@@ -42,6 +42,11 @@ export interface AudioEngine {
   rustle(): void;
   /** A soft rubber-stamp / printing-press thunk (Express whimsy). */
   stamp(): void;
+  /**
+   * The intro's ticket printer: soft dot-matrix chatter, in bursts synced to the paper feed,
+   * spread over `durationSec` from now (Task 14).
+   */
+  printChatter(durationSec: number): void;
   /** For React (useSyncExternalStore): called whenever enabled() changes. */
   subscribe(fn: () => void): () => void;
   dispose(): void;
@@ -220,6 +225,11 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
       // The stamp can fire from a scroll (Stop press landing), with no gesture to wake a
       // suspended context: only play on a running clock, never queue it up for later.
       if (audible() && ctx?.state === "running") graph?.stamp();
+    },
+    printChatter(durationSec) {
+      // Fires from the intro's timer, not a gesture: like the stamp, only on a running clock
+      // (a queued chatter would otherwise burst out late, on the visitor's first click).
+      if (audible() && ctx?.state === "running") graph?.printChatter(durationSec);
     },
     subscribe(fn) {
       listeners.add(fn);

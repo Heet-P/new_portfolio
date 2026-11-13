@@ -305,6 +305,30 @@ export const STAMP = {
   minGap: 0.08,
 } as const;
 
+/**
+ * The intro's ticket printer (Task 14): a soft dot-matrix chatter while the ticket feeds out.
+ * The paper moves in `lines` steps (the stepped feed in src/intro/ticket.ts) with short holds in
+ * between; each step gets a burst of tiny band-passed noise ticks (the print head), each hold is
+ * quiet. Darker and far quieter than the tap: a muffled printer in the next room, not a buzzer.
+ */
+export const PRINT = {
+  /** Paper steps per feed (the feed's 10 moves), and the share of each step the head chatters. */
+  lines: 10,
+  duty: 0.68,
+  /** Seconds between ticks within a burst (~60 per second: a buzz, but each tick still soft). */
+  tick: 0.016,
+  level: 0.07,
+  /** The tick's band: mid, so it reads as "mechanical" without any brightness. */
+  freq: 1600,
+  /** Random +/- share on each tick's pitch and level, so the chatter isn't a pure tone. */
+  jitter: 0.2,
+  Q: 1.4,
+  lowpass: 2400,
+  attack: 0.001,
+  decay: 0.006,
+  length: 0.03,
+} as const;
+
 /** Newspaper unfolding: a short paper rustle made of a few overlapping noise grains. */
 export const RUSTLE = {
   grains: 6,

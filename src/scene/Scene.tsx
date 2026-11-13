@@ -100,6 +100,8 @@ export default function Scene() {
   );
   const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [ready, setReady] = useState(false);
+  // Tell the rest of the page (the ticket-printer intro) when the world is drawn; never stale.
+  useEffect(() => () => useRide.setState({ sceneReady: false }), []);
   const shadows = quality.post;
   const density = Math.min(1, quality.sceneryLayers / 4);
   // Phone tier (fewer scenery layers): coarser terrain grid, ~2.3x fewer triangles to build and draw.
@@ -149,7 +151,12 @@ export default function Scene() {
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
           <Cabin post={quality.post} reducedMotion={reducedMotion} />
-          <FirstFrame onReady={() => setReady(true)} />
+          <FirstFrame
+            onReady={() => {
+              setReady(true);
+              useRide.setState({ sceneReady: true });
+            }}
+          />
         </Suspense>
         {quality.post && (
           <Suspense fallback={null}>

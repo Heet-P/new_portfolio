@@ -1,8 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 
 // Force ride mode before any page script runs (the saved choice wins when WebGL is available).
+// Task 14: these test the ride itself, so the first-visit ticket intro (e2e/intro.spec.ts) is marked as seen.
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.setItem("nt-mode", "ride"));
+  await page.addInitScript(() => {
+    window.localStorage.setItem("nt-mode", "ride");
+    window.sessionStorage.setItem("nt-intro-seen", "1");
+  });
 });
 
 /** The route map button that is currently marked as the train's position. */
@@ -127,6 +131,7 @@ test("cold deep links always open at the right station", async ({ browser }) => 
       const page = await context.newPage();
       await page.addInitScript(() => {
         window.localStorage.setItem("nt-mode", "ride");
+        window.sessionStorage.setItem("nt-intro-seen", "1");
         // Record every announcement the ride makes, from the first frame on.
         const said: string[] = ((window as unknown as { said: string[] }).said = []);
         new MutationObserver(() => {

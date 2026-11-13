@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+// Task 14: the first-visit ticket intro covers a fresh ride at "/"; it has its own spec
+// (e2e/intro.spec.ts), so these page-level checks start with it already seen.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.sessionStorage.setItem("nt-intro-seen", "1"));
+});
+
 // Smoke test: the statically exported home page renders the owner's name as h1.
 // (Task 13: scoped to the Express page; the ride now has its own visually hidden h1 too.)
 test("home page has an h1 with the owner's name", async ({ page }) => {

@@ -1,0 +1,460 @@
+/*
+ * The intro's composition: the night overlay, the machine's plate and lamp, the printed rail
+ * ticket and the two ways out. Newspaper tokens throughout (globals.css); 16/20/25px type with
+ * px line-heights; 4/8px spacing; 44px+ touch targets; only transform/opacity animate.
+ */
+.overlay {
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  display: flex;
+  padding: 16px;
+  /* A short screen scrolls the dialog itself, never the ride behind it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--paper-light);
+}
+
+/* Focused programmatically on open (so it is announced); it's a container, not a control. */
+.overlay:focus {
+  outline: none;
+}
+
+.overlay[data-leaving] {
+  pointer-events: none;
+}
+
+/* The machine above, its ticket below, then the buttons; centred, or top-aligned if too tall. */
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+}
+
+.printer {
+  max-width: 440px;
+}
+
+/* ---- the machine ---- */
+
+/* The maker's plate: blackletter on an ink enamel badge (radius 12 = body 24 - inset 12). */
+.plate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 3px rgb(248 242 226 / 0.45);
+  color: var(--paper-light);
+  font-family: var(--font-blackletter), "Times New Roman", serif;
+  font-size: var(--text-heading);
+  line-height: var(--text-heading-lh);
+  white-space: nowrap;
+}
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A little red pilot lamp: pulses while the machine works, glows steady when the ticket is out. */
+.lamp {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px 2px rgb(176 53 43 / 0.6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lamp[data-stage="processing"],
+  .lamp[data-stage="printing"] {
+    animation: lamp 0.9s var(--ease-in-out) infinite alternate;
+  }
+}
+
+@keyframes lamp {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+/* "Skip": a quiet text button on the enamel (ink on paper; the global red focus ring shows). */
+.skip {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-stamp);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body), Georgia, serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.screenLine {
+  margin: 0;
+}
+
+.screenLine:first-child {
+  letter-spacing: 0.04em;
+}
+
+.screenStatus {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgb(243 217 164 / 0.35);
+}
+
+/* ---- the ticket ---- */
+
+.ticket {
+  /* The route goes to two columns when the ticket is wide enough (desktop), one on phones. */
+  container-type: inline-size;
+  padding: 20px 16px 28px;
+}
+
+.ticketHead {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 4px double var(--ink);
+  text-align: center;
+}
+
+.ticketTitle {
+  margin: 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.admit {
+  display: inline-block;
+  margin: 4px 0 0;
+  padding: 0 8px;
+  border: 2px solid var(--red);
+  border-radius: var(--radius-stamp);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.label,
+.meta dt {
+  margin: 0;
+  color: var(--ink-faded);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.route {
+  display: grid;
+  margin: 4px 0 12px;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-body), Georgia, serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+}
+
+@container (min-width: 300px) {
+  .route {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    column-gap: 16px;
+  }
+}
+
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A punched station dot; the current stop is circled in red, the unbuilt one is dashed. */
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper-light);
+}
+
+.stop[data-current] .dot {
+  border-color: var(--red);
+  background: var(--red);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--red);
+}
+
+/* Red ink rather than bold, so "Solar Lead Engine" still fits its column (red on paper: 4.9:1). */
+.stop[data-current] {
+  color: var(--red);
+}
+
+.stop[data-upcoming] {
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.stop[data-upcoming] .dot {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* Date and seat on the left, the stamp to their right; stacked when the ticket is narrow. */
+.validation {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@container (min-width: 300px) {
+  .validation {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+
+.meta {
+  margin: 0;
+}
+
+/* Label and value on one line ("DATE  13 Nov 2026"); labels share one width so values align. */
+.meta div {
+  display: grid;
+  grid-template-columns: 48px auto;
+  gap: 8px;
+}
+
+.meta dd {
+  margin: 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* The inspector's red stamp, pressed a little crooked; multiply lets the paper show through. */
+.stamp {
+  justify-self: center;
+  max-width: 152px;
+  margin: 0 4px 0 0;
+  padding: 4px 8px;
+  border: 2px solid var(--red);
+  border-radius: var(--radius-stamp);
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px var(--red);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  transform: rotate(-8deg);
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+}
+
+/* The stub: a perforation, a label and a punched hole (the night shows through it). */
+.stub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--ink-faded);
+  color: var(--ink-faded);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  letter-spacing: 0.08em;
+}
+
+.hole {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0e0f28;
+  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.8), 0 1px 0 rgb(255 255 255 / 0.5);
+}
+
+/* ---- the ways out ---- */
+
+/* Holds the buttons' space from the start (56 + 8 + 44), so they appear without a jump. */
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 108px;
+}
+
+/*
+ * Phones: the stack is taller than the screen, so the dialog scrolls; once the ticket is out the
+ * buttons stay pinned to the bottom edge on a fade of night, always one tap away.
+ */
+.actions[data-ready] {
+  position: sticky;
+  z-index: 10;
+  bottom: 0; /* the dialog's visible bottom edge */
+  /* Full width of the dialog (out through its 16px side padding), so the fade has no edges. */
+  width: calc(100% + 32px);
+  margin: 0 -16px;
+  padding: 24px 16px 16px;
+  background: linear-gradient(to top, rgb(6 6 18) 55%, rgb(6 6 18 / 0));
+}
+
+.actionsInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * "Take the journey": a big red ink stamp with a paper double frame. Press = a quick squash
+ * (100ms ease-out), release = a springy thunk back (--spring-press). Hover: a faint wash.
+ */
+.take {
+  position: relative;
+  isolation: isolate;
+  min-height: 56px;
+  padding: 0 32px;
+  border: 2px solid var(--paper-light);
+  border-radius: var(--radius-stamp);
+  background: var(--red);
+  box-shadow:
+    inset 0 0 0 2px var(--red),
+    inset 0 0 0 3px var(--paper-light),
+    0 16px 24px -12px rgb(0 0 0 / 0.8);
+  color: var(--paper-light);
+  font-family: var(--font-headline), Georgia, serif;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transform: rotate(-1.5deg);
+}
+
+.take::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.1);
+  opacity: 0;
+}
+
+.take:active {
+  transform: rotate(-1.5deg) scale(0.96);
+}
+
+/* On the dark night the red ring would vanish: paper-light rings instead. */
+.take:focus-visible,
+.hurry:focus-visible {
+  outline-color: var(--paper-light);
+}
+
+.hurry {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-stamp);
+  background: transparent;
+  color: var(--paper-light);
+  font-family: var(--font-body), Georgia, serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.hurry::after {
+  content: " →";
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .take {
+    transition: transform var(--spring-press-dur) var(--spring-press);
+  }
+
+  .take:active {
+    transition: transform 100ms var(--ease-out);
+  }
+
+  .take::before {
+    transition: opacity var(--dur-hover) var(--ease-out);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .take:hover::before {
+    opacity: 1;
+  }
+
+  .skip:hover,
+  .hurry:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/*
+ * Wide but short screens (a 1280x720 laptop): the stack would not fit, so the buttons stand to
+ * the right of the ticket, level with its foot, and the printer stays in the centre.
+ */
+@media (min-width: 900px) and (max-height: 820px) {
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr minmax(0, 440px) 1fr;
+    align-items: end;
+    column-gap: 32px;
+    max-width: none;
+  }
+
+  .printer {
+    grid-column: 2;
+  }
+
+  .actions,
+  .actionsInner {
+    align-items: flex-start;
+  }
+
+  .actions,
+  .actions[data-ready] {
+    position: static;
+    grid-column: 3;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0 0 48px;
+    background: none;
+  }
+}
