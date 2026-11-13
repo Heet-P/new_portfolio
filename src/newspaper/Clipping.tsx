@@ -22,6 +22,16 @@ const TILT_SPRING = { visualDuration: 0.35, bounce: 0.15 } as const;
 const clamp = (n: number) => (n > 1 ? 1 : n < -1 ? -1 : n);
 
 /**
+ * The clipping's laid-out width (measured): about half the page on wide screens, the column
+ * minus its gutters on tablets and phones. Accurate, so phones fetch the 600w/900w files.
+ */
+const CLIPPING_SIZES = "(min-width: 900px) 560px, (min-width: 640px) calc(100vw - 72px), calc(100vw - 28px)";
+
+/** The three pre-sized widths of a stop's illustration in one format (scripts/process-illustrations). */
+const srcSetFor = (id: StationId, ext: "avif" | "webp", full: number) =>
+  `/illustrations/${id}-600.${ext} 600w, /illustrations/${id}-900.${ext} 900w, /illustrations/${id}.${ext} ${full}w`;
+
+/**
  * Where the pointer is over the clipping, as a tilt toward it: x leans top/bottom (rotateX),
  * y leans left/right (rotateY). Centre is flat; edges (and beyond, for a fast flick) reach
  * MAX_TILT. The side under the pointer dips, as if pressing a loose cut-out with a finger.
@@ -38,7 +48,7 @@ export function tiltFor(clientX: number, clientY: number, rect: Pick<DOMRect, "l
  * shadow under it, a strip of paper tape over one corner. The sketch keeps its own warmer card
  * and deckled edges on purpose (it is a cut-out, not printed on this page).
  *
- * Served as WebP in two widths via srcSet, decoded off the main thread; lazy-loaded unless
+ * Served as AVIF (WebP fallback) in three widths via srcSet, decoded off the main thread; lazy-loaded unless
  * `priority` says it is above the fold ("eager": the cabin's page; "high": also fetched first,
  * the Express lead, which is the page's largest paint). If the
  * stop has no illustration, or the file fails to load, an ink ornament fills the frame instead.
@@ -126,23 +136,24 @@ export function Clipping({
       <div className={styles.clippingLift}>
         <div className={styles.clippingTilt} ref={tiltRef} data-tilt="">
           {art && !failed ? (
-            // Plain <img>: static export serves the pre-sized WebPs as-is (no image optimizer).
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className={styles.clippingImg}
-              src={`/illustrations/${id}.webp`}
-              srcSet={`/illustrations/${id}-600.webp 600w, /illustrations/${id}-900.webp 900w, /illustrations/${id}.webp ${w}w`}
-              // Its laid-out width (measured): about half the page on wide screens, the column
-              // minus its gutters on tablets and phones. Accurate, so phones fetch 600w/900w.
-              sizes="(min-width: 900px) 560px, (min-width: 640px) calc(100vw - 72px), calc(100vw - 28px)"
-              alt={art.alt}
-              width={w}
-              height={h}
-              loading={priority ? "eager" : "lazy"}
-              fetchPriority={priority === "high" ? "high" : undefined}
-              decoding="async"
-              onError={() => setFailed(true)}
-            />
+            // Plain <picture>/<img>: static export serves the pre-sized files as-is (no image
+            // optimizer). AVIF first (about half the bytes of the WebP), WebP as the fallback.
+            <picture className={styles.clippingPicture}>
+              <source type="image/avif" srcSet={srcSetFor(id, "avif", w)} sizes={CLIPPING_SIZES} />
+              <img
+                className={styles.clippingImg}
+                src={`/illustrations/${id}.webp`}
+                srcSet={srcSetFor(id, "webp", w)}
+                sizes={CLIPPING_SIZES}
+                alt={art.alt}
+                width={w}
+                height={h}
+                loading={priority ? "eager" : "lazy"}
+                fetchPriority={priority === "high" ? "high" : undefined}
+                decoding="async"
+                onError={() => setFailed(true)}
+              />
+            </picture>
           ) : (
             <div className={styles.ornamentFrame} data-testid="ornament">
               <Ornament />

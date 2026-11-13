@@ -111,6 +111,12 @@ describe("Clipping", () => {
     expect(img.getAttribute("src")).toBe("/illustrations/sahara.webp");
     expect(img.getAttribute("srcset")).toContain("/illustrations/sahara-600.webp 600w");
     expect(img.getAttribute("srcset")).toContain("/illustrations/sahara-900.webp 900w");
+    // Task 13: AVIF first (about half the bytes), same widths and sizes; WebP stays the fallback.
+    const avif = img.closest("picture")!.querySelector("source[type='image/avif']")!;
+    expect(avif.getAttribute("srcset")).toContain("/illustrations/sahara-600.avif 600w");
+    expect(avif.getAttribute("srcset")).toContain("/illustrations/sahara-900.avif 900w");
+    expect(avif.getAttribute("srcset")).toContain("/illustrations/sahara.avif 1200w");
+    expect(avif.getAttribute("sizes")).toBe(img.getAttribute("sizes"));
     expect(img.getAttribute("srcset")).toContain("/illustrations/sahara.webp 1200w");
     expect(img.getAttribute("sizes")).toBeTruthy();
     expect(img.getAttribute("loading")).toBe("lazy");

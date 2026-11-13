@@ -2,8 +2,9 @@
  * Illustration pipeline: media-inbox/newspaper/illustrations/*.png -> public/illustrations/*.webp
  *
  * Heet's ink-sketch "clippings" (one per stop) arrive as 1536x1024 PNGs of ~4 MB each. For the
- * page they become three WebP widths (1200w for desktop / retina cards, 900w for high-DPR phones,
- * 600w for phones) that the
+ * page they become three widths (1200w for desktop / retina cards, 900w for high-DPR phones,
+ * 600w for phones), each as AVIF (served first, about half the bytes) and WebP (fallback, and
+ * what the cabin's canvas print draws), that the
  * newspaper's <Clipping> serves through srcSet. Run with `npm run illustrations`; the outputs are
  * committed (media-inbox/ is git-ignored), so the build never needs the originals.
  *
@@ -25,6 +26,8 @@ const WIDTHS = [
   { w: 600, suffix: "-600" },
 ];
 const QUALITY = 78;
+/** AVIF quality: q50 matches the WebP q78 hatching closely at roughly half the size. */
+const AVIF_QUALITY = 50;
 /** Trim this fraction off every edge: the outer few px are background behind the deckled edge. */
 const TRIM = 0.01;
 
@@ -41,14 +44,19 @@ for (const file of files) {
   const dy = Math.round(height * TRIM);
 
   for (const { w, suffix } of WIDTHS) {
-    const out = path.join(OUT, `${id}${suffix}.webp`);
-    const info = await sharp(input)
-      .extract({ left: dx, top: dy, width: width - dx * 2, height: height - dy * 2 })
-      .resize({ width: w })
-      // Toward the page paper: calmer orange, slightly lighter. Kept subtle on purpose.
-      .modulate({ saturation: 0.8, brightness: 1.04 })
-      .webp({ quality: QUALITY, effort: 6 })
-      .toFile(out);
-    console.log(`${out}  ${info.width}x${info.height}  ${(info.size / 1024).toFixed(0)} KB`);
+    const prepared = () =>
+      sharp(input)
+        .extract({ left: dx, top: dy, width: width - dx * 2, height: height - dy * 2 })
+        .resize({ width: w })
+        // Toward the page paper: calmer orange, slightly lighter. Kept subtle on purpose.
+        .modulate({ saturation: 0.8, brightness: 1.04 });
+    for (const [ext, encode] of [
+      ["webp", (s) => s.webp({ quality: QUALITY, effort: 6 })],
+      ["avif", (s) => s.avif({ quality: AVIF_QUALITY, effort: 5 })],
+    ]) {
+      const out = path.join(OUT, `${id}${suffix}.${ext}`);
+      const info = await encode(prepared()).toFile(out);
+      console.log(`${out}  ${info.width}x${info.height}  ${(info.size / 1024).toFixed(0)} KB`);
+    }
   }
 }

@@ -267,6 +267,11 @@
   transform: rotate(var(--tilt, 0deg));
 }
 
+/* The <picture> wrapper adds no box of its own: the image lays out exactly as before. */
+.clippingPicture {
+  display: contents;
+}
+
 .clippingImg {
   display: block;
   width: 100%;
