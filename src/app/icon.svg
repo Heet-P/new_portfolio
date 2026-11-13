@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Site icon: a scrap of newsprint with an inked serif "H" and the red
+       brush underline used under the newspaper headlines. Drawn with plain
+       shapes (no fonts) so it renders identically in every browser tab. -->
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#efe5cc" stroke="#1d1915" stroke-width="3"/>
+  <g fill="#1d1915">
+    <!-- stems -->
+    <rect x="16" y="14" width="8" height="30"/>
+    <rect x="40" y="14" width="8" height="30"/>
+    <!-- crossbar -->
+    <rect x="24" y="26" width="16" height="5"/>
+    <!-- slab serifs -->
+    <rect x="12" y="13" width="16" height="4"/>
+    <rect x="36" y="13" width="16" height="4"/>
+    <rect x="12" y="41" width="16" height="4"/>
+    <rect x="36" y="41" width="16" height="4"/>
+  </g>
+  <!-- red dry-brush underline -->
+  <path d="M10 52 C 22 49, 38 50, 54 47 L 55 51 C 40 54, 24 53, 11 56 Z" fill="#b0352b"/>
+</svg>
