@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { PROFILE, STATIONS, type Station } from "@/content/route";
 import { resetCabin, useCabin } from "../cabinStore";
+import { useRide } from "../rideStore";
 import { DisplayScreen, OnboardDisplay } from "./OnboardDisplay";
 
 const VAANI = STATIONS.findIndex((s) => s.id === "vaani");
@@ -29,6 +30,7 @@ const WITH_LINKS: Station = {
 afterEach(() => {
   cleanup();
   resetCabin();
+  useRide.setState({ target: null });
 });
 
 describe("OnboardDisplay", () => {
@@ -116,6 +118,19 @@ describe("OnboardDisplay", () => {
     expect(document.activeElement).toBe(email);
     act(() => useCabin.setState({ shown: false }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Terminus" }));
+  });
+
+  // Task 13: a route-map ride across several stops must not read out every stop on the way.
+  it("announces a stop only once the train has settled there (not mid-ride to another stop)", () => {
+    const { container } = render(<OnboardDisplay />);
+    const live = () => container.querySelector("[aria-live]")!.textContent;
+    act(() => useRide.setState({ target: TERMINUS }));
+    parkAt(VAANI);
+    expect(live()).toBe("");
+    act(() => useCabin.setState({ shown: false }));
+    act(() => useRide.setState({ target: null }));
+    parkAt(TERMINUS);
+    expect(live()).toBe("Now at Terminus");
   });
 
   it("shows nothing while the train is travelling", () => {

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { STATIONS, type Station } from "@/content/route";
 import { FrontPage } from "@/newspaper/FrontPage";
 import { cabinFrame, onCabinFrame, useCabin } from "../cabinStore";
+import { useRide } from "../rideStore";
 import { displayOpacity } from "../stopCamera";
 import styles from "./OnboardDisplay.module.css";
 
@@ -37,6 +38,8 @@ export function DisplayScreen({ station, index }: { station: Station; index: num
 export function OnboardDisplay() {
   const shown = useCabin((s) => s.shown);
   const index = useCabin((s) => s.stationIndex);
+  // A route-map ride still on its way to another stop (target set) is not "arriving" anywhere.
+  const riding = useRide((s) => s.target !== null && s.target !== index);
   const layer = useRef<HTMLDivElement>(null);
   const screen = useRef<HTMLDivElement>(null);
 
@@ -106,9 +109,10 @@ export function OnboardDisplay() {
   const station = STATIONS[index];
   return (
     <>
-      {/* Screen reader users hear each stop as the display comes up (the old station label's job). */}
+      {/* Screen reader users hear each stop as the display comes up (the old station label's job),
+          only once the train has settled there: never the stops passed on a longer ride. */}
       <p className="sr-only" aria-live="polite">
-        {shown && station ? `Now at ${station.name}` : ""}
+        {shown && !riding && station ? `Now at ${station.name}` : ""}
       </p>
       <div ref={layer} className={styles.layer} data-display="" aria-hidden={!shown || undefined} inert={!shown}>
         <div ref={screen} className={styles.frame}>

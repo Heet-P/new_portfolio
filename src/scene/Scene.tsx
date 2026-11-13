@@ -11,6 +11,7 @@ import { Atmosphere } from "./Atmosphere";
 import { Cabin } from "./cabin/Cabin";
 import { CameraRig } from "./CameraRig";
 import { Catenary } from "./Catenary";
+import { useGuardedCanvas } from "./guards";
 import { getQuality } from "./quality";
 import { Rain } from "./Rain";
 import { updateTrainPose } from "./route3d";
@@ -103,6 +104,10 @@ export default function Scene() {
   const density = Math.min(1, quality.sceneryLayers / 4);
   // Phone tier (fewer scenery layers): coarser terrain grid, ~2.3x fewer triangles to build and draw.
   const terrainStep = quality.sceneryLayers >= 4 ? 6 : 9;
+  // Frames run through a guarded loop (frameloop="never" below): a throw inside any useFrame
+  // reaches SceneBoundary and the visitor lands on Express instead of a frozen scene.
+  // Losing the GPU context is not an exception at all: that is watched for on the canvas too.
+  const onCreated = useGuardedCanvas();
 
   return (
     <div
@@ -118,6 +123,8 @@ export default function Scene() {
       }}
     >
       <Canvas
+        frameloop="never"
+        onCreated={onCreated}
         dpr={quality.dpr}
         shadows={shadows ? { type: THREE.PCFShadowMap } : false}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}

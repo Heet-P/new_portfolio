@@ -110,3 +110,81 @@ test("the Terminus display hands over the resume as a download ticket", async ({
   await expect(display).toBeVisible({ timeout: 20000 });
   await expect(display.getByRole("link", { name: /resume/i })).toHaveAttribute("download", "");
 });
+
+// Task 13 (deferred race): a cold load straight onto a deep link must always open at that
+// station, never at a neighbour, however the page's first scroll events land. Fresh browser
+// contexts, three times per hash, so a flaky race shows up here rather than for a visitor.
+test("cold deep links always open at the right station", async ({ browser }) => {
+  test.setTimeout(400_000);
+  const cases = [
+    { hash: "departure", name: "Departure" },
+    { hash: "sahara", name: "SAHARA" },
+    { hash: "terminus", name: "Terminus" },
+  ];
+  for (const { hash, name } of cases) {
+    for (let run = 0; run < 3; run++) {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        window.localStorage.setItem("nt-mode", "ride");
+        // Record every announcement the ride makes, from the first frame on.
+        const said: string[] = ((window as unknown as { said: string[] }).said = []);
+        new MutationObserver(() => {
+          const text = document.querySelector("p[aria-live]")?.textContent;
+          if (text && said[said.length - 1] !== text) said.push(text);
+        }).observe(document, { subtree: true, childList: true, characterData: true });
+      });
+      await page.goto(`/#${hash}`);
+      // The cabin display only comes up once the train is parked there (slow under load: CI-ish).
+      await expect(page.locator("p[aria-live]"), `${hash} run ${run}`).toHaveText(`Now at ${name}`, { timeout: 40000 });
+      await expect(currentStop(page)).toHaveAttribute("aria-label", name);
+      await expect(page).toHaveURL(new RegExp(`#${hash}$`));
+      await page.waitForTimeout(500);
+      await expect(currentStop(page)).toHaveAttribute("aria-label", name);
+      expect(await page.evaluate(() => (window as unknown as { said: string[] }).said)).toEqual([`Now at ${name}`]);
+      await context.close();
+    }
+  }
+});
+
+// Task 13 (deferred): coming back from Express onto a different station snaps the train there
+// (no glide past the stops in between): the display of that station is up within a moment.
+test("re-entering the ride from Express snaps to the hash's station", async ({ page }) => {
+  await page.goto("/#vaani");
+  await expect(page.getByRole("region", { name: "Vaani AI" })).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: /^Express/ }).click();
+  await expect(page.locator("#express")).toBeVisible();
+  // A stale hash from elsewhere (e.g. an in-page link) while on Express.
+  await page.evaluate(() => history.replaceState(null, "", "#terminus"));
+  await page.getByRole("button", { name: /^Ride the train/ }).click();
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "Terminus");
+  // A glide from Vaani to the Terminus takes ~10 s at the train's top speed; a snap shows the page at once.
+  await expect(page.getByRole("region", { name: "Terminus" })).toBeVisible({ timeout: 4000 });
+});
+
+// Task 13 (deferred): keyboard scrolling takes over from a route-map ride, like the wheel does.
+test("a keyboard scroll interrupts a route map ride", async ({ page }) => {
+  await page.goto("/#departure");
+  const map = page.getByRole("navigation", { name: "Route map" });
+  await map.getByRole("button", { name: "Terminus" }).click();
+  await page.waitForTimeout(300);
+  // Home = native jump to the top of the page, which must win over the 2.4 s ride.
+  await page.keyboard.press("Home");
+  await page.waitForTimeout(3000);
+  await expect(currentStop(page)).toHaveAttribute("aria-label", "Departure");
+});
+
+// Task 13 (deferred): losing the WebGL context (GPU reset, a phone reclaiming memory) is not a
+// React error, so the boundary never saw it; now the visitor lands on Express instead.
+test("a lost WebGL context drops the visitor into Express", async ({ page }) => {
+  await page.goto("/#vaani");
+  await expect(page.getByTestId("ride-scene")).toHaveCSS("opacity", "1", { timeout: 20000 });
+  await page.evaluate(() => {
+    const canvas = document.querySelector("canvas")!;
+    const gl = (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext;
+    gl.getExtension("WEBGL_lose_context")!.loseContext();
+  });
+  await expect(page.locator("#express")).toBeVisible();
+  await expect(page.locator("canvas")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Ride the train/ })).toBeVisible();
+});

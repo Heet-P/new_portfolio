@@ -75,9 +75,11 @@ export const useCabin = create<CabinUi>(() => ({ shown: false, stationIndex: 0 }
 export function stepCabin(position: number, speed: number, dt: number): void {
   const f = cabinFrame;
   const target = f.ready ? stopBlend(position) * passGate(speed) : 0;
-  if (!f.started) {
-    // First frame with the cabin loaded (the scene is still fading in): jump straight to the
-    // right state, so a deep link to a station opens already settled in front of the display.
+  const snap = !f.started;
+  if (snap) {
+    // First frame with the cabin loaded (the scene is still fading in), or a snap (snapCabin):
+    // jump straight to the right state, so a deep link to a station opens already settled in
+    // front of that station's display, and a snap away from a stop closes it at once.
     spring.value = target;
     spring.velocity = 0;
     f.started = f.ready;
@@ -96,7 +98,12 @@ export function stepCabin(position: number, speed: number, dt: number): void {
   f.inside = insideCabin(f.blend);
 
   const ui = useCabin.getState();
-  if (!ui.shown && f.blend >= SHOW_ON) useCabin.setState({ shown: true, stationIndex: Math.round(position) });
+  if (snap) {
+    // No hysteresis on a snap: shown exactly when settled, and showing THIS stop.
+    const shown = f.blend >= SHOW_ON;
+    const index = Math.round(position);
+    if (shown !== ui.shown || (shown && ui.stationIndex !== index)) useCabin.setState(shown ? { shown, stationIndex: index } : { shown });
+  } else if (!ui.shown && f.blend >= SHOW_ON) useCabin.setState({ shown: true, stationIndex: Math.round(position) });
   else if (ui.shown && f.blend < SHOW_OFF) useCabin.setState({ shown: false });
 }
 
@@ -113,6 +120,15 @@ export function onCabinFrame(fn: () => void): () => void {
 /** Called by the scene once per frame, after the camera and the panel are placed. */
 export function emitCabinFrame(): void {
   for (const fn of listeners) fn();
+}
+
+/**
+ * The ride was re-anchored (a deep link fixed up after load, re-entry from Express): the next
+ * frame jumps the blend to wherever the train now is instead of gliding out of one cabin and
+ * into another, and the display shows the right stop straight away.
+ */
+export function snapCabin(): void {
+  cabinFrame.started = false;
 }
 
 /** Back to "outside, nothing loaded" (scene unmount, tests). */
