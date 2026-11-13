@@ -28,6 +28,8 @@ export interface AudioEngine {
   chime(): void;
   tap(): void;
   rustle(): void;
+  /** A soft rubber-stamp / printing-press thunk (Express whimsy). */
+  stamp(): void;
   /** For React (useSyncExternalStore): called whenever enabled() changes. */
   subscribe(fn: () => void): () => void;
   dispose(): void;
@@ -171,6 +173,9 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
     },
     rustle() {
       if (audible()) graph?.rustle();
+    },
+    stamp() {
+      if (audible()) graph?.stamp();
     },
     subscribe(fn) {
       listeners.add(fn);

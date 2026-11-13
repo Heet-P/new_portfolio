@@ -1,5 +1,6 @@
 import { PROFILE, STATIONS } from "@/content/route";
 import { Nameplate } from "@/newspaper/FrontPage";
+import { InkTrain } from "./InkTrain";
 import { StationSection } from "./StationSection";
 import styles from "./express.module.css";
 
@@ -10,11 +11,16 @@ import styles from "./express.module.css";
  * then every stop follows as an article in ride order (projects first, then Work Experience,
  * the Situations Wanted ad and the Terminus classifieds). The 3D ride hides it via the `hidden`
  * attribute on its wrapper, so nothing here may depend on the ride being present.
+ *
+ * Whimsy (Express only, all off under reduced motion): the nameplate goes ka-chunk when
+ * clicked, a little ink train chugs along the margin rule once, and every article is printed
+ * with `whimsy` (see FrontPage) for its springy stamps, lifting clippings and inking-in.
  */
 export function ExpressView() {
   return (
     <main id="express" className={styles.page}>
       <Nameplate
+        whimsy
         left="Vol. III · Express edition"
         right="Nov 2026"
         edition={
@@ -24,6 +30,7 @@ export function ExpressView() {
           </>
         }
       />
+      <InkTrain />
 
       {/* The route: every stop as an article, in ride order. */}
       <ol className={styles.route} aria-label="Route">

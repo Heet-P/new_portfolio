@@ -7,24 +7,33 @@
  * Time comes from Date.now(), so vitest's fake timers move the audio clock too.
  */
 
+/** Browsers throw a RangeError for automation scheduled before time 0; so does the fake. */
+function checkTime(t: number) {
+  if (!Number.isFinite(t) || t < 0) throw new RangeError(`Time must be a finite non-negative number: ${t}`);
+}
+
 class FakeParam {
   value: number;
   constructor(value = 0) {
     this.value = value;
   }
-  setValueAtTime(v: number) {
+  setValueAtTime(v: number, t: number) {
+    checkTime(t);
     this.value = v;
     return this;
   }
-  linearRampToValueAtTime(v: number) {
+  linearRampToValueAtTime(v: number, t: number) {
+    checkTime(t);
     this.value = v;
     return this;
   }
-  exponentialRampToValueAtTime(v: number) {
+  exponentialRampToValueAtTime(v: number, t: number) {
+    checkTime(t);
     this.value = v;
     return this;
   }
-  setTargetAtTime(v: number) {
+  setTargetAtTime(v: number, t: number) {
+    checkTime(t);
     this.value = v;
     return this;
   }

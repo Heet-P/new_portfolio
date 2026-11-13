@@ -5,8 +5,11 @@ import { TapLink } from "@/sound/TapLink";
 import { Clipping } from "./Clipping";
 import { deckOf, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
 import { linkProps, splitLinks } from "./links";
-import { BrushTab, BrushUnderline } from "./ornaments";
+import { BrushTab, BrushUnderline, InkSpeckles, StopPress } from "./ornaments";
+import { PressNameplate } from "./PressNameplate";
 import { StatValue } from "./StatValue";
+import { TicketLink } from "./TicketLink";
+import { WhimsyArticle } from "./WhimsyArticle";
 import styles from "./newspaper.module.css";
 
 /**
@@ -18,6 +21,12 @@ import styles from "./newspaper.module.css";
  * - `lead`: the Express front-page lead (Departure), whose headline is the page's h1.
  * Layout adapts to its own width (container queries), not the viewport's, so the cabin's
  * framed page and the Express column can both use it.
+ *
+ * `whimsy` (the Express only; the cabin's page stays as it is): springy ink-stamp buttons and
+ * resume ticket, clippings that lift and lean toward the cursor, the headline's brush stroke
+ * drawing itself in, a wobbling At a Glance tab, ink speckles on flagship stats, and a Stop
+ * press stamp on the current stop. All of it is keyed off `data-whimsy` / `data-ink` in
+ * newspaper.module.css and switched off under reduced motion.
  */
 
 export { formatDateline, nextStopLabel } from "./edition";
@@ -37,12 +46,23 @@ const STAMP: Partial<Record<NonNullable<Station["status"]>, string>> = {
  * The nameplate: blackletter title between two ears (each under a thin rule), then the
  * edition line between a double rule and a hairline. Shared by the cabin page and the Express.
  */
-export function Nameplate({ left, right, edition }: { left: string; right: string; edition: ReactNode }) {
+export function Nameplate({
+  left,
+  right,
+  edition,
+  whimsy = false,
+}: {
+  left: string;
+  right: string;
+  edition: ReactNode;
+  /** Express: the title goes ka-chunk when clicked (see PressNameplate). */
+  whimsy?: boolean;
+}) {
   return (
     <header className={styles.masthead}>
       <div className={styles.mastTop}>
         <span className={styles.ear}>{left}</span>
-        <p className={styles.nameplate}>The Project Post</p>
+        {whimsy ? <PressNameplate /> : <p className={styles.nameplate}>The Project Post</p>}
         <span className={styles.ear}>{right}</span>
       </div>
       <p className={styles.edition}>{edition}</p>
@@ -85,8 +105,11 @@ function Kicker({ station, index, withDate }: { station: Station; index: number;
   );
 }
 
-/** The big headline; its last word gets the red brush underline. */
-function Headline({ text, level }: { text: string; level: 1 | 2 }) {
+/**
+ * The big headline; its last word gets the red brush underline. `drawId` (Express) lets the
+ * stroke draw itself in when the article scrolls into view.
+ */
+function Headline({ text, level, drawId }: { text: string; level: 1 | 2; drawId?: string }) {
   const words = text.split(" ");
   const last = words.pop();
   const Tag = level === 1 ? "h1" : "h2";
@@ -95,14 +118,17 @@ function Headline({ text, level }: { text: string; level: 1 | 2 }) {
       {words.length > 0 && `${words.join(" ")} `}
       <span className={styles.underlined}>
         {last}
-        <BrushUnderline />
+        <BrushUnderline drawId={drawId} />
       </span>
     </Tag>
   );
 }
 
-/** Boxed "At a Glance" sidebar: each stat as a bullet line with a red square. */
-function AtAGlance({ stats }: { stats: NonNullable<Station["stats"]> }) {
+/**
+ * Boxed "At a Glance" sidebar: each stat as a bullet line with a red square. `speckles`
+ * (Express, flagship projects): the lead stat spatters ink specks on hover.
+ */
+function AtAGlance({ stats, speckles = false }: { stats: NonNullable<Station["stats"]>; speckles?: boolean }) {
   return (
     <div className={styles.glance}>
       {/* The list carries the name for screen readers; the painted label is for the eye. */}
@@ -111,10 +137,11 @@ function AtAGlance({ stats }: { stats: NonNullable<Station["stats"]> }) {
         <span>At a Glance</span>
       </p>
       <ul className={styles.glanceList} aria-label="At a Glance">
-        {stats.map((stat) => (
+        {stats.map((stat, i) => (
           <li key={stat.label}>
             <b className={styles.glanceValue}>
               <StatValue value={stat.value} />
+              {speckles && i === 0 && <InkSpeckles />}
             </b>{" "}
             {stat.label}
           </li>
@@ -171,11 +198,13 @@ function Actions({ children }: { children: ReactNode }) {
 
 /**
  * The resume, handed over as a ticket you clip from the paper. The whole ticket is the
- * download link; it lifts a little on hover and gives on press (transform only).
+ * download link; it lifts a little on hover and gives on press (transform only). In the
+ * Express (`whimsy`) its stub wiggles on hover and gets punched when the ticket is taken.
  */
-function Ticket() {
+function Ticket({ whimsy }: { whimsy: boolean }) {
+  const Link = whimsy ? TicketLink : TapLink;
   return (
-    <TapLink className={styles.ticket} href={PROFILE.resume} download="">
+    <Link className={styles.ticket} href={PROFILE.resume} download="">
       <span className={styles.ticketMain}>
         <span className={styles.ticketKicker} aria-hidden="true">
           Admit one · The Project Post
@@ -188,8 +217,9 @@ function Ticket() {
       <span className={styles.ticketStub} aria-hidden="true">
         <span>No.</span>
         <span className={styles.ticketNo}>0816</span>
+        {whimsy && <span className={styles.ticketPunch} />}
       </span>
-    </TapLink>
+    </Link>
   );
 }
 
@@ -209,8 +239,19 @@ function Skills() {
 
 /* ---------- Per-kind stories ---------- */
 
+/** What every story gets: the stop, its heading level, and whether the Express whimsy is on. */
+interface StoryProps {
+  station: Station;
+  level: 1 | 2;
+  whimsy: boolean;
+}
+
+/** The headline's brush-stroke mask id: unique per stop, and only printed in the Express. */
+const drawIdOf = ({ station, whimsy }: StoryProps) => (whimsy ? `ink-${station.id}` : undefined);
+
 /** A project or the internship: lede (headline, deck, At a Glance) beside the clipping, then the story. */
-function ProjectStory({ station, level }: { station: Station; level: 1 | 2 }) {
+function ProjectStory(props: StoryProps) {
+  const { station, level, whimsy } = props;
   const { live, demos, repo, rest } = splitLinks(station.links);
   // Text comes from the kind of link, not its label; the first one is the red stamp.
   const primary = [
@@ -222,11 +263,14 @@ function ProjectStory({ station, level }: { station: Station; level: 1 | 2 }) {
     <>
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={headlineOf(station)} level={level} />
+          <Headline text={headlineOf(station)} level={level} drawId={drawIdOf(props)} />
           <p className={styles.deck}>{deckOf(station)}</p>
-          {station.stats && <AtAGlance stats={station.stats} />}
+          {station.stats && <AtAGlance stats={station.stats} speckles={whimsy && station.flagship} />}
         </div>
-        <Clipping id={station.id} />
+        {/* The current stop's clipping gets the Stop press stamp slammed onto it. */}
+        <Clipping id={station.id} whimsy={whimsy}>
+          {whimsy && station.status === "current" && <StopPress />}
+        </Clipping>
       </div>
       <Body paragraphs={station.body} />
       <StationMedia media={station.media} />
@@ -250,12 +294,13 @@ function ProjectStory({ station, level }: { station: Station; level: 1 | 2 }) {
 }
 
 /** Departure: the Special Edition about Heet. */
-function DepartureStory({ station, level }: { station: Station; level: 1 | 2 }) {
+function DepartureStory(props: StoryProps) {
+  const { station, level, whimsy } = props;
   return (
     <>
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={headlineOf(station)} level={level} />
+          <Headline text={headlineOf(station)} level={level} drawId={drawIdOf(props)} />
           <p className={styles.deck}>{deckOf(station)}</p>
           {/* Straight after the deck, so the resume is reachable without scrolling. */}
           <Actions>
@@ -268,7 +313,7 @@ function DepartureStory({ station, level }: { station: Station; level: 1 | 2 }) 
           </Actions>
           {station.stats && <AtAGlance stats={station.stats} />}
         </div>
-        <Clipping id={station.id} />
+        <Clipping id={station.id} whimsy={whimsy} />
       </div>
       <Body paragraphs={station.body} />
       <Skills />
@@ -277,11 +322,12 @@ function DepartureStory({ station, level }: { station: Station; level: 1 | 2 }) 
 }
 
 /** The open platform: a "Situations Wanted" classified, the next stop could be the reader's team. */
-function NextStory({ station, level }: { station: Station; level: 1 | 2 }) {
+function NextStory(props: StoryProps) {
+  const { station, level, whimsy } = props;
   return (
     <div className={styles.lede}>
       <div className={`${styles.ledeText} ${styles.ad}`}>
-        <Headline text={headlineOf(station)} level={level} />
+        <Headline text={headlineOf(station)} level={level} drawId={drawIdOf(props)} />
         <Body paragraphs={station.body} />
         <Actions>
           <Stamp href={`mailto:${PROFILE.email}`} primary>
@@ -290,19 +336,20 @@ function NextStory({ station, level }: { station: Station; level: 1 | 2 }) {
           <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
         </Actions>
       </div>
-      <Clipping id={station.id} />
+      <Clipping id={station.id} whimsy={whimsy} />
     </div>
   );
 }
 
 /** End of the line: classifieds with the contact ad, the resume ticket and the credits. */
-function TerminusStory({ station, level }: { station: Station; level: 1 | 2 }) {
+function TerminusStory(props: StoryProps) {
+  const { station, level, whimsy } = props;
   return (
     <>
       {/* Contact under the notice, the ticket ad above the clipping: both in the first view. */}
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={headlineOf(station)} level={level} />
+          <Headline text={headlineOf(station)} level={level} drawId={drawIdOf(props)} />
           <Body paragraphs={station.body} />
           <div className={styles.ad}>
             <p className={styles.adTitle}>Contact</p>
@@ -318,10 +365,10 @@ function TerminusStory({ station, level }: { station: Station; level: 1 | 2 }) {
         <div>
           <div className={styles.ad}>
             <p className={styles.adTitle}>Clip &amp; keep</p>
-            <Ticket />
+            <Ticket whimsy={whimsy} />
           </div>
           <div className={styles.clipBelow}>
-            <Clipping id={station.id} />
+            <Clipping id={station.id} whimsy={whimsy} />
           </div>
         </div>
       </div>
@@ -340,23 +387,46 @@ export function FrontPage({
   station,
   index,
   variant = "page",
+  whimsy = false,
 }: {
   station: Station;
   index: number;
   variant?: "page" | "article" | "lead";
+  /** The Express's playful micro-interactions (never in the cabin). */
+  whimsy?: boolean;
 }) {
-  const level = variant === "lead" ? 1 : 2;
+  const props: StoryProps = { station, level: variant === "lead" ? 1 : 2, whimsy };
   let story: ReactNode;
-  if (station.kind === "intro") story = <DepartureStory station={station} level={level} />;
-  else if (station.kind === "open") story = <NextStory station={station} level={level} />;
-  else if (station.kind === "end") story = <TerminusStory station={station} level={level} />;
-  else story = <ProjectStory station={station} level={level} />;
+  if (station.kind === "intro") story = <DepartureStory {...props} />;
+  else if (station.kind === "open") story = <NextStory {...props} />;
+  else if (station.kind === "end") story = <TerminusStory {...props} />;
+  else story = <ProjectStory {...props} />;
 
-  return (
-    <article className={styles.front} data-variant={variant} data-kind={station.kind}>
+  const content = (
+    <>
       {variant === "page" && <Masthead station={station} index={index} />}
       <Kicker station={station} index={index} withDate={variant !== "page"} />
       {story}
-    </article>
+    </>
+  );
+
+  // The cabin's page stays a plain <article>; the Express's inks in as it scrolls into view.
+  if (!whimsy) {
+    return (
+      <article className={styles.front} data-variant={variant} data-kind={station.kind}>
+        {content}
+      </article>
+    );
+  }
+  return (
+    <WhimsyArticle
+      className={styles.front}
+      data-variant={variant}
+      data-kind={station.kind}
+      data-whimsy=""
+      thunk={station.status === "current"}
+    >
+      {content}
+    </WhimsyArticle>
   );
 }

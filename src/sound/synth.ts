@@ -14,6 +14,7 @@ import {
   REVERB,
   RUMBLE,
   RUSTLE,
+  STAMP,
   TAP,
   TEMPO,
   TUNNEL,
@@ -31,7 +32,7 @@ import {
  *                                     lowpass -> reverb send -> room --+
  *   ambience: rain, rumble + hum, clacks -> tunnel lowpass -> ambience bus -> master
  *                                                 \-> reverb send (more in tunnels) -> room
- *   cues:     chime, tap, rustle -> ui bus -> master (chime also -> room)
+ *   cues:     chime, tap, rustle, stamp -> ui bus -> master (chime also -> room)
  *
  * The master starts silent; audioEngine.ts fades it in and out.
  */
@@ -46,6 +47,7 @@ export interface SoundGraph {
   chime(): void;
   tap(): void;
   rustle(): void;
+  stamp(): void;
 }
 
 const midiHz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
@@ -322,7 +324,12 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
   let step = 0;
   let restrike = false;
   let dropIndex = -1;
-  const humanize = () => rand(-TEMPO.humanize, TEMPO.humanize);
+  /**
+   * `when` nudged by a few ms of timing slop, never before 0: right after the context is
+   * created the clock is ~0, and Web Audio throws on a negative time (which used to break the
+   * Sound toggle's first click now and then).
+   */
+  const humanize = (when: number) => Math.max(0, when + rand(-TEMPO.humanize, TEMPO.humanize));
   const musicTrack = (when: number) => {
     const pos = step % 8;
     const chord = CHORDS[Math.floor(step / 8) % CHORDS.length];
@@ -338,9 +345,9 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
     if (pos === 5 && restrike) strum(chord.voicing.slice(-2), when, beat * 1.4, 0.55);
     if (pos === 3 && Math.random() < BASS.pickupChance) bassNote(chord.bass, when, 0.55);
     if (pos === 7 && Math.random() < BASS.fifthChance) bassNote(chord.bass + 7, when, 0.6);
-    if (Math.random() < DRUMS.kick[pos]) kick(when + humanize(), pos === 0 ? 1 : 0.75);
-    if (Math.random() < DRUMS.snare[pos]) snare(when + humanize(), pos === 7 ? 0.35 : rand(0.85, 1));
-    if (Math.random() < DRUMS.hat[pos]) hat(when + humanize(), (pos % 2 === 0 ? DRUMS.hatAccent : DRUMS.hatOffbeat) * rand(0.7, 1));
+    if (Math.random() < DRUMS.kick[pos]) kick(humanize(when), pos === 0 ? 1 : 0.75);
+    if (Math.random() < DRUMS.snare[pos]) snare(humanize(when), pos === 7 ? 0.35 : rand(0.85, 1));
+    if (Math.random() < DRUMS.hat[pos]) hat(humanize(when), (pos % 2 === 0 ? DRUMS.hatAccent : DRUMS.hatOffbeat) * rand(0.7, 1));
     step++;
     // Swing: the on-beat 8th is longer than the off-beat one.
     return pos % 2 === 0 ? beat * TEMPO.swing : beat * (1 - TEMPO.swing);
@@ -452,6 +459,7 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
 
   /* ---- one-off cues ---- */
   let lastTap = -1;
+  let lastStamp = -1;
 
   return {
     master,
@@ -529,6 +537,28 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
           out,
         );
       }
+    },
+    stamp() {
+      const when = ctx.currentTime + 0.005;
+      if (when - lastStamp < STAMP.minGap) return;
+      lastStamp = when;
+      // The thud: a dull burst of low-passed noise (felt more than heard).
+      noiseHit(
+        when,
+        { type: "lowpass", freq: STAMP.lowpass, Q: 0.7, level: STAMP.level, attack: STAMP.attack, decay: STAMP.decay, length: STAMP.length },
+        uiBus,
+      );
+      // The body: a low sine that sags in pitch as the stamp presses down.
+      const o = ctx.createOscillator();
+      o.frequency.setValueAtTime(STAMP.bodyFreq, when);
+      o.frequency.exponentialRampToValueAtTime(STAMP.bodyFreqTo, when + STAMP.bodyDecay * 2);
+      const env = gain(0, uiBus);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(STAMP.bodyLevel, when + STAMP.attack);
+      env.gain.setTargetAtTime(0, when + STAMP.attack, STAMP.bodyDecay);
+      o.connect(env);
+      o.start(when);
+      o.stop(when + STAMP.length);
     },
   };
 }

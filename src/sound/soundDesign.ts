@@ -283,6 +283,28 @@ export const TAP = {
   minGap: 0.03,
 } as const;
 
+/**
+ * Rubber stamp / printing-press "chunk" (Express whimsy: the Stop press stamp landing, the
+ * masthead's ka-chunk): a duller, lower cousin of the tap. A short low-passed noise thud plus a
+ * low body that drops in pitch, like a stamp pressed into paper on a wooden desk. Quieter than
+ * the tap overall (it has more low end, so it reads as heavier without being louder).
+ */
+export const STAMP = {
+  level: 0.12,
+  /** The thud's noise: low-passed, not band-passed, so it has no "click" on top. */
+  lowpass: 900,
+  attack: 0.003,
+  decay: 0.03,
+  length: 0.16,
+  /** The body: a sine gliding from bodyFreq down to bodyFreqTo (the desk taking the weight). */
+  bodyFreq: 120,
+  bodyFreqTo: 70,
+  bodyLevel: 0.1,
+  bodyDecay: 0.045,
+  /** Two stamps closer than this (s) play as one (a double click is one thunk). */
+  minGap: 0.08,
+} as const;
+
 /** Newspaper unfolding: a short paper rustle made of a few overlapping noise grains. */
 export const RUSTLE = {
   grains: 6,

@@ -277,18 +277,27 @@
     0 16px 32px -12px rgb(60 40 12 / 0.45);
 }
 
-/* A strip of translucent paper tape holding the clipping down. */
-.clipping::before {
-  content: "";
+/*
+ * A strip of translucent paper tape holding the clipping down. Centred by `left` (not a
+ * translate) and hinged at its left end, so the Express can peel its right end up on hover.
+ */
+.tape {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   top: -12px;
-  left: 50%;
+  left: calc(50% - 52px);
   width: 104px;
   height: 28px;
   background: rgb(246 238 214 / 0.62);
   box-shadow: 0 1px 2px rgb(60 40 12 / 0.18);
-  transform: translateX(-50%) rotate(-3deg);
+  transform: rotate(-3deg);
+  transform-origin: 0 50%;
+}
+
+/* The clipping's two moving layers (Express): the hover lift, and the cursor lean inside it. */
+.clippingLift,
+.clippingTilt {
+  position: relative;
 }
 
 /* No illustration: an ink ornament in a ruled box of the same proportions. */
@@ -624,7 +633,297 @@
   .action::before,
   .action::after,
   .out,
-  .ticket {
-    transition: none;
+  .ticket,
+  .tape,
+  .clippingLift,
+  .clippingLift::after,
+  .ticketPunch,
+  .speckles > span,
+  .stopPress,
+  .brushDraw {
+    transition: none !important;
   }
+}
+
+/*
+ * ---------- Express whimsy ----------
+ * Josh Comeau's ideas (springy, playful, little surprises) in the newspaper's own materials:
+ * rubber stamps, paper tape, a conductor's punch, ink. Only on the Express's articles
+ * (`[data-whimsy]`; the cabin's page is untouched). Rules of the house:
+ * - transform/opacity only (plus the brush stroke's one-off dashoffset draw-in);
+ * - springs from the --spring-* tokens (bounce <= 0.2), presses in 100ms;
+ * - hover only for fine pointers, and hover motion only when motion is welcome;
+ * - keyframes only under `prefers-reduced-motion: no-preference` (checked by motionCss.test.ts);
+ *   under reduced motion every state change is instant (block above).
+ */
+
+/* Ink-stamp buttons: lift, crooked set and press composed from custom properties so they stack. */
+.front[data-whimsy] .action {
+  --lift: 0px;
+  --rot: 0deg;
+  --press: 1;
+  transform: translateY(var(--lift)) rotate(var(--rot)) scale(var(--press));
+  /* Release: the stamp springs back up off the paper. */
+  transition: transform var(--spring-press-dur) var(--spring-press);
+}
+
+.front[data-whimsy] .action[data-primary] {
+  --rot: -1.5deg;
+}
+
+/* Press ("thunk"): pressed flat, the crooked stamp straightens a little; fast in, spring out. */
+.front[data-whimsy] .action:active {
+  --lift: 0px;
+  --rot: 0.4deg;
+  --press: 0.97;
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.front[data-whimsy] .action[data-primary]:active {
+  --rot: -0.4deg;
+}
+
+/* Ink bleed: the hover wash reaches just past the frame with a soft halo, like ink in newsprint. */
+.front[data-whimsy] .action::before {
+  inset: -2px;
+  border-radius: calc(var(--radius-stamp) + 2px);
+  box-shadow: 0 0 4px 1px rgb(29 25 21 / 0.14);
+}
+
+.front[data-whimsy] .action[data-primary]::before {
+  box-shadow: 0 0 4px 1px rgb(176 53 43 / 0.18);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .front[data-whimsy] .action:hover {
+    --lift: -1px;
+  }
+}
+
+/* The resume ticket: springy lift, a stub that wiggles on its perforation, a punched hole. */
+.front[data-whimsy] .ticket {
+  transition: transform var(--spring-soft-dur) var(--spring-soft);
+}
+
+.front[data-whimsy] .ticket:active {
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.front[data-whimsy] .ticketStub {
+  position: relative;
+  /* Hinged on the perforation. */
+  transform-origin: 0 50%;
+}
+
+/* The conductor's punch: a hole through the stub showing the page underneath. */
+.ticketPunch {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: inset 0 2px 3px rgb(29 25 21 / 0.55);
+  opacity: 0;
+  transform: scale(1.4);
+  transition:
+    opacity 100ms var(--ease-out),
+    transform var(--spring-press-dur) var(--spring-press);
+}
+
+.ticket:active .ticketPunch,
+.ticket[data-punched] .ticketPunch {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .front[data-whimsy] .ticket:hover .ticketStub {
+    animation: stub-wiggle 280ms var(--ease-in-out);
+  }
+}
+
+@keyframes stub-wiggle {
+  30% {
+    transform: rotate(2.5deg);
+  }
+  60% {
+    transform: rotate(-2deg);
+  }
+  85% {
+    transform: rotate(0.8deg);
+  }
+}
+
+/* Clippings: lift off the page on hover (bigger, softer shadow), the tape peels, a press pats it down. */
+.clipping[data-whimsy] .clippingLift {
+  transition: transform var(--spring-soft-dur) var(--spring-soft);
+}
+
+.clipping[data-whimsy] .clippingLift::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: 0 28px 40px -16px rgb(60 40 12 / 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+.clipping[data-whimsy] .tape {
+  transition: transform var(--spring-soft-dur) var(--spring-soft);
+}
+
+.clipping[data-whimsy]:active .clippingLift {
+  transform: scale(0.99);
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .clipping[data-whimsy]:hover .clippingLift {
+    transform: translateY(-4px);
+  }
+
+  .clipping[data-whimsy]:hover .clippingLift::after {
+    opacity: 1;
+  }
+
+  /* The tape's free end comes up off the paper toward the reader (hinged at its left end). */
+  .clipping[data-whimsy]:hover .tape {
+    transform: rotate(-4deg) perspective(160px) rotateY(-24deg);
+  }
+
+  /* Restated after :hover (same specificity) so pressing still pats the lifted clipping down. */
+  .clipping[data-whimsy]:active .clippingLift {
+    transform: scale(0.99);
+  }
+}
+
+/* "Stop press!": the red rubber stamp slammed onto the current stop's clipping. */
+.stopPress {
+  position: absolute;
+  z-index: 1;
+  left: 6%;
+  bottom: 10%;
+  padding: 0 12px;
+  border: 3px solid currentColor;
+  border-radius: var(--radius-stamp);
+  box-shadow: inset 0 0 0 2px var(--paper-light), inset 0 0 0 3px currentColor;
+  background: rgb(248 242 226 / 0.8);
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 900;
+  font-size: var(--text-heading);
+  line-height: var(--text-heading-lh);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--red);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/* The brush underline's draw-in mask: drawn by default, so the static page shows it whole. */
+.brushDraw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+/* Ink-in, held back: the article hydrated below the fold and waits to be seen (WhimsyArticle). */
+.front[data-ink="pending"] .brushDraw {
+  stroke-dashoffset: 1;
+}
+
+.front[data-ink="pending"] .stopPress {
+  opacity: 0;
+  transform: rotate(-14deg) scale(1.35);
+}
+
+/* Ink-in, arrived: the brush pulls across (600ms, eased in and out like a stroke), then the stamp slams down on a spring. */
+@media (prefers-reduced-motion: no-preference) {
+  .front[data-ink="in"] .brushDraw {
+    transition: stroke-dashoffset 600ms var(--ease-in-out) 120ms;
+  }
+
+  .front[data-ink="in"] .stopPress {
+    transition:
+      opacity 80ms linear 200ms,
+      transform var(--spring-land-dur) var(--spring-land) 200ms;
+  }
+}
+
+/* At a Glance: the red tab gives a little wobble when the box is hovered. */
+.front[data-whimsy] .glanceLabel {
+  transform-origin: 16px 100%;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .front[data-whimsy] .glance:hover .glanceLabel {
+    animation: tab-wobble 280ms var(--ease-in-out);
+  }
+}
+
+@keyframes tab-wobble {
+  30% {
+    transform: rotate(-3deg);
+  }
+  60% {
+    transform: rotate(2deg);
+  }
+  85% {
+    transform: rotate(-0.8deg);
+  }
+}
+
+/* Ink speckles round a flagship stat: hidden, then flicked out one after another on hover. */
+.glanceValue {
+  position: relative;
+}
+
+.speckles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.speckles > span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  height: var(--s);
+  /* Not quite round: ink flecks, not confetti. */
+  border-radius: 50% 42% 56% 46%;
+  background: var(--red);
+  opacity: 0;
+  /* At rest each fleck sits half-size, pulled in toward the number; hover flicks it out. */
+  transform: translate(var(--dx), var(--dy)) scale(0.5);
+  transition:
+    opacity 120ms var(--ease-out),
+    transform var(--spring-soft-dur) var(--spring-soft);
+}
+
+/* Flicked up off the nib: all above the number, clear of the label beside it and the bullet. */
+.speckles > span:nth-child(1) { --x: 0%; --y: -36%; --s: 6px; --dx: 6px; --dy: 10px; }
+.speckles > span:nth-child(2) { --x: 22%; --y: -56%; --s: 3px; --dx: 4px; --dy: 12px; background: var(--ink); }
+.speckles > span:nth-child(3) { --x: 48%; --y: -30%; --s: 5px; --dx: 0px; --dy: 10px; }
+.speckles > span:nth-child(4) { --x: 74%; --y: -52%; --s: 4px; --dx: -4px; --dy: 12px; background: var(--ink); }
+.speckles > span:nth-child(5) { --x: 92%; --y: -24%; --s: 3px; --dx: -6px; --dy: 8px; }
+.speckles > span:nth-child(6) { --x: 100%; --y: -60%; --s: 7px; --dx: -8px; --dy: 12px; }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .glanceList li:hover .speckles > span {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Staggered 30ms apart, so they read as one flick of the pen. */
+  .glanceList li:hover .speckles > span:nth-child(2) { transition-delay: 30ms; }
+  .glanceList li:hover .speckles > span:nth-child(3) { transition-delay: 60ms; }
+  .glanceList li:hover .speckles > span:nth-child(4) { transition-delay: 90ms; }
+  .glanceList li:hover .speckles > span:nth-child(5) { transition-delay: 120ms; }
+  .glanceList li:hover .speckles > span:nth-child(6) { transition-delay: 150ms; }
 }

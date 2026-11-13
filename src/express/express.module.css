@@ -55,3 +55,84 @@
   width: 100%;
   height: auto;
 }
+
+/* ---------- The ink train in the margin rule (InkTrain) ---------- */
+
+/* A thin rule under the nameplate; the train runs along it and parks at the right end. */
+.trainRule {
+  height: 32px;
+  overflow: hidden; /* the train enters from beyond the left edge */
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.trainRunner {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.train {
+  display: block;
+  width: 72px;
+  height: 26px;
+  margin-right: 8px;
+  color: var(--ink);
+}
+
+/* Chimney smoke: invisible while parked. */
+.puff {
+  fill: var(--ink-faded);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/*
+ * The one trip (decorative entrance, so longer than UI motion): the runner slides from one
+ * full width to the left (train just off the edge) to its place, easing out like a train
+ * braking into a platform; the train bobs on the rail joints and puffs while it moves.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .trainRunner {
+    animation: train-chug 2800ms cubic-bezier(0.33, 1, 0.68, 1) 400ms both;
+  }
+
+  .train {
+    animation: train-bob 160ms linear 400ms 16 alternate;
+  }
+
+  .puff {
+    animation: train-puff 600ms var(--ease-out) 400ms 4;
+  }
+
+  .puff + .puff {
+    animation-delay: 700ms;
+  }
+}
+
+@keyframes train-chug {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes train-bob {
+  to {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes train-puff {
+  from {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-8px, -4px) scale(1.5);
+  }
+}

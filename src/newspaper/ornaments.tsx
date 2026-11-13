@@ -7,24 +7,37 @@ import styles from "./newspaper.module.css";
 /**
  * The red dry-brush stroke under the headline's last word: a tapered swipe with a few
  * paper-coloured streaks where the brush ran dry, and loose bristle marks off its tail.
+ *
+ * `drawId` (Express only): the stroke can draw itself in, left to right, when its article
+ * scrolls into view. A thick white stroke along the brush's spine masks the paint; animating
+ * that stroke's dashoffset (pathLength 1) reveals it like a brush pulled across the page. The
+ * id must be unique in the document, so only the Express (one article per stop) passes it.
+ * At rest the mask is fully drawn, so the static page always shows the whole stroke.
  */
-export function BrushUnderline() {
+export function BrushUnderline({ drawId }: { drawId?: string }) {
   return (
     <svg className={styles.brushUnderline} viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M3 15.5C30 11 72 9.5 120 9.8 168 10 214 8.6 252 7.2c16-.6 30-1.4 44-2.6l1.6 3.4c-12 2.2-26 4-40 5.2-40 3.2-86 4.6-134 5.6-34 .8-60 2.2-80 4.4-3.6.4-5.6-.2-6-1.8-.4-1.4 1-3 3.6-4z"
-      />
-      {/* Dry-brush streaks: the paper showing through the paint. */}
-      <g fill="none" stroke="var(--paper)" strokeLinecap="round">
-        <path d="M40 13.6C90 12 150 12.4 230 10.2" strokeWidth=".9" opacity=".75" />
-        <path d="M70 16.4c50-1.4 110-2 180-4.6" strokeWidth=".7" opacity=".6" />
-        <path d="M150 14.2c40-.8 80-1.8 120-3.8" strokeWidth="1.1" opacity=".55" />
-      </g>
-      {/* Bristle marks trailing off the end of the stroke. */}
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1">
-        <path d="M262 11.4c12-.8 22-1.8 34-3.2" />
-        <path d="M250 14.4c10-.6 20-1.2 28-2.4" opacity=".7" />
+      {drawId && (
+        <mask id={drawId} maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="24">
+          <path className={styles.brushDraw} d="M0 16C90 13 200 11 300 6" fill="none" stroke="#fff" strokeWidth="22" pathLength={1} />
+        </mask>
+      )}
+      <g mask={drawId ? `url(#${drawId})` : undefined}>
+        <path
+          fill="currentColor"
+          d="M3 15.5C30 11 72 9.5 120 9.8 168 10 214 8.6 252 7.2c16-.6 30-1.4 44-2.6l1.6 3.4c-12 2.2-26 4-40 5.2-40 3.2-86 4.6-134 5.6-34 .8-60 2.2-80 4.4-3.6.4-5.6-.2-6-1.8-.4-1.4 1-3 3.6-4z"
+        />
+        {/* Dry-brush streaks: the paper showing through the paint. */}
+        <g fill="none" stroke="var(--paper)" strokeLinecap="round">
+          <path d="M40 13.6C90 12 150 12.4 230 10.2" strokeWidth=".9" opacity=".75" />
+          <path d="M70 16.4c50-1.4 110-2 180-4.6" strokeWidth=".7" opacity=".6" />
+          <path d="M150 14.2c40-.8 80-1.8 120-3.8" strokeWidth="1.1" opacity=".55" />
+        </g>
+        {/* Bristle marks trailing off the end of the stroke. */}
+        <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1">
+          <path d="M262 11.4c12-.8 22-1.8 34-3.2" />
+          <path d="M250 14.4c10-.6 20-1.2 28-2.4" opacity=".7" />
+        </g>
       </g>
     </svg>
   );
@@ -65,5 +78,33 @@ export function Ornament() {
       <path fill="currentColor" d="M120 26l9 14-9 14-9-14z" />
       <circle cx="120" cy="40" r="2.6" fill="var(--paper)" />
     </svg>
+  );
+}
+
+/**
+ * Ink speckles: a few flecks of red and black ink flicked off the pen around a flagship stat.
+ * Hidden at rest; on hover (fine pointers, motion welcome) they spatter out from the number
+ * one after another (CSS). The Express's take on "sparkles", in the newspaper's own medium.
+ */
+export function InkSpeckles() {
+  return (
+    <span className={styles.speckles} data-speckles="" aria-hidden="true">
+      {Array.from({ length: 6 }, (_, i) => (
+        <span key={i} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * "Stop press!": the red rubber stamp slammed onto the current stop's clipping (Express only),
+ * the late-news mark of a paper that held the presses for it. Decorative: the kicker's
+ * "Current stop" stamp already says it in words.
+ */
+export function StopPress() {
+  return (
+    <span className={styles.stopPress} data-stop-press="" aria-hidden="true">
+      Stop press!
+    </span>
   );
 }

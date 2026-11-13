@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAudioEngine, SOUND_KEY } from "./audioEngine";
 import { FakeAudioContext, fakeDocument, memoryStorage, throwingStorage } from "./fakeAudioContext";
+import { STAMP, TAP } from "./soundDesign";
 
 /** An engine wired to fakes, plus the fakes so a test can poke them. */
 function setup(storage: Storage = memoryStorage()) {
@@ -134,12 +135,13 @@ describe("createAudioEngine", () => {
     expect(contexts[0].master().gain.value).toBeGreaterThan(0);
   });
 
-  it("chime, tap and rustle make no sound sources while disabled", () => {
+  it("chime, tap, rustle and stamp make no sound sources while disabled", () => {
     const { engine, contexts } = setup();
     // Never enabled: no context at all, and nothing throws.
     engine.chime();
     engine.tap();
     engine.rustle();
+    engine.stamp();
     expect(contexts).toHaveLength(0);
     // Enabled then disabled: the context exists but no new sources are made.
     engine.setEnabled(true);
@@ -148,10 +150,11 @@ describe("createAudioEngine", () => {
     engine.chime();
     engine.tap();
     engine.rustle();
+    engine.stamp();
     expect(contexts[0].sourceCount).toBe(before);
   });
 
-  it("chime, tap and rustle make sound sources while enabled", () => {
+  it("chime, tap, rustle and stamp make sound sources while enabled", () => {
     const { engine, contexts } = setup();
     engine.setEnabled(true);
     let before = contexts[0].sourceCount;
@@ -163,6 +166,23 @@ describe("createAudioEngine", () => {
     before = contexts[0].sourceCount;
     engine.rustle();
     expect(contexts[0].sourceCount).toBeGreaterThan(before);
+    before = contexts[0].sourceCount;
+    engine.stamp();
+    expect(contexts[0].sourceCount).toBeGreaterThan(before);
+  });
+
+  it("never schedules before time 0 when sound starts on a fresh audio clock (drum timing slop)", () => {
+    // Math.random() = 0: every drum hits, each nudged the full slop EARLY, at audio time 0.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const { engine } = setup();
+    expect(() => engine.setEnabled(true)).not.toThrow();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the stamp cue a soft, low thunk (never louder or brighter than the paper tap)", () => {
+    expect(STAMP.level + STAMP.bodyLevel).toBeLessThanOrEqual(TAP.level + TAP.bodyLevel);
+    expect(STAMP.lowpass).toBeLessThanOrEqual(TAP.lowpass);
+    expect(STAMP.bodyFreq).toBeLessThan(TAP.bodyFreq);
   });
 
   it("accepts scene values before and after the context exists", () => {
