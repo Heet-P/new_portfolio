@@ -1,13 +1,22 @@
 /*
- * Mode toggle: fixed top-right, a paper ticket stamped in ink (double frame, a hair crooked),
- * matching the front page's action stamps. Opacity-overlay hover, scale(0.97) press; only
- * transform/opacity animate.
+ * The top-right group (sound toggle + mode toggle), fixed over both views.
  */
-.toggle {
+.controls {
   position: fixed;
   top: 16px;
   right: 16px;
   z-index: 100; /* above the ride canvas and the Express page */
+  display: flex;
+  gap: 8px;
+}
+
+/*
+ * Mode toggle: a paper ticket stamped in ink (double frame, a hair crooked), matching the
+ * front page's action stamps. Opacity-overlay hover, scale(0.97) press; only transform/opacity
+ * animate. The sound toggle reuses this look.
+ */
+.toggle {
+  position: relative; /* for the hover overlay */
   isolation: isolate; /* keeps the hover overlay (z-index: -1) inside the button */
   display: inline-flex;
   align-items: center;

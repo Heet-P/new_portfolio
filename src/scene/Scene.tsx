@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { STATIONS } from "@/content/route";
 import { cabinFrame, resetCabin, stepCabin } from "@/ride/cabinStore";
 import { useRide } from "@/ride/rideStore";
+import { SoundDriver } from "@/sound/SoundDriver";
 import { Atmosphere } from "./Atmosphere";
 import { Cabin } from "./cabin/Cabin";
 import { CameraRig } from "./CameraRig";
@@ -124,6 +125,8 @@ export default function Scene() {
       >
         <TravelTracker />
         <CabinDriver />
+        {/* Speed, rain, tunnel, arrival chime and newspaper rustle for the sound (no draw calls). */}
+        <SoundDriver />
         <CameraRig reducedMotion={reducedMotion} />
         <Atmosphere shadows={shadows} reducedMotion={reducedMotion} />
         <Outside>

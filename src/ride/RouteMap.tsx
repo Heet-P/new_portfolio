@@ -2,6 +2,7 @@
 
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { STATIONS } from "@/content/route";
+import { getSound } from "@/sound/sound";
 import { nearestStation } from "./mapping";
 import { useRide } from "./rideStore";
 import styles from "./RouteMap.module.css";
@@ -121,7 +122,10 @@ export function RouteMap() {
                     aria-label={station.name}
                     aria-current={i === current ? "step" : undefined}
                     data-upcoming={upcoming || undefined}
-                    onClick={() => goTo(i)}
+                    onClick={() => {
+                      getSound().tap();
+                      goTo(i);
+                    }}
                   >
                     <span className={styles.dot} aria-hidden="true" />
                     <span className={styles.label} aria-hidden="true">

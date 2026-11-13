@@ -1,0 +1,24 @@
+/*
+ * Sound toggle: the mode toggle's paper ticket (ModeToggle.module.css .toggle) plus an ink
+ * speaker glyph. Tilted the other way so the pair reads as two tickets laid down by hand.
+ */
+.sound {
+  gap: 8px;
+  padding: 0 16px;
+  transform: rotate(-1deg);
+}
+
+.sound:active {
+  transform: rotate(-1deg) scale(0.97);
+}
+
+.glyph {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* On: the sound waves are printed in the paper's red ink. */
+.waves {
+  color: var(--red);
+}

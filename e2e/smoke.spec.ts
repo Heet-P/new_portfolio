@@ -40,3 +40,43 @@ test.describe("reduced motion", () => {
     await expect(page.getByRole("button", { name: /^Ride the train/ })).toBeVisible();
   });
 });
+
+// Sound: off by default, beside the mode toggle in both views, a true toggle (aria-pressed), remembered.
+test("sound toggle is off by default, 44px+, in both views, and remembered", async ({ page }) => {
+  await page.goto("/");
+  // The mode toggle only renders once the page has hydrated, so clicks below reach React.
+  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  const sound = page.getByRole("button", { name: "Sound", exact: true });
+  await expect(sound).toBeVisible();
+  await expect(sound).toHaveAttribute("aria-pressed", "false");
+  const box = await sound.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  await sound.click();
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+  // The other view has it too, still on.
+  await page.getByRole("button", { name: /^(Express|Ride the train)/ }).click();
+  await expect(sound).toBeVisible();
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+  await sound.click();
+  await expect(sound).toHaveAttribute("aria-pressed", "false");
+});
+
+// Review Focus 3: storage that throws (some private modes) still gives a working toggle, off by default.
+test("sound toggle works when localStorage throws", async ({ page }) => {
+  await page.addInitScript(() => {
+    const fail = () => {
+      throw new DOMException("denied", "SecurityError");
+    };
+    Object.defineProperty(window, "localStorage", { get: fail, configurable: true });
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  const sound = page.getByRole("button", { name: "Sound", exact: true });
+  await expect(sound).toHaveAttribute("aria-pressed", "false");
+  await sound.click();
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+});

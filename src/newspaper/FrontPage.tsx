@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PROFILE, STATIONS, type Station } from "@/content/route";
 import { StationMedia } from "@/express/StationMedia";
+import { TapLink } from "@/sound/TapLink";
 import { Clipping } from "./Clipping";
 import { deckOf, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
 import { linkProps, splitLinks } from "./links";
@@ -151,15 +152,15 @@ const Out = () => (
   </span>
 );
 
-/** One ink-stamp button. External links open in a new tab (noopener), the PDF downloads. */
+/** One ink-stamp button (soft tap when sound is on). External links open in a new tab (noopener), the PDF downloads. */
 function Stamp({ href, primary, children }: { href: string; primary?: boolean; children: ReactNode }) {
   const external = href.startsWith("http");
   return (
     <li>
-      <a className={styles.action} data-primary={primary || undefined} href={href} {...linkProps(href)}>
+      <TapLink className={styles.action} data-primary={primary || undefined} href={href} {...linkProps(href)}>
         {children}
         {external && <Out />}
-      </a>
+      </TapLink>
     </li>
   );
 }
@@ -174,7 +175,7 @@ function Actions({ children }: { children: ReactNode }) {
  */
 function Ticket() {
   return (
-    <a className={styles.ticket} href={PROFILE.resume} download="">
+    <TapLink className={styles.ticket} href={PROFILE.resume} download="">
       <span className={styles.ticketMain}>
         <span className={styles.ticketKicker} aria-hidden="true">
           Admit one · The Project Post
@@ -188,7 +189,7 @@ function Ticket() {
         <span>No.</span>
         <span className={styles.ticketNo}>0816</span>
       </span>
-    </a>
+    </TapLink>
   );
 }
 
