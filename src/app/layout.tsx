@@ -34,9 +34,20 @@ const body = Newsreader({
   display: "swap",
 });
 
+const TITLE = "Heet Parikh — Full-Stack & AI Developer";
+const DESCRIPTION =
+  "Portfolio of Heet Parikh, full-stack and AI developer: ride a night train through his projects, or read every stop at once in The Project Post.";
+
+/*
+ * Title, description and the social card. The card's image is app/opengraph-image.jpg (a still
+ * of the ride, with its alt text beside it), picked up by Next's file convention. No
+ * metadataBase is set: on Vercel, Next resolves the image URL against the production domain.
+ */
 export const metadata: Metadata = {
-  title: "Heet Parikh",
-  description: "Portfolio of Heet Parikh, ridden as a night train and printed as The Project Post.",
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, type: "website", siteName: "The Project Post" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

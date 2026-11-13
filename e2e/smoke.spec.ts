@@ -6,12 +6,72 @@ test("home page has an h1 with the owner's name", async ({ page }) => {
   await expect(page.locator("h1")).toContainText("Heet Parikh");
 });
 
-// Phone width: the Express page must never scroll sideways (16px gutter, wrapping chips).
-test("no horizontal scroll at 375px", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 });
+// Phone width: neither view may ever scroll sideways (16px gutter, wrapping chips, the route strip).
+for (const mode of ["express", "ride"] as const) {
+  test(`no horizontal scroll at 375px (${mode})`, async ({ page }) => {
+    await page.addInitScript((m) => window.localStorage.setItem("nt-mode", m), mode);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/");
+    await expect(page.locator("#express")).toBeVisible({ visible: mode === "express" });
+    if (mode === "ride") await expect(page.getByRole("navigation", { name: "Route map" })).toBeVisible();
+    // Give late layout (fonts, the scene's canvas) a moment, then measure.
+    await page.waitForTimeout(500);
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(375);
+  });
+}
+
+// Task 13: the page is titled for search and sharing, with a description and a social card.
+test("has the title, description and Open Graph image", async ({ page }) => {
   await page.goto("/");
-  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(scrollWidth).toBeLessThanOrEqual(375);
+  await expect(page).toHaveTitle("Heet Parikh — Full-Stack & AI Developer");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Heet Parikh/);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /opengraph-image.jpg/);
+  await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute("content", /.{20,}/);
+});
+
+// Task 13: keyboard only, the resume is reachable from the top of the Express page, every
+// control on the way shows a visible focus ring.
+test("keyboard Tab reaches the resume link, with visible focus all the way", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("nt-mode", "express"));
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: /^Ride the train/ })).toBeVisible();
+  const seen: string[] = [];
+  for (let i = 0; i < 25; i++) {
+    await page.keyboard.press("Tab");
+    const focus = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return null;
+      const style = getComputedStyle(el);
+      return { text: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(), href: el.getAttribute("href"), outline: style.outlineStyle, width: style.outlineWidth };
+    });
+    expect(focus).not.toBeNull();
+    // A real ring, not outline: none.
+    expect(focus!.outline, focus!.text).not.toBe("none");
+    expect(parseFloat(focus!.width), focus!.text).toBeGreaterThanOrEqual(2);
+    seen.push(focus!.text);
+    if (focus!.href?.endsWith(".pdf")) break;
+  }
+  // The two toggles come first, the resume soon after (it sits right under the lead's deck).
+  expect(seen[0]).toBe("Sound");
+  expect(seen[1]).toMatch(/^Ride the train/);
+  expect(seen.some((t) => /resume/i.test(t))).toBe(true);
+});
+
+// Task 13: in the ride, Tab reaches both toggles and every route-map stop.
+test("keyboard reaches the toggles and every route map stop in the ride", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("nt-mode", "ride"));
+  await page.goto("/#vaani");
+  await expect(page.getByRole("navigation", { name: "Route map" })).toBeVisible();
+  const seen = new Set<string>();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Tab");
+    seen.add(await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "").trim()));
+  }
+  expect(seen).toContain("Sound");
+  expect([...seen].some((t) => t.startsWith("Express"))).toBe(true);
+  for (const stop of ["Departure", "Vaani AI", "SAHARA", "Terminus"]) expect(seen).toContain(stop);
 });
 
 // Mode toggle: always reachable, big enough to tap, and it flips the label.
@@ -38,6 +98,10 @@ test.describe("reduced motion", () => {
   test("starts in express mode", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("button", { name: /^Ride the train/ })).toBeVisible();
+    // Task 13: Express means no 3D at all: the scene chunk never mounts a canvas.
+    await expect(page.locator("#express")).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(page.locator("canvas")).toHaveCount(0);
   });
 });
 
