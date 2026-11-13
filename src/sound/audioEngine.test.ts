@@ -179,6 +179,18 @@ describe("createAudioEngine", () => {
     vi.restoreAllMocks();
   });
 
+  it("never queues a stamp on a suspended clock (it can fire from a scroll, with no gesture)", () => {
+    const { engine, contexts } = setup();
+    engine.setEnabled(true);
+    contexts[0].state = "suspended";
+    const before = contexts[0].sourceCount;
+    engine.stamp();
+    expect(contexts[0].sourceCount).toBe(before);
+    contexts[0].state = "running";
+    engine.stamp();
+    expect(contexts[0].sourceCount).toBeGreaterThan(before);
+  });
+
   it("keeps the stamp cue a soft, low thunk (never louder or brighter than the paper tap)", () => {
     expect(STAMP.level + STAMP.bodyLevel).toBeLessThanOrEqual(TAP.level + TAP.bodyLevel);
     expect(STAMP.lowpass).toBeLessThanOrEqual(TAP.lowpass);

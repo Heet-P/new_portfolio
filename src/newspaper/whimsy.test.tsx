@@ -110,6 +110,23 @@ describe("clipping parallax", () => {
     const { container: cabin } = render(<Clipping id="vaani" />);
     expect(cabin.querySelector("figure")?.hasAttribute("data-parallax")).toBe(false);
   });
+
+  it("asks matchMedia once per query, however many clippings and renders", () => {
+    stubMedia({ reduced: false, fine: true });
+    const { rerender } = render(
+      <>
+        <Clipping id="vaani" whimsy />
+        <Clipping id="solar" whimsy />
+      </>,
+    );
+    rerender(
+      <>
+        <Clipping id="vaani" whimsy />
+        <Clipping id="solar" whimsy />
+      </>,
+    );
+    expect(window.matchMedia).toHaveBeenCalledTimes(2); // reduced motion + fine pointer
+  });
 });
 
 describe("articles inking in as they scroll into view", () => {
@@ -227,7 +244,7 @@ describe("sound", () => {
     render(<ExpressView />);
     fireEvent.click(screen.getByText("The Project Post"));
     const figure = document.querySelector("#vaani figure")!;
-    fireEvent.pointerDown(figure);
+    fireEvent.click(figure);
     fireEvent.click(document.querySelector("#terminus a[download]")!);
     fireEvent.click(document.querySelector("#vaani a[href^='http']")!);
   }
@@ -249,6 +266,20 @@ describe("sound", () => {
     poke();
     vi.advanceTimersByTime(1000);
     vi.useRealTimers();
+    expect(ctx.sourceCount).toBeGreaterThan(before);
+  });
+
+  it("a touch that lands on a clipping (say, to scroll) makes no sound; a click taps", () => {
+    audio.engine.setEnabled(true);
+    const ctx = audio.ctx.mock.results[0].value as FakeAudioContext;
+    stubMedia({ reduced: false, fine: false });
+    render(<Clipping id="vaani" whimsy />);
+    const figure = document.querySelector("figure")!;
+    const before = ctx.sourceCount;
+    fireEvent.pointerDown(figure, { pointerType: "touch" });
+    fireEvent.pointerUp(figure, { pointerType: "touch" });
+    expect(ctx.sourceCount).toBe(before);
+    fireEvent.click(figure);
     expect(ctx.sourceCount).toBeGreaterThan(before);
   });
 });

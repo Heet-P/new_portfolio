@@ -43,8 +43,8 @@ export function tiltFor(clientX: number, clientY: number, rect: Pick<DOMRect, "l
  *
  * `whimsy` (Express only, never the cabin): on hover the clipping lifts off the page and the
  * tape peels a little (CSS, fine pointers only), it leans up to 3 degrees toward the cursor on
- * a spring, and pressing it pats it down with a soft paper tap (when sound is on). `children`
- * are printed on the clipping and move with it (the Stop press stamp).
+ * a spring; a mouse press pats it down and a click gives a soft paper tap (when sound is on).
+ * `children` are printed on the clipping and move with it (the Stop press stamp).
  */
 export function Clipping({ id, whimsy = false, children }: { id: StationId; whimsy?: boolean; children?: ReactNode }) {
   const art = ILLUSTRATIONS[id];
@@ -104,7 +104,8 @@ export function Clipping({ id, whimsy = false, children }: { id: StationId; whim
       style={{ "--tilt": `${art?.tilt ?? 0}deg` } as CSSProperties}
       data-whimsy={whimsy || undefined}
       data-parallax={whimsy ? (parallax ? "on" : "off") : undefined}
-      onPointerDown={whimsy ? () => getSound().tap() : undefined}
+      // On click, not pointerdown: a touch scroll that starts on the illustration is not a tap.
+      onClick={whimsy ? () => getSound().tap() : undefined}
       {...pointer}
     >
       {/* The tape strip: a real element (not ::before) so it can peel on hover. */}

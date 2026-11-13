@@ -175,7 +175,9 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
       if (audible()) graph?.rustle();
     },
     stamp() {
-      if (audible()) graph?.stamp();
+      // The stamp can fire from a scroll (Stop press landing), with no gesture to wake a
+      // suspended context: only play on a running clock, never queue it up for later.
+      if (audible() && ctx?.state === "running") graph?.stamp();
     },
     subscribe(fn) {
       listeners.add(fn);

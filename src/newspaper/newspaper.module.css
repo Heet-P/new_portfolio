@@ -277,21 +277,17 @@
     0 16px 32px -12px rgb(60 40 12 / 0.45);
 }
 
-/*
- * A strip of translucent paper tape holding the clipping down. Centred by `left` (not a
- * translate) and hinged at its left end, so the Express can peel its right end up on hover.
- */
+/* A strip of translucent paper tape holding the clipping down. */
 .tape {
   position: absolute;
-  z-index: 2;
+  z-index: 1;
   top: -12px;
-  left: calc(50% - 52px);
+  left: 50%;
   width: 104px;
   height: 28px;
   background: rgb(246 238 214 / 0.62);
   box-shadow: 0 1px 2px rgb(60 40 12 / 0.18);
-  transform: rotate(-3deg);
-  transform-origin: 0 50%;
+  transform: translateX(-50%) rotate(-3deg);
 }
 
 /* The clipping's two moving layers (Express): the hover lift, and the cursor lean inside it. */
@@ -699,6 +695,11 @@
   .front[data-whimsy] .action:hover {
     --lift: -1px;
   }
+
+  /* Restated after :hover (same specificity) so a press while hovering lands fully flat. */
+  .front[data-whimsy] .action:active {
+    --lift: 0px;
+  }
 }
 
 /* The resume ticket: springy lift, a stub that wiggles on its perforation, a punched hole. */
@@ -773,14 +774,15 @@
   transition: opacity var(--dur-hover) var(--ease-out);
 }
 
+/*
+ * Express tape: centred by `left` instead of a translate and hinged at its left end, so its
+ * free right end can peel up on hover (same place and angle as the cabin's at rest).
+ */
 .clipping[data-whimsy] .tape {
+  left: calc(50% - 52px);
+  transform: rotate(-3deg);
+  transform-origin: 0 50%;
   transition: transform var(--spring-soft-dur) var(--spring-soft);
-}
-
-.clipping[data-whimsy]:active .clippingLift {
-  transform: scale(0.99);
-  transition-duration: 100ms;
-  transition-timing-function: var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
@@ -797,9 +799,14 @@
     transform: rotate(-4deg) perspective(160px) rotateY(-24deg);
   }
 
-  /* Restated after :hover (same specificity) so pressing still pats the lifted clipping down. */
+  /*
+   * A mouse press pats the clipping down: fine pointers only, so a touch scroll that starts on
+   * the illustration never flashes it. Restated after :hover (same specificity) so it wins.
+   */
   .clipping[data-whimsy]:active .clippingLift {
     transform: scale(0.99);
+    transition-duration: 100ms;
+    transition-timing-function: var(--ease-out);
   }
 }
 
