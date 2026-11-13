@@ -35,6 +35,27 @@ const MAX_DT = 0.1;
 /** Integration sub-step (s), so 30 fps and 144 fps produce the same motion. */
 const SUB_DT = 1 / 240;
 
+/** Slow-zone lookahead: sample spacing and reach (stations), and how much of MAX_ACCEL the planned braking uses. */
+const PACE_STEP = 0.03;
+const PACE_REACH = 0.45;
+const PACE_BRAKE = MAX_ACCEL * 0.8;
+
+/**
+ * The fastest the train may be going at `x` (stations) heading `dir` (+1/-1) so that it can still
+ * brake, within PACE_BRAKE, down to `cap`'s limit at any point up to `room` stations ahead.
+ * A hard-edged slow zone therefore becomes a smooth easing down before it. Each lookahead sample is
+ * treated as one step nearer than it is, so the plan errs on the early side.
+ */
+function pacedLimit(x: number, dir: number, room: number, cap: (position: number) => number): number {
+  let limit = cap(x);
+  const reach = Math.min(PACE_REACH, room);
+  for (let k = 1; k * PACE_STEP <= reach; k++) {
+    const c = cap(x + dir * k * PACE_STEP);
+    limit = Math.min(limit, Math.sqrt(c * c + 2 * PACE_BRAKE * (k - 1) * PACE_STEP));
+  }
+  return limit;
+}
+
 /**
  * Train position for a scroll progress value. Inside a station's dwell zone it is exactly
  * the station index; between stations the linear travel fraction is smoothstepped so the
@@ -54,8 +75,12 @@ export function trainPosition(progress: number, count: number): number {
  * along a sqrt(2*a*d) curve so it never overshoots, and eases into the stop linearly.
  * A fast flick therefore becomes a calm 1-2 s pull-away and a gentle arrival instead of
  * a jump. Settles exactly on the target (integer at stations) with zero velocity.
+ *
+ * `cap`, if given, is a position-dependent top speed (stations/s, always > 0), used to slow the
+ * train through places worth lingering in (the tunnels' skills reel). It only ever lowers the
+ * limits above, and the train brakes ahead of a slow stretch within MAX_ACCEL.
  */
-export function stepTravel(progress: number, count: number, dt: number): void {
+export function stepTravel(progress: number, count: number, dt: number, cap?: (position: number) => number): void {
   const target = trainPosition(progress, count);
   let left = Math.min(Math.max(dt, 0), MAX_DT);
   let x = travel.position;
@@ -65,7 +90,8 @@ export function stepTravel(progress: number, count: number, dt: number): void {
     left -= h;
     const d = target - x;
     // Fastest speed that can still brake in time, capped, and easing off near the end.
-    const want = Math.sign(d) * Math.min(MAX_SPEED, Math.sqrt(2 * MAX_ACCEL * Math.abs(d)), APPROACH * Math.abs(d));
+    const top = cap ? pacedLimit(x, Math.sign(d), Math.abs(d), cap) : MAX_SPEED;
+    const want = Math.sign(d) * Math.min(MAX_SPEED, top, Math.sqrt(2 * MAX_ACCEL * Math.abs(d)), APPROACH * Math.abs(d));
     v += Math.max(-MAX_ACCEL * h, Math.min(MAX_ACCEL * h, want - v));
     x += v * h;
   }

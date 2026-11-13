@@ -1,3 +1,4 @@
+import { TRACK } from "./route3d";
 import { BORE_HALF, type Span } from "./worldgen";
 
 /**
@@ -109,8 +110,16 @@ export function panelPlacement(px: number, py: number, pz: number, tx: number, t
   };
 }
 
+/** Where each panel hangs: its placement on the track sample at its arc length. */
+export function panelPlacements(panels: Panel[]): Placement[] {
+  return panels.map((panel) => {
+    const i = Math.max(0, Math.min(TRACK.count - 1, Math.round(panel.s / TRACK.step)));
+    return panelPlacement(TRACK.px[i], TRACK.py[i], TRACK.pz[i], TRACK.tx[i], TRACK.tz[i], panel.side);
+  });
+}
+
 /** Strobe: a panel flares as it sweeps into view beside the camera. `ahead` is how far in front of it (along the track) the peak is. */
-export const STROBE = { ahead: 8, width: 3.5, gain: 0.8 } as const;
+export const STROBE = { ahead: 8, width: 3.5, gain: 0.5 } as const;
 
 /** Flare amount 0..1 for a panel `along` units in front of the camera: a smooth bump, exactly 0 beyond 2.5 widths. */
 export function strobeAmount(along: number): number {

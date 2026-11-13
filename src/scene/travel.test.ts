@@ -92,3 +92,59 @@ describe("stepTravel speed limits (calm motion on fast scrolls)", () => {
     expect(Math.abs(travel.position - a)).toBeLessThan(0.02);
   });
 });
+
+describe("stepTravel pace cap (slow zones such as tunnels)", () => {
+  // A hard-edged slow zone is the worst case for smoothness: the cap drops from MAX_SPEED to SLOW at once.
+  const SLOW = 0.15;
+  const zone = (x: number) => (x >= 2.2 && x <= 2.8 ? SLOW : MAX_SPEED);
+  beforeEach(() => resetTravel(0, N));
+
+  it("never goes faster than the cap inside the zone, yet stays within MAX_ACCEL everywhere", () => {
+    let last = 0;
+    let seenInside = false;
+    for (let i = 0; i < 60 * 60; i++) {
+      stepTravel(1, N, 1 / 60, zone);
+      if (travel.position >= 2.2 && travel.position <= 2.8) {
+        seenInside = true;
+        expect(Math.abs(travel.velocity)).toBeLessThanOrEqual(SLOW + 0.005);
+      }
+      expect(Math.abs(travel.velocity - last)).toBeLessThanOrEqual(MAX_ACCEL / 60 + 1e-9);
+      last = travel.velocity;
+    }
+    expect(seenInside).toBe(true);
+  });
+
+  it("still arrives exactly on the target and stops there", () => {
+    for (let i = 0; i < 60 * 80; i++) stepTravel(1, N, 1 / 60, zone);
+    expect(travel.position).toBe(N - 1);
+    expect(travel.velocity).toBe(0);
+  });
+
+  it("does not slow for a zone beyond the target", () => {
+    // Heading to station 1: the zone at 2.2..2.8 is not on the way, so the usual top speed is reached.
+    let peak = 0;
+    for (let i = 0; i < 60 * 30; i++) {
+      stepTravel(seg, N, 1 / 60, zone);
+      peak = Math.max(peak, travel.velocity);
+    }
+    const free = (() => {
+      resetTravel(0, N);
+      let p = 0;
+      for (let i = 0; i < 60 * 30; i++) {
+        stepTravel(seg, N, 1 / 60);
+        p = Math.max(p, travel.velocity);
+      }
+      return p;
+    })();
+    expect(peak).toBeCloseTo(free, 6);
+  });
+
+  it("slows the same way travelling backwards", () => {
+    resetTravel(1, N);
+    for (let i = 0; i < 60 * 80; i++) {
+      stepTravel(0, N, 1 / 60, zone);
+      if (travel.position >= 2.2 && travel.position <= 2.8) expect(Math.abs(travel.velocity)).toBeLessThanOrEqual(SLOW + 0.005);
+    }
+    expect(travel.position).toBe(0);
+  });
+});

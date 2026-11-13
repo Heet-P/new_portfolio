@@ -6,12 +6,11 @@ import * as THREE from "three";
 import { PROFILE } from "@/content/route";
 import { loadPrintFonts } from "./cabin/print";
 import { atmosphere } from "./materials";
-import { TRACK } from "./route3d";
 import {
   ATLAS,
   atlasRect,
   PANEL,
-  panelPlacement,
+  panelPlacements,
   reelFor,
   skillReel,
   strobeAmount,
@@ -49,12 +48,6 @@ function uvRect(r: Rect, out: Float32Array, at: number) {
   out[at + 3] = r.h / S;
 }
 
-/** Track sample (position, ground tangent) at arc length s. */
-function sample(s: number) {
-  const i = Math.max(0, Math.min(TRACK.count - 1, Math.round(s / TRACK.step)));
-  return { x: TRACK.px[i], y: TRACK.py[i], z: TRACK.pz[i], tx: TRACK.tx[i], tz: TRACK.tz[i] };
-}
-
 /** One tunnel's mesh and what the per-frame strobe needs to know about its posters. */
 interface TunnelMesh {
   mesh: THREE.InstancedMesh;
@@ -84,9 +77,8 @@ function buildTunnel(panels: Panel[], atlasIndex: Map<string, number>, titleCell
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   const px = new Float32Array(count);
   const pz = new Float32Array(count);
-  panels.forEach((panel, i) => {
-    const f = sample(panel.s);
-    const p = panelPlacement(f.x, f.y, f.z, f.tx, f.tz, panel.side);
+  panelPlacements(panels).forEach((p, i) => {
+    const panel = panels[i];
     right.set(...p.right);
     normal.set(...p.normal);
     quat.setFromRotationMatrix(m4.makeBasis(right, UP, normal));
@@ -135,6 +127,14 @@ function printAtlas(res: Resources, reel: ReelEntry[]) {
 
 const camDir = new THREE.Vector3();
 
+/** Put every poster's flare back to zero (reduced motion on: nothing may stay lit from before). */
+function clearFlash(meshes: TunnelMesh[]) {
+  for (const t of meshes) {
+    (t.flash.array as Float32Array).fill(0);
+    t.flash.needsUpdate = true;
+  }
+}
+
 /** Set each poster's flare for a camera at `cam` looking along (dx, dz); only tunnels the camera is in or beside. */
 function strobe(meshes: TunnelMesh[], cam: THREE.Vector3, dx: number, dz: number) {
   for (const t of meshes) {
@@ -169,6 +169,11 @@ export function TunnelPanels({ tunnels, reducedMotion }: { tunnels: Span[]; redu
       live = false;
     };
   }, [res, reel]);
+
+  // Reduced motion (also when it is switched on mid-ride): no flare, and none left over.
+  useEffect(() => {
+    if (reducedMotion) clearFlash(meshes);
+  }, [reducedMotion, meshes]);
 
   // Free GPU resources with the scene.
   useEffect(

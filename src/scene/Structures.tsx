@@ -4,11 +4,14 @@ import { useGLTF } from "@react-three/drei";
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { PROFILE } from "@/content/route";
 import { foamGeometry, riverGeometry, splashGeometry, sweep } from "./geometry";
 import { MATS } from "./materials";
 import { Mist } from "./Mist";
 import { hash2 } from "./noise";
 import { TRACK } from "./route3d";
+import { panelPlacements, reelFor, skillReel } from "./tunnelReel";
+import { paintBore } from "./tunnelWalls";
 import { BORE_HALF, BORE_SPRING, heightAt, TUNNEL_HILL, TUNNEL_HOLE, type Bridge, type Span, type WorldLayout } from "./worldgen";
 
 /** Heet's steel girder bridge (compressed by scripts/compress-model.mjs). */
@@ -145,7 +148,11 @@ function Tunnels({ tunnels, shadows }: { tunnels: Span[]; shadows: boolean }) {
       [W, TUNNEL_HILL - 1.5],
     ];
     const out = {
-      bore: mergeGeometries(tunnels.map((t) => bare(sweep(BORE_PROFILE, t.s0, t.s1)))),
+      // Faceted stone, lit around each skills poster (tunnelWalls.ts).
+      bore: paintBore(
+        mergeGeometries(tunnels.map((t) => bare(sweep(BORE_PROFILE, t.s0, t.s1)))),
+        reelFor(skillReel(PROFILE.skills), tunnels).flatMap((panels) => panelPlacements(panels).map((p): [number, number, number] => [p.x, p.y, p.z])),
+      ),
       roof: mergeGeometries(tunnels.map((t) => bare(painted(sweep(roofProfile, t.s0, t.s1, 4), "#8f973e")))),
       // Ground in front of each mouth, under the terrain's hole (inside, the bore has its own floor).
       floor: mergeGeometries(

@@ -14,6 +14,8 @@ export const TUNNEL_VIEW = {
   /** Arc length (units) over which the camera eases down into the mouth, and back up after the exit. */
   rampIn: 36,
   rampOut: 30,
+  /** How far behind the train's centre the (desktop) chase camera rides: CameraRig's travel framing. */
+  chase: 34,
 } as const;
 
 /**

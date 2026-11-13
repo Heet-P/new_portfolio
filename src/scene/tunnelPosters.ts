@@ -70,14 +70,16 @@ function trackedWidth(ctx: CanvasRenderingContext2D, text: string, tracking: num
   return ctx.measureText(text).width + tracking * Math.max(0, text.length - 1);
 }
 
-/** Centre `text` on `cx`, letter-spaced (canvas letterSpacing is not in every browser). */
+/** Centre `text` on `cx`, letter-spaced (canvas letterSpacing is not in every browser). Leaves the text alignment as it found it. */
 function tracked(ctx: CanvasRenderingContext2D, text: string, cx: number, y: number, tracking: number) {
+  const align = ctx.textAlign;
   ctx.textAlign = "left";
   let x = cx - trackedWidth(ctx, text, tracking) / 2;
   for (const ch of text) {
     ctx.fillText(ch, x, y);
     x += ctx.measureText(ch).width + tracking;
   }
+  ctx.textAlign = align;
 }
 
 /** Greedy word wrap to `max` px. */

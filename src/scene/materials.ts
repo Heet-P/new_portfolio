@@ -110,13 +110,30 @@ export const MATS = {
   rockFace: flat({ vertexColors: true }),
   // Solar panels at the Solar stop: blue cells in silver frames, a little glossy.
   panel: flat({ vertexColors: true, metalness: 0.45, roughness: 0.4 }),
-  // Inside of tunnel bores: unlit near-black, so the mouth reads as a deep dark hole.
-  tunnel: new THREE.MeshBasicMaterial({ color: "#040405", side: THREE.DoubleSide }),
+  // Inside of tunnel bores: unlit faceted stone baked into vertex colours (tunnelWalls.ts), fading to black
+  // with distance from the camera (see boreDepthFade), so the mouth still reads as a deep dark hole.
+  tunnel: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
   cloud: flat({ color: "#ffffff", fog: false }),
   mountain: flat({ vertexColors: true, fog: false }),
 };
 
+/** Wall brightness falls off with view depth: lit near the camera, swallowed by the dark toward the far portal. */
+function boreDepthFade(m: THREE.MeshBasicMaterial) {
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader =
+      "varying float vBoreDepth;\n" +
+      sh.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n  vBoreDepth = -mvPosition.z;");
+    sh.fragmentShader =
+      "varying float vBoreDepth;\n" +
+      sh.fragmentShader.replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\n  diffuseColor.rgb *= 1.0 - 0.92 * smoothstep(10.0, 75.0, vBoreDepth);",
+      );
+  };
+}
+
 flowingWater(MATS.water);
+boreDepthFade(MATS.tunnel);
 fallingWater(MATS.foam);
 churning(MATS.splash);
 
