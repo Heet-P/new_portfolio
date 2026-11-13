@@ -17,18 +17,34 @@ describe("buildStations", () => {
     expect(built.triangles.panels).toBeLessThan(30_000);
   });
 
+  // Task 13: one geometry per stop (was one merged mesh for the whole route), so each stop
+  // frustum-culls and skips the shadow pass while it is off screen.
+  it("builds one local geometry per station (so off-screen stops are culled)", () => {
+    expect(built.kit).toHaveLength(STATIONS.length);
+    built.kit.forEach((g, i) => {
+      const sphere = g.boundingSphere!;
+      // One station's platform, building and yard: tens of units, not the route's ~1800.
+      expect(sphere.radius, String(i)).toBeLessThan(90);
+      const [x, z] = toWorld(i, 0, 0);
+      expect(Math.hypot(sphere.center.x - x, sphere.center.z - z), String(i)).toBeLessThan(60);
+    });
+    const sum = built.kit.reduce((n, g) => n + g.getAttribute("position").count / 3, 0);
+    expect(sum).toBe(built.triangles.kit);
+  });
+
   it("emits finite, consistent attributes with some emissive vertices (windows, lamps, clocks)", () => {
-    const g = built.kit;
-    const count = g.getAttribute("position").count;
-    for (const name of ["position", "normal", "color", "aGlow"]) expect(g.getAttribute(name).count).toBe(count);
-    expect(count % 3).toBe(0);
-    const pos = g.getAttribute("position").array;
-    expect(pos.every((v) => Number.isFinite(v))).toBe(true);
-    const glow = g.getAttribute("aGlow").array;
-    let lit = 0;
-    for (let i = 0; i < glow.length; i += 3) if (glow[i] > 0) lit++;
-    expect(lit / count).toBeGreaterThan(0.01);
-    expect(lit / count).toBeLessThan(0.3);
+    for (const g of built.kit) {
+      const count = g.getAttribute("position").count;
+      for (const name of ["position", "normal", "color", "aGlow"]) expect(g.getAttribute(name).count).toBe(count);
+      expect(count % 3).toBe(0);
+      const pos = g.getAttribute("position").array;
+      expect(pos.every((v) => Number.isFinite(v))).toBe(true);
+      const glow = g.getAttribute("aGlow").array;
+      let lit = 0;
+      for (let i = 0; i < glow.length; i += 3) if (glow[i] > 0) lit++;
+      expect(lit / count).toBeGreaterThan(0.01);
+      expect(lit / count).toBeLessThan(0.3);
+    }
   });
 
   it("adds one small drone mesh hovering over SAHARA's helipad (the only extra draw call)", () => {

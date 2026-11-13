@@ -38,7 +38,9 @@ export function tiltFor(clientX: number, clientY: number, rect: Pick<DOMRect, "l
  * shadow under it, a strip of paper tape over one corner. The sketch keeps its own warmer card
  * and deckled edges on purpose (it is a cut-out, not printed on this page).
  *
- * Served as WebP in two widths via srcSet; lazy-loaded and decoded off the main thread. If the
+ * Served as WebP in two widths via srcSet, decoded off the main thread; lazy-loaded unless
+ * `priority` says it is above the fold ("eager": the cabin's page; "high": also fetched first,
+ * the Express lead, which is the page's largest paint). If the
  * stop has no illustration, or the file fails to load, an ink ornament fills the frame instead.
  *
  * `whimsy` (Express only, never the cabin): on hover the clipping lifts off the page and the
@@ -46,7 +48,17 @@ export function tiltFor(clientX: number, clientY: number, rect: Pick<DOMRect, "l
  * a spring; a mouse press pats it down and a click gives a soft paper tap (when sound is on).
  * `children` are printed on the clipping and move with it (the Stop press stamp).
  */
-export function Clipping({ id, whimsy = false, children }: { id: StationId; whimsy?: boolean; children?: ReactNode }) {
+export function Clipping({
+  id,
+  whimsy = false,
+  priority,
+  children,
+}: {
+  id: StationId;
+  whimsy?: boolean;
+  priority?: "eager" | "high";
+  children?: ReactNode;
+}) {
   const art = ILLUSTRATIONS[id];
   const [failed, setFailed] = useState(false);
   const { w, h } = ILLUSTRATION_SIZE;
@@ -125,7 +137,8 @@ export function Clipping({ id, whimsy = false, children }: { id: StationId; whim
               alt={art.alt}
               width={w}
               height={h}
-              loading="lazy"
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority === "high" ? "high" : undefined}
               decoding="async"
               onError={() => setFailed(true)}
             />

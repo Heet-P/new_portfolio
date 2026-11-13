@@ -10,7 +10,7 @@ import { paperLift, paperUnfold } from "@/ride/stopCamera";
 import { atmosphere } from "../materials";
 import { travel } from "../travel";
 import { NEWSPAPER, PAPER_DISTANCE, POSES } from "./layout";
-import { fitPanel, type PanelFit } from "./panel";
+import { fitPanel, resizeGate, type PanelFit } from "./panel";
 import { loadPrintFonts, printFrontPage } from "./print";
 
 /** How the paper is lit: by the cabin lamps on the seat, as if under a reading lamp once lifted. */
@@ -27,6 +27,11 @@ const FOLDED = Math.PI - 0.06;
 const BACK = "vec3(0.62, 0.55, 0.40)";
 /** Canvas width of the printed page (its height follows the page's aspect). */
 const PRINT_W = 1024;
+/**
+ * A new print canvas is made only when the page's shape drifts this far (relative aspect) from
+ * the current print's: small resizes keep the print (stretched imperceptibly), big ones reprint.
+ */
+const REPRINT_ASPECT = 0.03;
 
 /** Illustrations for the print, loaded once per stop and shared across prints. */
 const artCache = new Map<string, HTMLImageElement>();
@@ -88,6 +93,8 @@ function createSheet() {
     print,
     material,
     fit: { cx: 0, cy: 0, w: 0, h: 0 } as PanelFit,
+    /** Debounces rebuilding for a new size while the window is being resized. */
+    gate: resizeGate(),
     /** Size the halves were last built for. */
     w: 0,
     h: 0,
@@ -116,7 +123,7 @@ function sizeSheet(sheet: Sheet, parts: SheetParts) {
   sheet.w = fit.w;
   sheet.h = fit.h;
   const aspect = fit.w / fit.h;
-  if (Math.abs(aspect / sheet.print.aspect - 1) > 0.02) {
+  if (Math.abs(aspect / sheet.print.aspect - 1) > REPRINT_ASPECT) {
     sheet.print.texture.dispose();
     sheet.print = makePrint(aspect); // text must never stretch
     sheet.material.map = sheet.print.texture;
@@ -236,12 +243,15 @@ export function Newspaper({ reducedMotion }: { reducedMotion: boolean }) {
   // Free GPU resources with the scene (the meshes' geometries go with the meshes).
   useEffect(() => () => disposeSheet(sheet), [sheet]);
 
-  useFrame(({ camera, size }) => {
+  useFrame(({ camera, size, clock }) => {
     if (!paper.current || !hinge.current || !topMesh.current || !bottomMesh.current) return;
     const parts = { paper: paper.current, hinge: hinge.current, top: topMesh.current, bottom: bottomMesh.current };
     const cam = camera as THREE.PerspectiveCamera;
-    // The unfolded sheet covers the HTML page's box for the current projection.
-    if (fitPanel(cabinFrame.target, size.width, size.height, cam.projectionMatrixInverse, PAPER_DISTANCE, sheet.fit)) {
+    // The unfolded sheet covers the HTML page's box; rebuilt for a new size once resizing stops.
+    if (
+      fitPanel(cabinFrame.target, size.width, size.height, cam.projectionMatrixInverse, PAPER_DISTANCE, sheet.fit) &&
+      sheet.gate(sheet.fit.w, sheet.fit.h, clock.elapsedTime, sheet.w > 0)
+    ) {
       sizeSheet(sheet, parts);
     }
     if (sheet.w > 0) {

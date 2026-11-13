@@ -53,3 +53,27 @@ export function fitPanel(
   out.h = maxY - minY;
   return true;
 }
+
+/** How long (s) the page's size must hold still before the paper is rebuilt for it. */
+export const RESIZE_SETTLE = 0.15;
+
+/**
+ * Debounce for rebuilding the paper (geometry + a fresh print canvas) to a new size: while a
+ * window is being dragged the size changes every frame, and reprinting the whole front page
+ * each frame thrashes. Call once per frame with the wanted size; returns true when it is time
+ * to build for it: straight away when nothing is built yet, otherwise once the size has stayed
+ * the same for RESIZE_SETTLE seconds.
+ */
+export function resizeGate(settle = RESIZE_SETTLE) {
+  let lastW = -1;
+  let lastH = -1;
+  let since = 0;
+  return (w: number, h: number, now: number, built: boolean): boolean => {
+    if (Math.abs(w - lastW) > 1e-4 || Math.abs(h - lastH) > 1e-4) {
+      lastW = w;
+      lastH = h;
+      since = now;
+    }
+    return !built || now - since >= settle;
+  };
+}

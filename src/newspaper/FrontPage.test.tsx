@@ -119,6 +119,21 @@ describe("Clipping", () => {
     expect((img.getAttribute("alt") ?? "").length).toBeGreaterThan(20);
   });
 
+  // Task 13: above-the-fold art must not wait for lazy-loading (LCP on the Express, the cabin page).
+  it("loads eagerly at high priority for the Express lead, eagerly in the cabin, lazily elsewhere", () => {
+    const { container: lead } = render(<FrontPage {...at("departure")} variant="lead" />);
+    const leadImg = lead.querySelector("img")!;
+    expect(leadImg.getAttribute("loading")).toBe("eager");
+    expect(leadImg.getAttribute("fetchpriority")).toBe("high");
+    cleanup();
+    const { container: cabin } = render(<FrontPage {...at("vaani")} variant="page" />);
+    expect(cabin.querySelector("img")!.getAttribute("loading")).toBe("eager");
+    expect(cabin.querySelector("img")!.getAttribute("fetchpriority")).toBeNull();
+    cleanup();
+    const { container: article } = render(<FrontPage {...at("vaani")} variant="article" />);
+    expect(article.querySelector("img")!.getAttribute("loading")).toBe("lazy");
+  });
+
   it("falls back to an ink ornament when a station has no illustration", () => {
     render(<Clipping id={"nowhere" as StationId} />);
     expect(screen.queryByRole("img")).toBeNull();

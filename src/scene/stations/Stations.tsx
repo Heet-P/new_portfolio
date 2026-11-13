@@ -116,8 +116,8 @@ function Drone({ geometry, material, shadows, reducedMotion }: { geometry: THREE
  * stop, a canopy on columns, a station building with door, framed windows and a pitched roof
  * (a two-storey one with a clock tower at Departure and Terminus), furniture, fences, name
  * boards at both platform ends and on the canopy fascia, and the solar field at Solar.
- * Procedural, flat-shaded like the world; two draw calls for all geometry, plus SAHARA's
- * hovering drone (a helipad is part of the main geometry).
+ * Procedural, flat-shaded like the world; one draw call per stop in view (each stop is its own
+ * mesh, culled when off screen) plus the solar field and SAHARA's hovering drone.
  * The lettering (drei Text) fetches its font and suspends until it is parsed; it sits in its
  * own Suspense so that a slow or failed font load only ever costs the names, never the
  * stations themselves.
@@ -128,7 +128,10 @@ export function Stations({ shadows, post, reducedMotion }: { shadows: boolean; p
   useFrame(() => retint(material, post));
   return (
     <group>
-      <mesh geometry={geo.kit} material={material} castShadow={shadows} receiveShadow={shadows} />
+      {/* One mesh per stop: off-screen stops are frustum-culled (and skip the shadow pass). */}
+      {geo.kit.map((g, i) => (
+        <mesh key={i} geometry={g} material={material} castShadow={shadows} receiveShadow={shadows} />
+      ))}
       <mesh geometry={geo.panels} material={MATS.panel} castShadow={shadows} receiveShadow={shadows} />
       {geo.drone && <Drone geometry={geo.drone} material={material} shadows={shadows} reducedMotion={reducedMotion} />}
       <Suspense fallback={null}>

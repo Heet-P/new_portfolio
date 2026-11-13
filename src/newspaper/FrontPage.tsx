@@ -244,6 +244,8 @@ interface StoryProps {
   station: Station;
   level: 1 | 2;
   whimsy: boolean;
+  /** Load priority of the stop's clipping (undefined = lazy: below the fold). */
+  art?: "eager" | "high";
 }
 
 /** The headline's brush-stroke mask id: unique per stop, and only printed in the Express. */
@@ -268,7 +270,7 @@ function ProjectStory(props: StoryProps) {
           {station.stats && <AtAGlance stats={station.stats} speckles={whimsy && station.flagship} />}
         </div>
         {/* The current stop's clipping gets the Stop press stamp slammed onto it. */}
-        <Clipping id={station.id} whimsy={whimsy}>
+        <Clipping id={station.id} whimsy={whimsy} priority={props.art}>
           {whimsy && station.status === "current" && <StopPress />}
         </Clipping>
       </div>
@@ -313,7 +315,7 @@ function DepartureStory(props: StoryProps) {
           </Actions>
           {station.stats && <AtAGlance stats={station.stats} />}
         </div>
-        <Clipping id={station.id} whimsy={whimsy} />
+        <Clipping id={station.id} whimsy={whimsy} priority={props.art} />
       </div>
       <Body paragraphs={station.body} />
       <Skills />
@@ -336,7 +338,7 @@ function NextStory(props: StoryProps) {
           <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
         </Actions>
       </div>
-      <Clipping id={station.id} whimsy={whimsy} />
+      <Clipping id={station.id} whimsy={whimsy} priority={props.art} />
     </div>
   );
 }
@@ -368,7 +370,7 @@ function TerminusStory(props: StoryProps) {
             <Ticket whimsy={whimsy} />
           </div>
           <div className={styles.clipBelow}>
-            <Clipping id={station.id} whimsy={whimsy} />
+            <Clipping id={station.id} whimsy={whimsy} priority={props.art} />
           </div>
         </div>
       </div>
@@ -395,7 +397,9 @@ export function FrontPage({
   /** The Express's playful micro-interactions (never in the cabin). */
   whimsy?: boolean;
 }) {
-  const props: StoryProps = { station, level: variant === "lead" ? 1 : 2, whimsy };
+  // Above the fold: the Express lead (the page's largest paint) and the cabin's one page.
+  const art = variant === "lead" ? "high" : variant === "page" ? "eager" : undefined;
+  const props: StoryProps = { station, level: variant === "lead" ? 1 : 2, whimsy, art };
   let story: ReactNode;
   if (station.kind === "intro") story = <DepartureStory {...props} />;
   else if (station.kind === "open") story = <NextStory {...props} />;

@@ -16,7 +16,7 @@ All under the [SIL Open Font License 1.1](https://openfontlicense.org).
 
 | Font | Author | How it ships | Used for |
 | --- | --- | --- | --- |
-| UnifrakturMaguntia | j. "mach" wust | Self-hosted by `next/font` at build time | The blackletter nameplate |
+| UnifrakturMaguntia | j. "mach" wust | Latin subset in `src/app/fonts/`, self-hosted by `next/font/local` | The blackletter nameplate |
 | Merriweather | Sorkin Type | Self-hosted by `next/font` at build time | Headlines and decks |
 | Newsreader | Production Type | Self-hosted by `next/font` at build time | Body copy, datelines, buttons |
 | Geist (Regular) | The Geist Project Authors (Vercel) | `public/fonts/Geist-Regular.ttf`, with its licence in [`public/fonts/OFL.txt`](public/fonts/OFL.txt) | Station sign lettering in the 3D scene |
