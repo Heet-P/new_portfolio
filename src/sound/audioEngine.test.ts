@@ -131,6 +131,23 @@ describe("createAudioEngine", () => {
     expect(engine.state()).toBe("on");
   });
 
+  it("leaves a press on the sound toggle itself to the toggle (it would otherwise read as 'off')", () => {
+    const storage = memoryStorage();
+    storage.setItem("nt-sound", "1");
+    const { engine, doc, ctx } = setup(storage);
+    const button = document.createElement("button");
+    button.setAttribute("data-sound-toggle", "");
+    const glyph = button.appendChild(document.createElement("span"));
+    const press = new Event("pointerdown");
+    Object.defineProperty(press, "target", { value: glyph });
+    doc.dispatchEvent(press);
+    expect(ctx).not.toHaveBeenCalled();
+    expect(engine.state()).toBe("pending");
+    // Anywhere else on the page still starts it.
+    doc.dispatchEvent(new Event("pointerdown"));
+    expect(engine.state()).toBe("on");
+  });
+
   it("is plainly off by default and on once enabled from a click", () => {
     const { engine } = setup();
     expect(engine.state()).toBe("off");

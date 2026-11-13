@@ -52,6 +52,9 @@ export function SoundToggle() {
         aria-describedby={pending ? hintId : undefined}
         data-pending={pending || undefined}
         title={pending ? "Sound is on: tap to start" : undefined}
+        // The engine's "first gesture starts the audio" listener ignores presses on this button,
+        // so a press on the pending ticket reaches this click still pending (and means "start").
+        data-sound-toggle=""
         onClick={() => {
           const sound = getSound();
           // Tap first: turning off, it is the last thing heard; turning on, it is a no-op.

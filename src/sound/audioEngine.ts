@@ -144,7 +144,11 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
    * Listening stays on until the context is actually running: some events (a touch's
    * pointerdown) don't count as activation everywhere, and the next one will.
    */
-  const onGesture = () => {
+  const onGesture = (e: Event) => {
+    // A press on the sound toggle itself is left to the toggle: pending, its click starts the
+    // sound (and is a gesture too); starting it here would flip it to "on" before that click
+    // runs, which would then read as "switch off".
+    if (e.target instanceof Element && e.target.closest("[data-sound-toggle]")) return;
     if (on) {
       if (ensureGraph()) update();
       else {
