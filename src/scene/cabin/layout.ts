@@ -49,7 +49,7 @@ export interface CabinPose {
 export const POSES: { entry: CabinPose; lean: CabinPose; settled: CabinPose } = {
   entry: { pos: new THREE.Vector3(-6.2, 1.62, 1.05), look: new THREE.Vector3(-6.6, 1.5, -2) },
   lean: { pos: new THREE.Vector3(-4.75, 1.42, -0.15), look: new THREE.Vector3(-3.6, 0.46, -1.2) },
-  settled: { pos: new THREE.Vector3(-5.0, 1.58, 0.12), look: new THREE.Vector3(-1.0, 1.36, 0.12) },
+  settled: { pos: new THREE.Vector3(-6.0, 1.58, 0.12), look: new THREE.Vector3(-2.0, 1.36, 0.12) },
 };
 
 /**

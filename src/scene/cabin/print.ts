@@ -84,10 +84,15 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   const H = canvas.height;
   const f = readFonts();
   const wide = W / H >= 1.1;
-  // Sizes as fractions of the width, matching the HTML front page at its usual widths.
+  // Sizes as fractions of the width, matching the HTML front page at its usual widths. The wide
+  // layout's offsets (k.*) were measured against the HTML page at 960 px (a 1440 x 900 window)
+  // so the print and the page line up within a few px while one crossfades into the other.
   const s = wide
-    ? { m: 0.035, plate: 0.075, ear: 0.017, head: 0.075, deck: 0.033, glance: 0.021, body: 0.017 }
+    ? { m: 0.035, plate: 0.075, ear: 0.017, head: 0.073, deck: 0.033, glance: 0.021, body: 0.017 }
     : { m: 0.047, plate: 0.105, ear: 0.047, head: 0.117, deck: 0.073, glance: 0.058, body: 0.047 };
+  const k = wide
+    ? { plateLift: 0.0177, rule: 1.2, edition: 1.47, editionRule: 0.8, glanceTop: 2.6, glanceFirst: 2.72, glanceStep: 1.88, glancePad: 1.39, bullet: 1.35, statX: 2.54, tab: 1.45, artDrop: 0.012, bodyGap: 2.0 }
+    : { plateLift: 0, rule: 0.8, edition: 2.2, editionRule: 0.7, glanceTop: 2.4, glanceFirst: 2.4, glanceStep: 1.5, glancePad: 1.1, bullet: 0.9, statX: 2, tab: 1.7, artDrop: 0, bodyGap: 2.4 };
   const px = (k: number) => k * W;
   const m = px(s.m);
 
@@ -101,7 +106,7 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   ctx.textAlign = "center";
   const plateW = ctx.measureText("The Project Post").width;
   let y = m + px(s.plate) * 0.95;
-  ctx.fillText("The Project Post", W / 2, y);
+  ctx.fillText("The Project Post", W / 2, y - px(k.plateLift));
   // Ears sit a little above the nameplate's baseline, as on the HTML page.
   const earY = wide ? y - px(s.ear) * 0.9 : y + px(s.ear) * 1.6;
   ctx.font = `${px(s.ear)}px ${f.body}`;
@@ -118,10 +123,10 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   ctx.fillText(`${EDITION_VOLUME}, No. ${index + 1}`, m, earY);
   ctx.textAlign = "right";
   ctx.fillText(formatDateline(station.dates), W - m, earY);
-  y = earY + px(s.ear) * 0.8;
+  y = earY + px(s.ear) * k.rule;
   ctx.fillRect(m, y, W - 2 * m, Math.max(2, W / 340));
   ctx.fillRect(m, y + Math.max(5, W / 160), W - 2 * m, Math.max(1, W / 900));
-  y += px(s.ear) * 2.2;
+  y += px(s.ear) * k.edition;
   ctx.font = `italic ${px(s.ear)}px ${f.body}`;
   ctx.fillStyle = FADED;
   ctx.textAlign = "left";
@@ -131,7 +136,7 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
     ctx.textAlign = "right";
     ctx.fillText(`Next stop: ${nextStopLabel(STATIONS[index + 1])}`, W - m, y);
   }
-  y += px(s.ear) * 0.7;
+  y += px(s.ear) * k.editionRule;
   ctx.fillStyle = INK;
   ctx.fillRect(m, y, W - 2 * m, Math.max(1, W / 900));
   y += px(s.ear) * 2.6;
@@ -173,7 +178,7 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   const artW = wide ? W - 2 * m - colW - px(0.04) : W - 2 * m;
   const artH = (artW * 2) / 3;
   const artX = wide ? W - m - artW : m;
-  const artY = wide ? ledeTop : y + px(0.06);
+  const artY = wide ? ledeTop + px(k.artDrop) : y + px(0.06);
   const tilt = ((ILLUSTRATIONS[station.id]?.tilt ?? 0) * Math.PI) / 180;
   ctx.save();
   ctx.translate(artX + artW / 2, artY + artH / 2);
@@ -192,34 +197,34 @@ export function printFrontPage(canvas: HTMLCanvasElement, station: Station, inde
   // --- At a Glance: a ruled box with the red label tab and red square bullets.
   if (station.stats) {
     const g = px(s.glance);
-    const boxTop = y + g * 2.4;
-    const boxH = g * 1.5 * station.stats.length + g * 2.6;
+    const boxTop = y + g * k.glanceTop;
+    const boxH = g * (k.glanceFirst + k.glanceStep * (station.stats.length - 1) + k.glancePad);
     ctx.lineWidth = Math.max(1, W / 900);
     ctx.strokeRect(m, boxTop, colW, boxH);
     ctx.font = `italic ${g}px ${f.headline}`;
     const labelW = ctx.measureText("At a Glance").width + g * 2;
     ctx.fillStyle = RED;
-    ctx.fillRect(m + g * 0.8, boxTop - g * 0.9, labelW, g * 1.7);
+    ctx.fillRect(m + g * 0.8, boxTop - g * 0.9, labelW, g * k.tab);
     ctx.fillStyle = PAPER_LIGHT;
     ctx.fillText("At a Glance", m + g * 1.8, boxTop + g * 0.35);
-    let ly = boxTop + g * 2.4;
+    let ly = boxTop + g * k.glanceFirst;
     for (const stat of station.stats) {
       ctx.fillStyle = RED;
-      ctx.fillRect(m + g * 0.9, ly - g * 0.62, g * 0.55, g * 0.55);
+      ctx.fillRect(m + g * k.bullet, ly - g * 0.62, g * 0.55, g * 0.55);
       ctx.fillStyle = INK;
       ctx.font = `900 ${g}px ${f.headline}`;
-      ctx.fillText(stat.value, m + g * 2, ly);
+      ctx.fillText(stat.value, m + g * k.statX, ly);
       const vw = ctx.measureText(`${stat.value} `).width;
       ctx.font = `${g}px ${f.body}`;
-      ctx.fillText(stat.label, m + g * 2 + vw, ly, colW - g * 3 - vw);
-      ly += g * 1.5;
+      ctx.fillText(stat.label, m + g * k.statX + vw, ly, colW - g * (k.statX + 1) - vw);
+      ly += g * k.glanceStep;
     }
     y = boxTop + boxH;
   }
 
   // --- The story, in two columns (one on narrow pages), running off the bottom of the sheet.
   const b = px(s.body);
-  const top = Math.max(y, wide ? artY + artH : y) + b * 2.4;
+  const top = Math.max(y, wide ? artY + artH : y) + b * k.bodyGap;
   ctx.fillStyle = INK;
   ctx.font = `${b}px ${f.body}`;
   const cols = wide ? 2 : 1;
