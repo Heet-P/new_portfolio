@@ -62,6 +62,8 @@ export const metadata: Metadata = {
     lastName: "Parikh",
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  // Search-engine ownership checks (Bing Webmaster Tools; public/BingSiteAuth.xml is the backup).
+  verification: { other: { "msvalidate.01": "33D00FAD233335A246FD4B033C1BCE02" } },
 };
 
 /*
