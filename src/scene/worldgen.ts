@@ -17,8 +17,23 @@ const CAMERA_CLEAR = 38;
 const FLAT = 9;
 /** Height of the snow line above the local track level. */
 export const SNOW_LINE = 52;
-/** Half-width of the hole cut in the terrain for a tunnel's bore (units). */
+/** Half-width of the strip over a tunnel's bore (units): the hill over it stays bare of trees and rocks a little beyond. */
 export const TUNNEL_HOLE = 8;
+/**
+ * The slot cut into the terrain at each tunnel mouth so the bore can be seen into: MOUTH_HALF
+ * either side of the centreline (just wider than the bore), from half a unit in front of the
+ * portal to MOUTH_DEPTH into the hill. Past that the hill closes over the bore (it is TUNNEL_HILL
+ * high there, well above the bore's crown), so the terrain needs no hole along the tunnel.
+ */
+export const MOUTH_HALF = 5;
+export const MOUTH_DEPTH = 3;
+/**
+ * Around each mouth (PORTAL_ZONE.along either side of it, PORTAL_ZONE.lat from the track) the
+ * terrain is tessellated finely (geometry.ts), so the hillside meets the portal rock and the slot
+ * exactly instead of in coarse, gappy facets.
+ */
+// Wide enough that no grid triangle (up to ~19 units across on the phone grid) can span a slot unsplit.
+export const PORTAL_ZONE = { along: 12, lat: 18 } as const;
 /** Tunnel bore cross-section (units from the centreline): straight walls to BORE_SPRING, a round arch above. */
 export const BORE_HALF = 3.4;
 export const BORE_SPRING = 4.5;
@@ -203,7 +218,7 @@ export function heightAt(w: WorldLayout, x: number, z: number, trackOut?: TrackH
     const inside = hit.s >= t.s0 && hit.s <= t.s1;
     // In front of a portal the railbed stays flat; beside it the hillside rises.
     const lateral = (1 - smoothstep(30, 75, ad)) * (inside ? 1 : smoothstep(8, 14, ad));
-    // Exactly TUNNEL_HILL over the bore (World's roof cover is shaped to meet it), lumpier beyond.
+    // Exactly TUNNEL_HILL over the bore (the portal rock is shaped to meet it), lumpier beyond.
     const target = ty + TUNNEL_HILL + n * 6 * smoothstep(20, 40, ad);
     const m = along * lateral;
     if (m > 0) h = Math.max(h, h + (target - h) * m);
@@ -231,6 +246,25 @@ export function heightAt(w: WorldLayout, x: number, z: number, trackOut?: TrackH
     }
   }
   return h;
+}
+
+/** Is the track point (s, d) inside the terrain slot cut at a tunnel mouth (see MOUTH_HALF)? */
+export function inMouthCut(w: WorldLayout, s: number, d: number): boolean {
+  if (Math.abs(d) >= MOUTH_HALF) return false;
+  for (const t of w.tunnels) {
+    if (s > t.s0 - 0.5 && s < t.s0 + MOUTH_DEPTH) return true;
+    if (s > t.s1 - MOUTH_DEPTH && s < t.s1 + 0.5) return true;
+  }
+  return false;
+}
+
+/** Is the track point (s, d) where the terrain is built finely, around a tunnel mouth (see PORTAL_ZONE)? */
+export function inPortalZone(w: WorldLayout, s: number, d: number): boolean {
+  if (Math.abs(d) >= PORTAL_ZONE.lat) return false;
+  for (const t of w.tunnels) {
+    if (Math.abs(s - t.s0) < PORTAL_ZONE.along || Math.abs(s - t.s1) < PORTAL_ZONE.along) return true;
+  }
+  return false;
 }
 
 /** True if (x, z) is in (or right at the edge of) any river channel. */

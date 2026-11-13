@@ -8,11 +8,10 @@ import { PROFILE } from "@/content/route";
 import { foamGeometry, riverGeometry, splashGeometry, sweep } from "./geometry";
 import { MATS } from "./materials";
 import { Mist } from "./Mist";
-import { hash2 } from "./noise";
-import { TRACK } from "./route3d";
+import { bare, frameAt, tunnelShell } from "./tunnelGeometry";
 import { panelPlacements, reelFor, skillReel } from "./tunnelReel";
 import { paintBore } from "./tunnelWalls";
-import { BORE_HALF, BORE_SPRING, heightAt, TUNNEL_HILL, TUNNEL_HOLE, type Bridge, type Span, type WorldLayout } from "./worldgen";
+import { BORE_HALF, BORE_SPRING, heightAt, type Bridge, type Span, type WorldLayout } from "./worldgen";
 
 /** Heet's steel girder bridge (compressed by scripts/compress-model.mjs). */
 const BRIDGE_URL = "/models/bridge.glb";
@@ -28,148 +27,23 @@ BORE_PROFILE.push([BORE_HALF, -0.5]);
 // Close the loop along the bottom: the bore gets a (black) floor, so nothing lit shows inside.
 BORE_PROFILE.push([-BORE_HALF, -0.5]);
 
-/** Track frame (position, tangent, right) at arc length s, as plain numbers. */
-function frameAt(s: number) {
-  const i = Math.max(0, Math.min(TRACK.count - 1, Math.round(s / TRACK.step)));
-  const tx = TRACK.tx[i];
-  const tz = TRACK.tz[i];
-  return { x: TRACK.px[i], y: TRACK.py[i], z: TRACK.pz[i], tx, tz, nx: -tz, nz: tx };
-}
-
-/** Give a geometry one vertex colour (for vertex-coloured materials). */
-function painted(g: THREE.BufferGeometry, hex: string): THREE.BufferGeometry {
-  const c = new THREE.Color(hex);
-  const n = g.getAttribute("position").count;
-  const arr = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) c.toArray(arr, i * 3);
-  g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
-  return g;
-}
-
-/** Strip to position-only non-indexed geometry so different builders can be merged. */
-function bare(g: THREE.BufferGeometry): THREE.BufferGeometry {
-  const n = g.index ? g.toNonIndexed() : g;
-  for (const name of Object.keys(n.attributes)) if (name !== "position" && name !== "color") n.deleteAttribute(name);
-  return n;
-}
-
-/** Rock colours for the portal (sRGB as authored), picked per facet. */
-const ROCK_COLS = ["#a39c8d", "#8f8a80", "#b4a68a", "#7d7a74", "#c2b496"].map((h) => new THREE.Color(h));
-
-/**
- * Rocky portal for one tunnel mouth: rings of jittered vertices offset outward from the
- * bore's outline (walls + arch), each ring set further back into the hill, so the mouth
- * reads as an arch cut into a faceted rock face. Plus a few boulders on its shoulders.
- * Vertex-coloured per facet in warm and cool greys.
- */
-function portal(s: number, inward: 1 | -1, seed: number): THREE.BufferGeometry {
-  // Bore outline (local x = lateral, y = up) with outward normals: left wall, arch, right wall.
-  const path: [number, number, number, number][] = [];
-  const edge = BORE_HALF + 0.25;
-  for (const y of [-1.5, 1.5]) path.push([-edge, y, -1, 0]);
-  for (let k = 0; k <= 10; k++) {
-    const a = Math.PI - (k / 10) * Math.PI;
-    path.push([Math.cos(a) * edge, BORE_SPRING + Math.sin(a) * edge, Math.cos(a), Math.sin(a)]);
-  }
-  for (const y of [1.5, -1.5]) path.push([edge, y, 1, 0]);
-  // Ring offsets outward and how far back into the hill each ring sits.
-  const rings: [number, number][] = [
-    [0, -0.7],
-    [1.6, 0.2],
-    [4, 1.6],
-    [7, 3.4],
-    [10.5, 5.5],
-  ];
-  const verts: THREE.Vector3[][] = rings.map(([off, back], r) =>
-    path.map(([px, py, nx, ny], j) => {
-      const jit = r === 0 ? 0 : (hash2(seed * 31 + r, j, 7) - 0.5) * 1.8;
-      const y = Math.min(py + ny * (off + jit), TUNNEL_HILL + 1 + hash2(seed, j, r) * 1.5);
-      return new THREE.Vector3(px + nx * (off + jit), y, back + (hash2(seed, r, j) - 0.5) * 1.2);
-    }),
-  );
-  const pos: number[] = [];
-  const col: number[] = [];
-  const face = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, h: number) => {
-    pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-    const colour = ROCK_COLS[Math.floor(h * ROCK_COLS.length)];
-    for (let v = 0; v < 3; v++) col.push(colour.r, colour.g, colour.b);
-  };
-  for (let r = 0; r + 1 < rings.length; r++) {
-    for (let j = 0; j + 1 < path.length; j++) {
-      const a = verts[r][j];
-      const b = verts[r][j + 1];
-      const c = verts[r + 1][j];
-      const d = verts[r + 1][j + 1];
-      face(a, c, b, hash2(seed, r * 50 + j, 1));
-      face(b, c, d, hash2(seed, r * 50 + j, 2));
-    }
-  }
-  const face3 = new THREE.BufferGeometry();
-  face3.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  face3.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-
-  // Boulders on the shoulders, never in front of the opening.
-  const parts: THREE.BufferGeometry[] = [face3];
-  for (let k = 0; k < 6; k++) {
-    const side = k % 2 ? 1 : -1;
-    const x = side * (edge + 7 + hash2(seed, k, 3) * 5);
-    const y = hash2(seed, k, 4) * 8;
-    const r = 1.6 + hash2(seed, k, 2) * 2.2;
-    const g = new THREE.IcosahedronGeometry(r, 0).scale(1.2, 0.85, 1).translate(x, y, 1 + y * 0.4); // polyhedra are already non-indexed
-    g.deleteAttribute("uv");
-    g.deleteAttribute("normal");
-    const c = ROCK_COLS[k % ROCK_COLS.length];
-    const n = g.getAttribute("position").count;
-    const arr = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) c.toArray(arr, i * 3);
-    g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
-    parts.push(g);
-  }
-  const g = mergeGeometries(parts);
-
-  // Local frame: +Z points into the bore, +Y up.
-  const f = frameAt(s);
-  const z = new THREE.Vector3(f.tx * inward, 0, f.tz * inward);
-  const y = new THREE.Vector3(0, 1, 0);
-  const x = new THREE.Vector3().crossVectors(y, z);
-  const m = new THREE.Matrix4().makeBasis(x, y, z).setPosition(f.x, f.y, f.z);
-  return g.applyMatrix4(m);
-}
-
-/** Tunnels: dark bore lining, grassy roof over the terrain's hole, floor, rocky portals. */
+/** Tunnels: dark bore lining, floor in front of each mouth, rocky portals. */
 function Tunnels({ tunnels, shadows }: { tunnels: Span[]; shadows: boolean }) {
-  const geo = useMemo(() => {
-    const W = TUNNEL_HOLE + 7;
-    const roofProfile: [number, number][] = [
-      [-W, TUNNEL_HILL - 1.5],
-      [-TUNNEL_HOLE, TUNNEL_HILL + 0.8],
-      [0, TUNNEL_HILL + 2.2],
-      [TUNNEL_HOLE, TUNNEL_HILL + 0.8],
-      [W, TUNNEL_HILL - 1.5],
-    ];
-    const out = {
+  const geo = useMemo(
+    () => ({
       // Faceted stone, lit around each skills poster (tunnelWalls.ts).
       bore: paintBore(
-        mergeGeometries(tunnels.map((t) => bare(sweep(BORE_PROFILE, t.s0, t.s1)))),
+        // A unit past each mouth, so the portal rock's inner edge (on the bore wall) closes against it.
+        mergeGeometries(tunnels.map((t) => bare(sweep(BORE_PROFILE, t.s0 - 1, t.s1 + 1)))),
         reelFor(skillReel(PROFILE.skills), tunnels).flatMap((panels) => panelPlacements(panels).map((p): [number, number, number] => [p.x, p.y, p.z])),
       ),
-      roof: mergeGeometries(tunnels.map((t) => bare(painted(sweep(roofProfile, t.s0, t.s1, 4), "#8f973e")))),
-      // Ground in front of each mouth, under the terrain's hole (inside, the bore has its own floor).
-      floor: mergeGeometries(
-        tunnels.flatMap((t) => [
-          bare(sweep([[-W, -0.45], [W, -0.45]], Math.max(0, t.s0 - 8), t.s0 + 1)),
-          bare(sweep([[-W, -0.45], [W, -0.45]], t.s1 - 1, t.s1 + 8)),
-        ]),
-      ),
-      stone: mergeGeometries(tunnels.flatMap((t, k) => [portal(t.s0, 1, k * 2), portal(t.s1, -1, k * 2 + 1)])),
-    };
-    for (const g of Object.values(out)) g.computeVertexNormals();
-    return out;
-  }, [tunnels]);
+      ...tunnelShell(tunnels),
+    }),
+    [tunnels],
+  );
   return (
     <group>
       <mesh geometry={geo.bore} material={MATS.tunnel} />
-      <mesh geometry={geo.roof} material={MATS.terrain} receiveShadow={shadows} castShadow={shadows} />
       <mesh geometry={geo.floor} material={MATS.ballast} receiveShadow={shadows} />
       <mesh geometry={geo.stone} material={MATS.rockFace} receiveShadow={shadows} castShadow={shadows} />
     </group>
