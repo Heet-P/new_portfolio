@@ -36,6 +36,8 @@ const fits = (el: HTMLElement) => el.scrollHeight <= el.clientHeight;
 export default function Intro({ instant, onClose }: { instant: boolean; onClose: () => void }) {
   const [stage, setStage] = useState<TicketPrinterStage>(instant ? "complete" : "processing");
   const [leaving, setLeaving] = useState(false);
+  // Reached "complete" through Skip: the rest of the paper comes out quickly, not in a 1.75 s glide.
+  const [skipped, setSkipped] = useState(false);
   // Today's date for the ticket, read once (this only ever renders in the browser).
   const [date] = useState(() => formatTicketDate(new Date()));
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,9 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
     if (leavingRef.current) return;
     leavingRef.current = true;
     markIntroSeen();
-    getSound().tap();
+    const sound = getSound();
+    sound.stopChatter();
+    sound.tap();
     setLeaving(true);
   }, []);
 
@@ -56,13 +60,30 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   const hurry = () => {
     leavingRef.current = true;
     markIntroSeen();
-    getSound().tap();
+    const sound = getSound();
+    sound.stopChatter();
+    sound.tap();
     onClose();
     useRide.getState().setMode("express");
     saveMode("express");
+    // Once React has shown the Express page, put focus on its headline (not on <body>). The h1
+    // isn't a control, so it gets tabindex -1 (programmatic focus only, never a Tab stop).
+    setTimeout(() => {
+      const h1 = document.querySelector<HTMLElement>("#express h1");
+      if (!h1) return;
+      if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+      h1.focus({ preventScroll: true });
+    }, 0);
   };
 
-  const skip = () => setStage("complete");
+  const skip = () => {
+    getSound().stopChatter();
+    setSkipped(true);
+    setStage("complete");
+  };
+
+  // Unmounting mid-print (a crash to Express, a page change) never leaves the printer chattering.
+  useEffect(() => () => getSound().stopChatter(), []);
 
   // Processing -> printing: once the world has drawn its first frame and the machine has had
   // its moment, or at the cap whatever the scene is doing.
@@ -112,16 +133,28 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   }, [instant]);
 
   // Everything else on the page is inert while the dialog is up (lifted the moment it leaves).
+  // It is also hidden, except the 3D scene: behind the night the visitor sees the world waking
+  // up, not the ride's lit cabin display or route map (they reappear as the night fades out).
   useEffect(() => {
     const root = overlayRef.current;
     if (!root || leaving) return;
     const made: Element[] = [];
+    const hidden: { el: HTMLElement; was: string }[] = [];
     for (const el of Array.from(root.parentElement?.children ?? [])) {
-      if (el === root || el.hasAttribute("inert")) continue;
-      el.setAttribute("inert", "");
-      made.push(el);
+      if (el === root) continue;
+      if (!el.hasAttribute("inert")) {
+        el.setAttribute("inert", "");
+        made.push(el);
+      }
+      if (el instanceof HTMLElement && el.dataset.testid !== "ride-scene") {
+        hidden.push({ el, was: el.style.visibility });
+        el.style.visibility = "hidden";
+      }
     }
-    return () => made.forEach((el) => el.removeAttribute("inert"));
+    return () => {
+      made.forEach((el) => el.removeAttribute("inert"));
+      hidden.forEach(({ el, was }) => (el.style.visibility = was));
+    };
   }, [leaving]);
 
   // Leaving: focus goes to the ride (its current stop on the route map) at once, and the dialog
@@ -162,7 +195,11 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
       }
       // Space on a button presses it; everything else that scrolls is held while nothing needs to.
       const onButton = e.target instanceof HTMLElement && e.target.closest("button");
-      if (SCROLL_KEYS.has(e.key) && !(e.key === " " && onButton) && fits(root)) e.preventDefault();
+      if (SCROLL_KEYS.has(e.key) && !(e.key === " " && onButton) && fits(root)) {
+        e.preventDefault();
+        // Swallowed whole: the ride's own key handler must not read it as the visitor taking over.
+        e.stopPropagation();
+      }
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
@@ -207,7 +244,7 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
         animate={leaving ? { opacity: 0, transform: "translateY(-40px)" } : { opacity: 1, transform: "translateY(0px)" }}
         transition={{ duration: animate ? (leaving ? 0.3 : 0.24) : 0, ease: easeOut }}
       >
-        <TicketPrinter.Root stage={stage} animate={animate} className={styles.printer}>
+        <TicketPrinter.Root stage={stage} animate={animate} settle={skipped ? "fast" : "feed"} className={styles.printer}>
           <TicketPrinter.Machine>
             <TicketPrinter.Header>
               <span className={styles.plate}>{TICKET.plate}</span>

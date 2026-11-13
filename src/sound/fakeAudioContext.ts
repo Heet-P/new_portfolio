@@ -80,7 +80,9 @@ class FakeSource extends FakeNode {
     this.started = true;
     this.ctx.starts.push(when);
   }
-  stop() {}
+  stop(when = 0) {
+    this.ctx.stops.push(when);
+  }
 }
 
 class FakeOscillator extends FakeSource {
@@ -121,6 +123,8 @@ export class FakeAudioContext {
   sourceCount = 0;
   /** Audio-clock start time of every source, in the order they were started. */
   starts: number[] = [];
+  /** Audio-clock stop time of every source.stop() call, in call order. */
+  stops: number[] = [];
   private readonly t0 = Date.now();
 
   get currentTime() {

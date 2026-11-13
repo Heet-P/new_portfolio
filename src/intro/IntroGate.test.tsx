@@ -30,6 +30,11 @@ async function mount({ mode = "ride", hash = "", reduced = false }: { mode?: "ri
   setReducedMotion(reduced);
   render(
     <>
+      {/* Stand-ins for the page around the gate: the (hidden) Express page, the 3D scene, the ride. */}
+      <main id="express">
+        <h1>Heet Parikh</h1>
+      </main>
+      <div data-testid="ride-scene" />
       <nav aria-label="Route map">
         <button type="button" aria-current="step">
           Departure
@@ -46,6 +51,9 @@ async function mount({ mode = "ride", hash = "", reduced = false }: { mode?: "ri
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
 const status = () => screen.getByRole("status");
+const routeMap = () => screen.getByRole("navigation", { hidden: true });
+/** Every page element beside the gate that the dialog would make inert. */
+const inertCount = () => document.querySelectorAll("[inert]").length;
 const dialog = () => screen.queryByRole("dialog", { name: "Your ticket" });
 
 beforeEach(() => {
@@ -168,10 +176,50 @@ describe("IntroGate: the ticket printer", () => {
 
   it("Escape boards too", async () => {
     await mount();
+    expect(inertCount()).toBeGreaterThan(0);
     fireEvent.keyDown(dialog()!, { key: "Escape" });
     expect(window.sessionStorage.getItem(INTRO_SEEN_KEY)).toBe("1");
+    expect(inertCount()).toBe(0);
     await advance(400);
     expect(dialog()).toBeNull();
+    expect(inertCount()).toBe(0);
+  });
+
+  it("nothing is left inert or hidden if the page unmounts it mid-print", async () => {
+    await mount();
+    expect(inertCount()).toBeGreaterThan(0);
+    cleanup();
+    expect(inertCount()).toBe(0);
+  });
+
+  // Fix round: behind the night only the 3D world shows (no lit cabin display or newspaper).
+  it("hides the ride's own UI behind the dialog (the 3D scene stays), and shows it again on boarding", async () => {
+    await mount();
+    expect(routeMap().style.visibility).toBe("hidden");
+    expect(screen.getByTestId("ride-scene").style.visibility).toBe("");
+    fireEvent.keyDown(dialog()!, { key: "Escape" });
+    expect(routeMap().style.visibility).toBe("");
+  });
+
+  it("silences the printer at once on Skip, Escape and boarding", async () => {
+    const stop = vi.spyOn(getSound(), "stopChatter");
+    await mount();
+    act(() => useRide.setState({ sceneReady: true }));
+    await advance(1300);
+    expect(status().textContent).toContain("Printing your ticket…");
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(stop).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(dialog()!, { key: "Escape" });
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
+
+  it("Skip lets the rest of the paper out quickly instead of the full 1.75 s glide", async () => {
+    await mount();
+    act(() => useRide.setState({ sceneReady: true }));
+    await advance(1300);
+    expect(dialog()!.querySelector("[data-feed]")!.getAttribute("data-feed")).toBe("stepped");
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(dialog()!.querySelector("[data-feed]")!.getAttribute("data-feed")).toBe("fast");
   });
 
   it("'In a hurry?' switches to Express and remembers the visit", async () => {
@@ -182,6 +230,10 @@ describe("IntroGate: the ticket printer", () => {
     expect(window.localStorage.getItem("nt-mode")).toBe("express");
     expect(window.sessionStorage.getItem(INTRO_SEEN_KEY)).toBe("1");
     expect(dialog()).toBeNull();
+    expect(inertCount()).toBe(0);
+    // Focus lands on the Express page's headline, not on <body>.
+    await advance(0);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
   });
 
   it("closes if the ride falls back to Express on its own (scene crash)", async () => {

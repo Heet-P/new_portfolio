@@ -314,17 +314,20 @@
 
 /*
  * Phones: the stack is taller than the screen, so the dialog scrolls; once the ticket is out the
- * buttons stay pinned to the bottom edge on a fade of night, always one tap away.
+ * buttons stay pinned to the bottom edge on a soft fade of night, always one tap away. Only on
+ * narrow screens, where the stage spans the screen: the fade runs edge to edge (out through the
+ * dialog's 16px side padding), so it reads as night, never as a box. Wider screens fit the stack.
  */
-.actions[data-ready] {
-  position: sticky;
-  z-index: 10;
-  bottom: 0; /* the dialog's visible bottom edge */
-  /* Full width of the dialog (out through its 16px side padding), so the fade has no edges. */
-  width: calc(100% + 32px);
-  margin: 0 -16px;
-  padding: 24px 16px 16px;
-  background: linear-gradient(to top, rgb(6 6 18) 55%, rgb(6 6 18 / 0));
+@media (max-width: 599px) {
+  .actions[data-ready] {
+    position: sticky;
+    z-index: 10;
+    bottom: 0; /* the dialog's visible bottom edge */
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    padding: 32px 16px 16px;
+    background: linear-gradient(to top, rgb(5 5 14) 0%, rgb(5 5 14 / 0.92) 50%, rgb(5 5 14 / 0) 100%);
+  }
 }
 
 .actionsInner {
@@ -447,14 +450,9 @@
     align-items: flex-start;
   }
 
-  .actions,
-  .actions[data-ready] {
-    position: static;
+  .actions {
     grid-column: 3;
-    width: auto;
     min-height: 0;
-    margin: 0;
-    padding: 0 0 48px;
-    background: none;
+    padding-bottom: 48px;
   }
 }

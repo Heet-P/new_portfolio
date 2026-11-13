@@ -51,6 +51,8 @@ export interface SoundGraph {
   stamp(): void;
   /** The intro's ticket printer: dot-matrix chatter in bursts over `durationSec`, from now. */
   printChatter(durationSec: number): void;
+  /** Cuts a running chatter short (Skip / board): a ~60 ms fade, then its ticks are stopped. */
+  stopChatter(): void;
 }
 
 const midiHz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
@@ -267,6 +269,7 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
     g.gain.linearRampToValueAtTime(p.level, when + p.attack);
     g.gain.setTargetAtTime(0, when + p.attack, p.decay);
     src.start(when, Math.random() * (white.duration - p.length - 0.05), p.length + 0.05);
+    return src;
   };
 
   /* ---- music voices ---- */
@@ -498,6 +501,21 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
   /* ---- one-off cues ---- */
   let lastTap = -1;
   let lastStamp = -1;
+  /** The printer chatter in flight: its own fader and every tick it queued, so it can be cut. */
+  let chatter: { level: GainNode; ticks: AudioBufferSourceNode[] } | null = null;
+
+  /** Fades the chatter in flight out over PRINT.cutFade, then stops all its ticks. */
+  const cutChatter = () => {
+    if (!chatter) return;
+    const { level, ticks } = chatter;
+    chatter = null;
+    const t = ctx.currentTime;
+    level.gain.cancelScheduledValues(t);
+    level.gain.setValueAtTime(level.gain.value, t);
+    level.gain.linearRampToValueAtTime(0, t + PRINT.cutFade);
+    // Once silent, stop every tick (the ones not yet played never start).
+    for (const tick of ticks) tick.stop(t + PRINT.cutFade + 0.01);
+  };
 
   return {
     master,
@@ -599,11 +617,15 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
       o.stop(when + STAMP.length);
     },
     printChatter(durationSec) {
+      cutChatter();
       const t0 = ctx.currentTime + 0.01;
-      // One shared lowpass per run keeps the ticks dull (no click on top).
-      const out = filter("lowpass", PRINT.lowpass, 0.5, uiBus);
+      // One shared lowpass per run keeps the ticks dull (no click on top), into its own fader.
+      const level = gain(1, uiBus);
+      const out = filter("lowpass", PRINT.lowpass, 0.5, level);
+      const run = { level, ticks: [] as AudioBufferSourceNode[] };
+      chatter = run;
       for (const offset of chatterTicks(durationSec)) {
-        noiseHit(
+        const tick = noiseHit(
           t0 + offset,
           {
             type: "bandpass",
@@ -616,7 +638,9 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
           },
           out,
         );
+        run.ticks.push(tick);
       }
     },
+    stopChatter: cutChatter,
   };
 }

@@ -343,6 +343,25 @@ describe("createAudioEngine", () => {
     expect(gaps).toHaveLength(PRINT.lines - 1);
   });
 
+  // Task 14 fix round: Skip / boarding mid-print must silence the printer at once.
+  it("stopChatter fades the chatter out within ~60 ms and stops every queued tick", () => {
+    const { engine, contexts } = setup();
+    expect(() => engine.stopChatter()).not.toThrow(); // no graph yet: a no-op
+    engine.setEnabled(true);
+    const ctx = contexts[0];
+    engine.printChatter(1.75);
+    const now = ctx.currentTime;
+    const before = ctx.stops.length;
+    engine.stopChatter();
+    const stops = ctx.stops.slice(before);
+    expect(stops).toHaveLength(chatterTicks(1.75).length);
+    for (const t of stops) expect(t).toBeLessThanOrEqual(now + PRINT.cutFade + 0.02);
+    // A second stop (nothing in flight) does nothing.
+    const after = ctx.stops.length;
+    engine.stopChatter();
+    expect(ctx.stops.length).toBe(after);
+  });
+
   it("keeps the chatter quiet: softer than the paper tap, and under -14 dBFS at the speakers", () => {
     expect(PRINT.level).toBeLessThanOrEqual(TAP.level);
     // Worst case: two ticks' tails overlapping at full level, through the UI bus and the master.

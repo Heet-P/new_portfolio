@@ -27,6 +27,11 @@ type RootProps = Omit<ComponentPropsWithoutRef<"section">, "children"> & {
   children: ReactNode;
   /** The paper comes out one line at a time ("stepped", the default) or in one glide. */
   feedMotion?: TicketFeedMotion;
+  /**
+   * How a jump to "complete" lets the rest of the paper out: "feed" = the reference's 1.75 s
+   * ease-in-out; "fast" = 0.2 s ease-out (the visitor pressed Skip and is waiting on it).
+   */
+  settle?: "feed" | "fast";
   stage: TicketPrinterStage;
 };
 
@@ -35,7 +40,7 @@ type StatusProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
   children?: ReactNode;
 };
 
-type PrinterContext = { animate: boolean; feedMotion: TicketFeedMotion; stage: TicketPrinterStage };
+type PrinterContext = { animate: boolean; feedMotion: TicketFeedMotion; settle: "feed" | "fast"; stage: TicketPrinterStage };
 
 const Context = createContext<PrinterContext | null>(null);
 
@@ -73,9 +78,9 @@ function usePrinter(part: string): PrinterContext {
   return context;
 }
 
-function Root({ "aria-label": label = "Ticket printer", animate = true, children, className, feedMotion = "stepped", stage, ...props }: RootProps) {
+function Root({ "aria-label": label = "Ticket printer", animate = true, children, className, feedMotion = "stepped", settle = "feed", stage, ...props }: RootProps) {
   return (
-    <Context.Provider value={{ animate, feedMotion, stage }}>
+    <Context.Provider value={{ animate, feedMotion, settle, stage }}>
       <section aria-label={label} className={cx(styles.root, className)} data-stage={stage} {...props}>
         {children}
       </section>
@@ -178,9 +183,10 @@ function Paper({ className, style, ...props }: ComponentPropsWithoutRef<"article
  * fully out. A soft dark line under the slot shades the paper as it leaves the machine.
  */
 function Output({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
-  const { animate, feedMotion, stage } = usePrinter("TicketPrinter.Output");
+  const { animate, feedMotion, settle, stage } = usePrinter("TicketPrinter.Output");
   const visible = stage !== "processing";
   const stepped = feedMotion === "stepped" && stage === "printing" && animate;
+  const fast = settle === "fast" && stage === "complete";
   const transform =
     stage === "printing" && animate
       ? stepped
@@ -191,7 +197,7 @@ function Output({ children, className, ...props }: ComponentPropsWithoutRef<"div
         : FEED.transforms[0];
 
   return (
-    <div className={cx(styles.output, className)} {...props}>
+    <div className={cx(styles.output, className)} data-feed={fast ? "fast" : stepped ? "stepped" : "smooth"} {...props}>
       {visible ? <div aria-hidden="true" className={styles.slotShadow} /> : null}
       <motion.div
         className={styles.feed}
@@ -202,8 +208,8 @@ function Output({ children, className, ...props }: ComponentPropsWithoutRef<"div
         transition={{
           opacity: { duration: animate ? 0.16 : 0, ease: easeOut },
           transform: {
-            duration: animate ? FEED.seconds : 0,
-            ease: stepped ? "linear" : easeInOut,
+            duration: !animate ? 0 : fast ? 0.2 : FEED.seconds,
+            ease: stepped ? "linear" : fast ? easeOut : easeInOut,
             times: stepped ? [...FEED.times] : undefined,
           },
         }}

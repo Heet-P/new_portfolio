@@ -47,6 +47,8 @@ export interface AudioEngine {
    * spread over `durationSec` from now (Task 14).
    */
   printChatter(durationSec: number): void;
+  /** Cuts the printer chatter short (Skip, boarding mid-print); a no-op when none is playing. */
+  stopChatter(): void;
   /** For React (useSyncExternalStore): called whenever enabled() changes. */
   subscribe(fn: () => void): () => void;
   dispose(): void;
@@ -230,6 +232,10 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
       // Fires from the intro's timer, not a gesture: like the stamp, only on a running clock
       // (a queued chatter would otherwise burst out late, on the visitor's first click).
       if (audible() && ctx?.state === "running") graph?.printChatter(durationSec);
+    },
+    stopChatter() {
+      // Not gated on audible(): a chatter queued while on must still be cut after a switch-off.
+      graph?.stopChatter();
     },
     subscribe(fn) {
       listeners.add(fn);

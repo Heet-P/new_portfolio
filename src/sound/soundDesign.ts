@@ -327,6 +327,8 @@ export const PRINT = {
   attack: 0.001,
   decay: 0.006,
   length: 0.03,
+  /** Skip / boarding mid-print: the chatter fades out over this long (s), then stops. */
+  cutFade: 0.06,
 } as const;
 
 /** Newspaper unfolding: a short paper rustle made of a few overlapping noise grains. */

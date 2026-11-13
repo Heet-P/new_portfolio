@@ -1,12 +1,14 @@
 /*
- * The intro's night: deep indigo with a soft vignette, nearly opaque so the 3D world can be
- * felt waking up behind it. Also the placeholder while the printer's chunk loads, so the
- * screen goes straight from the page to the night, with no flash of the half-loaded ride.
+ * The intro's night: a deep indigo glow fading to near-black at the edges (soft vignette).
+ * Effectively opaque: at Departure the 3D camera is parked in the cabin facing its newspaper,
+ * whose type would otherwise read through; the world loads unseen and is revealed as the night
+ * fades out on boarding. The ride's own UI is also hidden while it is up (Intro.tsx). Also the
+ * placeholder while the printer's chunk loads, so the page goes straight to the night.
  */
 .backdrop {
   position: fixed;
   z-index: 200; /* above the ride, its route map and the sound/mode controls (100) */
   inset: 0;
   background:
-    radial-gradient(120% 90% at 50% 38%, rgb(30 32 74 / 0.965) 0%, rgb(14 15 40 / 0.98) 55%, rgb(5 5 14 / 0.995) 100%);
+    radial-gradient(110% 85% at 50% 38%, rgb(26 28 66 / 0.995) 0%, rgb(12 13 34) 55%, rgb(4 4 12) 100%);
 }

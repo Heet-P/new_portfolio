@@ -110,6 +110,35 @@ test("no horizontal scroll at 375px with the intro up", async ({ page }) => {
   expect(await dialog(page).evaluate((el) => el.scrollWidth)).toBeLessThanOrEqual(375);
 });
 
+/** Collects the text of every script the page downloads (to see which chunks were fetched). */
+function recordScripts(page: Page): Promise<string>[] {
+  const bodies: Promise<string>[] = [];
+  page.on("response", (r) => {
+    if (r.request().resourceType() === "script") bodies.push(r.text().catch(() => ""));
+  });
+  return bodies;
+}
+/** A string only the lazily loaded printer chunk contains. */
+const INTRO_MARKER = "Take the journey";
+
+// Fix round: the printer is its own chunk. Express never pays for it; the ride's first visit does.
+test("Express never downloads the intro's code", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("nt-mode", "express"));
+  const scripts = recordScripts(page);
+  await page.goto("/");
+  await expect(page.locator("#express")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(500);
+  expect((await Promise.all(scripts)).some((t) => t.includes(INTRO_MARKER))).toBe(false);
+});
+
+test("a fresh ride does download it (the check above can see the chunk)", async ({ page }) => {
+  const scripts = recordScripts(page);
+  await page.goto("/");
+  await expect(dialog(page)).toBeVisible();
+  expect((await Promise.all(scripts)).some((t) => t.includes(INTRO_MARKER))).toBe(true);
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
