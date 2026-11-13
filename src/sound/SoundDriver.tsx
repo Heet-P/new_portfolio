@@ -46,7 +46,7 @@ export function SoundDriver() {
     const sound = getSound();
     sound.setTravelSpeed(travel.speed);
     sound.setRain(rainAmount(atmosphere.palette.windowGlow));
-    // Where the listener is: the chase camera, which rides TUNNEL_VIEW.chase behind the train (as tunnelPace.ts).
+    // Where the listener is: the chase camera, which rides TUNNEL_VIEW.chase behind the train (as tunnelScroll.ts).
     sound.setTunnel(tunnelBlend(trainU(travel.position) * ROUTE.length - TUNNEL_VIEW.chase, getWorld().tunnels));
     if (cues.arrived(travel.position, travel.speed)) sound.chime();
     if (cues.unfolding(cabinFrame.blend)) sound.rustle();

@@ -1,7 +1,9 @@
 /**
- * Pure math that maps scroll progress (0..1) onto the station timeline.
+ * Pure math that maps progress (0..1) onto the station timeline.
  * No React, no DOM: the scroll driver, route map, 3D scene and station cards
  * all derive their state from these functions so they can never disagree.
+ * (Progress is not the raw scroll fraction: scrollMap.ts gives tunnel legs more
+ * scroll than plain ones; on this timeline every leg is the same length.)
  *
  * Timeline layout for N stations (N = STATIONS.length, 8 today). The route is split into N-1
  * equal segments; each station sits on a segment boundary ("anchor"). Around
@@ -19,8 +21,11 @@
  *          (0 = just left i, 1 = about to arrive at i+1), index = i
  */
 
-/** Fraction of each segment's length the train spends stopped at a station. */
-export const STOP_HOLD = 0.5;
+/**
+ * Fraction of each segment's length the train spends stopped at a station. With the ride's
+ * scroll (scrollMap.ts) that is about half a viewport of scroll held at every stop.
+ */
+export const STOP_HOLD = 0.3;
 
 export interface StationPosition {
   /** Station stopped at, or the station just departed from while travelling. */

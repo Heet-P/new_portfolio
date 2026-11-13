@@ -11,92 +11,91 @@ import { progressToStation } from "@/ride/mapping";
  * purpose: zero allocations and zero React renders per frame.
  */
 export const travel = {
-  /** Train position along the route, in stations (eased; exact integer while stopped). */
+  /** Train position along the route, in stations (smoothed; exact integer while stopped). */
   position: 0,
-  /** Smoothed signed velocity, stations per second (+ = forward). Exactly 0 when parked. */
+  /** Signed velocity, stations per second (+ = forward). Exactly 0 when parked. */
   velocity: 0,
   /** |velocity| normalised to 0..1 against TRAVEL_REF_SPEED: handy as an effect amount. */
   speed: 0,
 };
 
 /**
- * Top speed of the train, stations/s (~117 world units/s at ~212 units per station). However
- * fast the visitor scrolls or jumps, the train never visibly moves faster than this.
+ * The scroll is the throttle: the visitor's scroll position says where the train should be,
+ * and the train follows it closely, like a critically damped spring (no bounce) whose lag
+ * behind a steadily moving scroll is SMOOTH_TIME. When the scroll stops, the train coasts to
+ * a halt in about half a second; scrolling back runs it backwards. There is no driving of its
+ * own beyond the scroll position.
  */
-export const MAX_SPEED = 0.55;
-/** Acceleration / braking limit, stations/s^2: full speed is reached in ~1.2 s. */
-export const MAX_ACCEL = 0.45;
-/** Final approach rate (1/s): within the last stretch the speed eases off linearly. */
-const APPROACH = 2;
+export const SMOOTH_TIME = 0.25;
+/** The spring's angular frequency (1/s), as in the usual "smooth damp" formulation. */
+const OMEGA = 2 / SMOOTH_TIME;
+/**
+ * Top speed, stations/s (~300 world units/s at ~253 units per station). Only a guard: a huge
+ * flick or a route-map jump across the line rides there instead of teleporting.
+ */
+export const MAX_SPEED = 1.2;
 /** Velocity (stations/s) that counts as "full speed" for travel.speed. */
 export const TRAVEL_REF_SPEED = MAX_SPEED;
 /** Longest frame we trust (s); a backgrounded tab can report seconds-long deltas. */
 const MAX_DT = 0.1;
 /** Integration sub-step (s), so 30 fps and 144 fps produce the same motion. */
 const SUB_DT = 1 / 240;
-
-/** Slow-zone lookahead: sample spacing and reach (stations), and how much of MAX_ACCEL the planned braking uses. */
-const PACE_STEP = 0.03;
-const PACE_REACH = 0.45;
-const PACE_BRAKE = MAX_ACCEL * 0.8;
+/**
+ * Close enough to call it stopped: within this many stations of the target (~0.25 units) and
+ * slower than this (stations/s), the train lands exactly on the target with zero velocity.
+ * Stations rely on it: the cabin view and the arrival chime wait for an exact stop.
+ */
+const SETTLE_POS = 1e-3;
+const SETTLE_VEL = 1e-2;
 
 /**
- * The fastest the train may be going at `x` (stations) heading `dir` (+1/-1) so that it can still
- * brake, within PACE_BRAKE, down to `cap`'s limit at any point up to `room` stations ahead.
- * A hard-edged slow zone therefore becomes a smooth easing down before it. Each lookahead sample is
- * treated as one step nearer than it is, so the plan errs on the early side.
+ * Within a leg, maps the eased travel fraction (0..1) to the fraction of the leg's distance
+ * covered (0..1), monotonic, 0 -> 0 and 1 -> 1. The scene passes one that gives tunnels more of
+ * the leg's scroll (tunnelScroll.ts); without one the two are equal.
  */
-function pacedLimit(x: number, dir: number, room: number, cap: (position: number) => number): number {
-  let limit = cap(x);
-  const reach = Math.min(PACE_REACH, room);
-  for (let k = 1; k * PACE_STEP <= reach; k++) {
-    const c = cap(x + dir * k * PACE_STEP);
-    limit = Math.min(limit, Math.sqrt(c * c + 2 * PACE_BRAKE * (k - 1) * PACE_STEP));
-  }
-  return limit;
-}
+export type LegWarp = (leg: number, f: number) => number;
 
 /**
- * Train position for a scroll progress value. Inside a station's dwell zone it is exactly
- * the station index; between stations the linear travel fraction is smoothstepped so the
- * train pulls away and pulls in gently instead of starting/stopping at full speed.
+ * Train position for a progress value. Inside a station's dwell zone it is exactly the station
+ * index; between stations the linear travel fraction is smoothstepped so the train pulls away
+ * and pulls in gently instead of starting/stopping at full speed, then `warp` spreads it over
+ * the leg's distance.
  */
-export function trainPosition(progress: number, count: number): number {
+export function trainPosition(progress: number, count: number, warp?: LegWarp): number {
   const { index, atStop, t } = progressToStation(progress, count);
   if (atStop) return index;
-  return index + t * t * (3 - 2 * t);
+  const e = t * t * (3 - 2 * t);
+  return index + (warp ? warp(index, e) : e);
 }
 
 /**
  * Advance the shared travel state by one frame. Call once per frame.
  *
- * The scroll gives a *target* position; the train chases it with a speed- and
- * acceleration-limited profile: it accelerates at MAX_ACCEL up to MAX_SPEED, brakes
- * along a sqrt(2*a*d) curve so it never overshoots, and eases into the stop linearly.
- * A fast flick therefore becomes a calm 1-2 s pull-away and a gentle arrival instead of
- * a jump. Settles exactly on the target (integer at stations) with zero velocity.
- *
- * `cap`, if given, is a position-dependent top speed (stations/s, always > 0), used to slow the
- * train through places worth lingering in (the tunnels' skills reel). It only ever lowers the
- * limits above, and the train brakes ahead of a slow stretch within MAX_ACCEL.
+ * The progress gives a *target* position; the train follows it with a critically damped
+ * spring (SMOOTH_TIME), its velocity capped at MAX_SPEED. It never overshoots the target, so
+ * it never runs past a stop, past the Terminus or back before Departure. Settles exactly on
+ * the target (an integer at stations) with zero velocity.
  */
-export function stepTravel(progress: number, count: number, dt: number, cap?: (position: number) => number): void {
-  const target = trainPosition(progress, count);
+export function stepTravel(progress: number, count: number, dt: number, warp?: LegWarp): void {
+  const target = trainPosition(progress, count, warp);
   let left = Math.min(Math.max(dt, 0), MAX_DT);
   let x = travel.position;
   let v = travel.velocity;
   while (left > 1e-9) {
     const h = Math.min(SUB_DT, left);
     left -= h;
-    const d = target - x;
-    // Fastest speed that can still brake in time, capped, and easing off near the end.
-    const top = cap ? pacedLimit(x, Math.sign(d), Math.abs(d), cap) : MAX_SPEED;
-    const want = Math.sign(d) * Math.min(MAX_SPEED, top, Math.sqrt(2 * MAX_ACCEL * Math.abs(d)), APPROACH * Math.abs(d));
-    v += Math.max(-MAX_ACCEL * h, Math.min(MAX_ACCEL * h, want - v));
+    const before = target - x;
+    v += (OMEGA * OMEGA * before - 2 * OMEGA * v) * h;
+    v = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, v));
     x += v * h;
+    // Crossed the target (it reversed under a moving train): stop on it rather than swing past.
+    if ((target - x) * before < 0) {
+      x = target;
+      v = 0;
+    }
   }
   // Settle to a true stop: no endless tail.
-  if (Math.abs(target - x) < 1e-4 && Math.abs(v) < 2e-3) {
+  if (Math.abs(target - x) < SETTLE_POS && Math.abs(v) < SETTLE_VEL) {
     x = target;
     v = 0;
   }
@@ -105,10 +104,9 @@ export function stepTravel(progress: number, count: number, dt: number, cap?: (p
   travel.speed = Math.min(1, Math.abs(v) / TRAVEL_REF_SPEED);
 }
 
-/** Jump to a progress value with the train at rest (mount, tests). */
-export function resetTravel(progress: number, count: number): void {
-  travel.position = trainPosition(progress, count);
+/** Jump to a progress value with the train at rest (mount, deep links, tests). */
+export function resetTravel(progress: number, count: number, warp?: LegWarp): void {
+  travel.position = trainPosition(progress, count, warp);
   travel.velocity = 0;
   travel.speed = 0;
 }
-

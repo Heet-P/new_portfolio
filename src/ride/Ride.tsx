@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { STATIONS } from "@/content/route";
 import { useRide } from "./rideStore";
 import { RideOverlay } from "./RideOverlay";
+import { SPACER_VH } from "./scrollMap";
 import { useScrollDriver } from "./useScrollDriver";
 import { SceneBoundary } from "@/scene/SceneBoundary";
 
@@ -14,8 +14,9 @@ const Scene = dynamic(() => import("@/scene/Scene"), { ssr: false });
 
 /**
  * The ride, mounted only in ride mode: a tall spacer that gives the window its scroll
- * distance (one viewport per station), the fixed 3D scene behind everything, and the
- * overlay. useScrollDriver turns that scroll into progress. In Express mode this renders nothing.
+ * distance (scrollMap.ts: 1.8 viewports per leg of open track, more for a tunnel), the fixed 3D
+ * scene behind everything, and the overlay. useScrollDriver turns that scroll into progress.
+ * In Express mode this renders nothing.
  */
 export function Ride() {
   const mode = useRide((s) => s.mode);
@@ -29,7 +30,7 @@ export function Ride() {
         <Scene />
       </SceneBoundary>
       {/* overflow-anchor: none = the browser never "helpfully" shifts scroll when layout changes. */}
-      <div aria-hidden="true" style={{ height: `${STATIONS.length * 100}vh`, overflowAnchor: "none" }} />
+      <div aria-hidden="true" style={{ height: `${SPACER_VH}vh`, overflowAnchor: "none" }} />
       <RideOverlay />
     </>
   );

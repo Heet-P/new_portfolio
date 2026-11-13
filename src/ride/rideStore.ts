@@ -6,7 +6,7 @@ export type RideMode = "ride" | "express";
 interface RideState {
   /** "ride" = 3D scroll journey, "express" = plain HTML. The real initial mode is chosen on the client. */
   mode: RideMode;
-  /** Scroll progress along the route, 0..1. */
+  /** Progress along the station timeline, 0..1 (mapping.ts); the scroll driver maps the page scroll to it. */
   progress: number;
   /** Station the scroll driver should animate toward (null = free scrolling). The driver clears it on arrival. */
   target: number | null;

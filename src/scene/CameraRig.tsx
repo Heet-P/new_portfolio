@@ -85,7 +85,7 @@ const deskF = F(0, 0, 0, 0, 0);
 const frame = F(0, 0, 0, 0, 0);
 
 /**
- * Chase camera. Rigidly tied to the train's (already speed-limited, smoothly eased) place
+ * Chase camera. Rigidly tied to the train's (already smoothed and speed-capped) place
  * on the track, so it never lags and snaps: all smoothing lives in travel.ts. Its frame is
  * taken from the curve at the camera's own arc length, so it swings naturally through
  * bends. Allocation-free per frame. Reduced motion: no idle drift.

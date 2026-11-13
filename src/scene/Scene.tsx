@@ -18,16 +18,17 @@ import { updateTrainPose } from "./route3d";
 import { Stations } from "./stations/Stations";
 import { Track } from "./Track";
 import { Train } from "./Train";
-import { resetTravel, stepTravel, travel } from "./travel";
+import { resetTravel, stepTravel, travel, type LegWarp } from "./travel";
 import { TunnelPanels } from "./TunnelPanels";
-import { tunnelPaceCap } from "./tunnelPace";
+import { tunnelScrollWarp } from "./tunnelScroll";
 import { getWorld, World } from "./World";
 
 /** Bloom + tone mapping + vignette: its own chunk, fetched only on the desktop tier. */
 const Effects = lazy(() => import("./Effects"));
 
-/** Slow through the tunnels so the skills reel can be read. */
-const paceCap = (position: number) => tunnelPaceCap(position, getWorld().tunnels);
+/** Tunnels take more scroll, so the skills reel can be read (built once, on first use). */
+let warp: LegWarp | null = null;
+const legWarp = () => (warp ??= tunnelScrollWarp(getWorld().tunnels));
 
 /**
  * Updates the shared `travel` state from the ride store once per frame, then the train's
@@ -37,11 +38,11 @@ const paceCap = (position: number) => tunnelPaceCap(position, getWorld().tunnels
  */
 function TravelTracker() {
   useEffect(() => {
-    resetTravel(useRide.getState().progress, STATIONS.length);
+    resetTravel(useRide.getState().progress, STATIONS.length, legWarp());
     updateTrainPose(travel.position);
   }, []);
   useFrame((_, dt) => {
-    stepTravel(useRide.getState().progress, STATIONS.length, dt, paceCap);
+    stepTravel(useRide.getState().progress, STATIONS.length, dt, legWarp());
     updateTrainPose(travel.position);
   });
   return null;

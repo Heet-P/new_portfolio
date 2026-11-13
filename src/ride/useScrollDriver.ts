@@ -7,6 +7,7 @@ import { resetTravel } from "@/scene/travel";
 import { snapCabin } from "./cabinStore";
 import { nearestStation, parseHash, stationToProgress } from "./mapping";
 import { useRide } from "./rideStore";
+import { progressToScroll, scrollToProgress } from "./scrollMap";
 
 const IDS = STATIONS.map((s) => s.id);
 const COUNT = IDS.length;
@@ -43,7 +44,8 @@ const SETTLE_CHECKS_MS = [300, 900];
 
 /**
  * The ride's scroll engine. In ride mode only:
- * - smooths the window scroll with Lenis and writes `progress = scroll / maxScroll` to the store;
+ * - smooths the window scroll with Lenis and writes the station-timeline `progress` to the store
+ *   (scrollMap.ts: tunnel legs take more scroll than plain ones);
  * - resolves the initial URL hash itself (scroll restoration is manual) and jumps there instantly;
  * - rides to `target` whenever `goTo(i)` sets one (a new goTo mid-flight simply retargets),
  *   clearing `target` on arrival or when the visitor takes over with the wheel/touch;
@@ -69,7 +71,9 @@ export function useScrollDriver(): void {
     history.scrollRestoration = "manual";
 
     const lenis = new Lenis({ autoRaf: true });
-    const progressOf = (scroll: number) => (lenis.limit > 0 ? scroll / lenis.limit : 0);
+    const progressOf = (scroll: number) => (lenis.limit > 0 ? scrollToProgress(scroll / lenis.limit) : 0);
+    /** Scroll offset (px) that puts the ride at progress `p`. */
+    const scrollOf = (p: number) => progressToScroll(p) * lenis.limit;
     /** Drop any Lenis animation and re-read the real scroll position (stop() + start() reset it). */
     const resyncLenis = () => {
       lenis.stop();
@@ -79,7 +83,7 @@ export function useScrollDriver(): void {
       // Sync Lenis to the real scroll first: if its idea of the target already equals `p` (it
       // missed a native scroll), an immediate scrollTo would otherwise silently do nothing.
       resyncLenis();
-      lenis.scrollTo(p * lenis.limit, { immediate: true, force: true });
+      lenis.scrollTo(scrollOf(p), { immediate: true, force: true });
       setProgress(p);
     };
     /** Put the train (and the cabin view) exactly at the current progress: a cut, not a ride. */
@@ -89,7 +93,7 @@ export function useScrollDriver(): void {
     };
     const rideTo = (index: number) => {
       const to = stationToProgress(index, COUNT);
-      lenis.scrollTo(to * lenis.limit, {
+      lenis.scrollTo(scrollOf(to), {
         duration: rideDuration(progressOf(lenis.scroll), to),
         easing: easeInOut,
         force: true,
@@ -135,7 +139,7 @@ export function useScrollDriver(): void {
     const settle = () => {
       if (takenOver || useRide.getState().target !== null) return;
       const want = stationToProgress(startIndex, COUNT);
-      const drifted = Math.abs(lenis.actualScroll - want * lenis.limit) > 1 || useRide.getState().progress !== want;
+      const drifted = Math.abs(lenis.actualScroll - scrollOf(want)) > 1 || useRide.getState().progress !== want;
       if (!drifted) return;
       jumpTo(want);
       snapTrain();

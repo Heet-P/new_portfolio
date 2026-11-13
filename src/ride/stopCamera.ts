@@ -4,7 +4,7 @@
  * never disagree.
  *
  * Everything keys off the TRAIN, not the scroll: the input is travel.position (stations,
- * smoothed and speed-limited in scene/travel.ts, so it lags a fast scroll by design). The
+ * smoothed and speed-capped in scene/travel.ts, so it trails the scroll a little). The
  * cabin therefore only opens once the train has really pulled in, and closes as it pulls away.
  */
 
@@ -15,11 +15,11 @@ const smoothstep = (e0: number, e1: number, x: number) => {
 };
 
 /**
- * Distance from a station (in stations) at which the blend starts: the train is braking into
- * the platform by then (travel.ts brakes at a constant MAX_ACCEL, reached ~0.7 s before it
- * stops). Braking at constant deceleration, distance left ~ (time left)^2, so a ramp on
- * sqrt(distance) is a ramp in time: the blend rises evenly through the last stretch and
- * reaches exactly 1 as the train comes to rest (travel.ts settles on the integer).
+ * Distance from a station (in stations) at which the blend starts: the train is easing into
+ * the platform by then (the scroll eases it in, travel.ts smooths it). Slowing to a stop, the
+ * distance left shrinks faster than the time left, so a ramp on sqrt(distance) is roughly a
+ * ramp in time: the blend rises evenly through the last stretch and reaches exactly 1 as the
+ * train comes to rest (travel.ts settles on the integer).
  */
 export const STOP_BLEND = { far: 0.12 } as const;
 
@@ -40,7 +40,8 @@ export function stopBlend(position: number): number {
  * 1 while the train is slow enough to be stopping, 0 when it runs through a station at speed
  * (a route-map jump across several stops passes the ones in between at full speed, and their
  * cabins must not flash open). `speed` is travel.speed (0..1 of top speed). On a real final
- * approach the speed at the blend's `far` edge is ~0.44, so the gate is fully open there.
+ * approach the speed at the blend's `far` edge is at most ~0.55 (a route-map ride or a fast
+ * scroll; slower scrolling less), so the gate is all but open there.
  */
 export function passGate(speed: number): number {
   return 1 - smoothstep(0.5, 0.8, speed);
