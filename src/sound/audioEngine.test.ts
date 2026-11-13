@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAudioEngine, SOUND_KEY } from "./audioEngine";
 import { FakeAudioContext, fakeDocument, memoryStorage, throwingStorage } from "./fakeAudioContext";
-import { STAMP, TAP } from "./soundDesign";
+import { SCHEDULER } from "./scheduler";
+import { STAMP, TAP, TEMPO } from "./soundDesign";
 
 /** An engine wired to fakes, plus the fakes so a test can poke them. */
 function setup(storage: Storage = memoryStorage()) {
@@ -97,6 +98,85 @@ describe("createAudioEngine", () => {
     expect(ctx).toHaveBeenCalledTimes(1);
   });
 
+  // Task 13: pressed-but-silent was confusing; the toggle shows "pending" until audio really runs.
+  it("reports a remembered 'on' as pending until the audio clock is running", async () => {
+    const storage = memoryStorage();
+    storage.setItem("nt-sound", "1");
+    const { engine, doc, contexts } = setup(storage);
+    const seen = vi.fn();
+    engine.subscribe(seen);
+    expect(engine.state()).toBe("pending");
+    // The browser makes the context suspended until a real activation.
+    const blocked = vi.fn(() => {
+      const c = new FakeAudioContext();
+      c.state = "suspended";
+      c.resume = () => Promise.resolve();
+      contexts.push(c);
+      return c as unknown as AudioContext;
+    });
+    const engine2 = createAudioEngine({ storage, doc, ctx: blocked });
+    doc.dispatchEvent(new Event("pointerdown"));
+    expect(engine2.state()).toBe("pending");
+    // A later gesture that the browser accepts: the clock runs and subscribers hear about it.
+    const seen2 = vi.fn();
+    engine2.subscribe(seen2);
+    contexts[contexts.length - 1].resume = FakeAudioContext.prototype.resume;
+    engine2.setEnabled(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(engine2.state()).toBe("on");
+    expect(seen2).toHaveBeenCalled();
+    // The first engine gets going on its gesture too.
+    doc.dispatchEvent(new Event("keydown"));
+    expect(engine.state()).toBe("on");
+  });
+
+  it("is plainly off by default and on once enabled from a click", () => {
+    const { engine } = setup();
+    expect(engine.state()).toBe("off");
+    engine.setEnabled(true);
+    expect(engine.state()).toBe("on");
+  });
+
+  // Task 13: where an AudioContext can't be made, the toggle must not stay pressed and silent.
+  it("stays off (and usable) when the AudioContext cannot be created", () => {
+    const storage = memoryStorage();
+    let fail = true;
+    const ctx = vi.fn(() => {
+      if (fail) throw new Error("no audio hardware");
+      return new FakeAudioContext() as unknown as AudioContext;
+    });
+    const engine = createAudioEngine({ storage, doc: fakeDocument(), ctx });
+    const seen = vi.fn();
+    engine.subscribe(seen);
+    expect(() => engine.setEnabled(true)).not.toThrow();
+    expect(engine.enabled()).toBe(false);
+    expect(engine.state()).toBe("off");
+    expect(storage.getItem("nt-sound")).toBeNull();
+    // Usable: a later click tries again and works.
+    fail = false;
+    engine.setEnabled(true);
+    expect(engine.enabled()).toBe(true);
+    expect(seen).toHaveBeenCalled();
+  });
+
+  it("drops a remembered 'on' back to off when the first gesture can't create audio", () => {
+    const storage = memoryStorage();
+    storage.setItem("nt-sound", "1");
+    const doc = fakeDocument();
+    const engine = createAudioEngine({
+      storage,
+      doc,
+      ctx: () => {
+        throw new Error("no audio hardware");
+      },
+    });
+    expect(engine.enabled()).toBe(true);
+    doc.dispatchEvent(new Event("pointerdown"));
+    expect(engine.enabled()).toBe(false);
+    expect(engine.state()).toBe("off");
+  });
+
   // Review Focus 5: a hidden tab goes quiet; it comes back only if sound is still on.
   it("fades out while the tab is hidden and back in on return", () => {
     const { engine, doc, contexts } = setup();
@@ -177,6 +257,26 @@ describe("createAudioEngine", () => {
     const { engine } = setup();
     expect(() => engine.setEnabled(true)).not.toThrow();
     vi.restoreAllMocks();
+  });
+
+  // Task 13: a stalled main thread must not cost the music its downbeat: it comes back in on the next bar line.
+  it("after a long stall the music re-enters on the next bar line of its own grid", () => {
+    const { engine, contexts } = setup();
+    engine.setEnabled(true);
+    vi.advanceTimersByTime(2000);
+    const ctx = contexts[0];
+    const bar = (60 / TEMPO.bpm) * 4;
+    // The first downbeat was at the clock's start (~0); now the timer starves for 5.5 s.
+    vi.setSystemTime(Date.now() + 5500);
+    const before = ctx.starts.length;
+    const stalledAt = ctx.currentTime;
+    vi.advanceTimersByTime(SCHEDULER.intervalMs + bar * 1000);
+    const after = ctx.starts.slice(before);
+    const nextBar = Math.ceil(stalledAt / bar) * bar;
+    expect(after.length).toBeGreaterThan(0);
+    // Nothing lands mid-bar before the bar line (drum slop aside), and the downbeat is on it.
+    for (const t of after) expect(t).toBeGreaterThanOrEqual(nextBar - TEMPO.humanize - 1e-9);
+    expect(after.some((t) => Math.abs(t - nextBar) < 1e-6)).toBe(true);
   });
 
   it("never queues a stamp on a suspended clock (it can fire from a scroll, with no gesture)", () => {

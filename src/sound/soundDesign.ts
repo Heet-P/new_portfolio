@@ -325,7 +325,7 @@ export const RUSTLE = {
 /** Look-ahead scheduling (see scheduler.ts). */
 export const SCHEDULING = {
   /** How far ahead of the audio clock events are queued (s). */
-  lookahead: 0.3,
+  lookahead: 0.5,
   /** How often the queue is topped up (ms). Any timer jitter below lookahead is inaudible. */
   intervalMs: 100,
 } as const;

@@ -1,14 +1,15 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useId, useSyncExternalStore } from "react";
 import ticket from "@/ride/ModeToggle.module.css";
+import type { SoundState } from "./audioEngine";
 import { getSound } from "./sound";
 import styles from "./SoundToggle.module.css";
 
 const subscribe = (fn: () => void) => getSound().subscribe(fn);
-const isOn = () => getSound().enabled();
+const stateOf = () => getSound().state();
 /** Server HTML always shows "off": sound is off by default and the preference lives in the browser. */
-const serverOn = () => false;
+const serverState = (): SoundState => "off";
 
 /** An ink speaker: sound waves when on, struck through when off. */
 function SpeakerGlyph({ on }: { on: boolean }) {
@@ -31,23 +32,42 @@ function SpeakerGlyph({ on }: { on: boolean }) {
  * The sound switch: a paper ticket like the mode toggle, sitting beside it (top-right) in
  * both views. A true toggle: the label stays "Sound" and aria-pressed carries on/off.
  * Off by default; the engine remembers the choice (nt-sound) and does the fading.
+ *
+ * Pending: a remembered "on" can't make a sound until the visitor's first click or key (the
+ * browser's autoplay rule). Until then the ticket is pressed but drawn with a dashed edge and
+ * faint waves, described as "tap to start", and tapping it starts the sound instead of
+ * switching it off.
  */
 export function SoundToggle() {
-  const on = useSyncExternalStore(subscribe, isOn, serverOn);
+  const state = useSyncExternalStore(subscribe, stateOf, serverState);
+  const hintId = useId();
+  const on = state !== "off";
+  const pending = state === "pending";
   return (
-    <button
-      type="button"
-      className={`${ticket.toggle} ${styles.sound}`}
-      aria-pressed={on}
-      onClick={() => {
-        const sound = getSound();
-        // Tap first: turning off, it is the last thing heard; turning on, it is a no-op.
-        sound.tap();
-        sound.setEnabled(!on);
-      }}
-    >
-      <SpeakerGlyph on={on} />
-      Sound
-    </button>
+    <>
+      <button
+        type="button"
+        className={`${ticket.toggle} ${styles.sound}`}
+        aria-pressed={on}
+        aria-describedby={pending ? hintId : undefined}
+        data-pending={pending || undefined}
+        title={pending ? "Sound is on: tap to start" : undefined}
+        onClick={() => {
+          const sound = getSound();
+          // Tap first: turning off, it is the last thing heard; turning on, it is a no-op.
+          sound.tap();
+          // Pending: this click is the gesture the browser was waiting for, so start, don't stop.
+          sound.setEnabled(pending ? true : !on);
+        }}
+      >
+        <SpeakerGlyph on={on} />
+        Sound
+      </button>
+      {pending && (
+        <span id={hintId} className="sr-only">
+          Tap to start
+        </span>
+      )}
+    </>
   );
 }

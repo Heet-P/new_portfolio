@@ -61,6 +61,12 @@ test("sound toggle is off by default, 44px+, in both views, and remembered", asy
   await page.reload();
   await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
   await expect(sound).toHaveAttribute("aria-pressed", "true");
+  // Task 13: remembered "on" can't play before a gesture, so it shows as pending (was: plain
+  // pressed). Tapping the pending ticket starts the sound; the next tap switches it off.
+  await expect(sound).toHaveAttribute("data-pending", "true");
+  await sound.click();
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+  await expect(sound).not.toHaveAttribute("data-pending");
   await sound.click();
   await expect(sound).toHaveAttribute("aria-pressed", "false");
 });

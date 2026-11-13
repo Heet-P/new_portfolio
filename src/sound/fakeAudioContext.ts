@@ -76,8 +76,9 @@ class FakeConvolver extends FakeNode {
 class FakeSource extends FakeNode {
   onended: (() => void) | null = null;
   started = false;
-  start() {
+  start(when = 0) {
     this.started = true;
+    this.ctx.starts.push(when);
   }
   stop() {}
 }
@@ -118,6 +119,8 @@ export class FakeAudioContext {
   readonly destination = new FakeNode(this);
   /** How many sound sources (oscillators + buffer sources) have been created. */
   sourceCount = 0;
+  /** Audio-clock start time of every source, in the order they were started. */
+  starts: number[] = [];
   private readonly t0 = Date.now();
 
   get currentTime() {

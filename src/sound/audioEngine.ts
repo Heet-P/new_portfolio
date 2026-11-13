@@ -14,9 +14,21 @@ import { buildGraph, type SoundGraph } from "./synth";
  * - Every storage access is wrapped: if localStorage throws (private mode), the toggle still
  *   works for the session and simply isn't remembered.
  */
+/**
+ * What the toggle shows: "off"; "on" (playing); or "pending": on, but the browser has not let
+ * audio start yet (a remembered "on" before the visitor's first click or key).
+ */
+export type SoundState = "off" | "pending" | "on";
+
 export interface AudioEngine {
   enabled(): boolean;
-  /** Fades in/out over 600 ms and remembers the choice under `nt-sound`. */
+  /** On/off plus whether the audio clock is actually running (for the toggle's pending look). */
+  state(): SoundState;
+  /**
+   * Fades in/out over 600 ms and remembers the choice under `nt-sound`. Turning on where Web
+   * Audio cannot start leaves it off (and remembers nothing); asking for "on" again while
+   * pending retries starting the audio from this gesture.
+   */
   setEnabled(on: boolean): void;
   /** travel.speed 0..1: rumble gain, its lowpass and the rail clacks follow it. */
   setTravelSpeed(v: number): void;
@@ -72,12 +84,21 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
   const listeners = new Set<() => void>();
 
   const audible = () => on && !doc.hidden && !disposed;
+  const notify = () => {
+    for (const fn of listeners) fn();
+  };
 
   /** Create the context and the sound world (once). Fails quietly where Web Audio is missing. */
   const ensureGraph = (): SoundGraph | null => {
     if (graph || disposed) return graph;
     try {
       ctx = makeContext();
+      // The toggle's pending look follows the clock: tell it when the browser lets audio run.
+      try {
+        ctx.addEventListener?.("statechange", notify);
+      } catch {
+        // Older engines without events on the context: the resume() promise below covers it.
+      }
       const reducedMotion =
         deps.reducedMotion ?? (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
       graph = buildGraph(ctx, { reducedMotion });
@@ -101,7 +122,7 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
     if (audible()) {
       if (suspendTimer !== null) clearTimeout(suspendTimer);
       suspendTimer = null;
-      ctx.resume().catch(() => {});
+      ctx.resume().then(notify, () => {});
       graph.scheduler.start();
       g.linearRampToValueAtTime(MASTER.level, t + MASTER.fade);
     } else {
@@ -125,8 +146,12 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
    */
   const onGesture = () => {
     if (on) {
-      ensureGraph();
-      update();
+      if (ensureGraph()) update();
+      else {
+        // No Web Audio here after all: show the toggle off rather than pressed and silent.
+        on = false;
+        notify();
+      }
     }
     if (!on || !ctx || ctx.state === "running") removeGestureListeners();
   };
@@ -140,18 +165,31 @@ export function createAudioEngine(deps: { storage?: Storage; doc?: Document; ctx
 
   return {
     enabled: () => on,
+    state: () => (!on ? "off" : ctx?.state === "running" ? "on" : "pending"),
     setEnabled(next) {
       if (disposed) return;
+      // Turning on needs an AudioContext; if the browser can't make one, stay off (the toggle
+      // stays usable: the next click simply tries again).
+      if (next && !ensureGraph()) {
+        if (on) {
+          on = false;
+          notify();
+        }
+        return;
+      }
       try {
         storage?.setItem(SOUND_KEY, next ? "1" : "0");
       } catch {
         // Not remembered, but still works for this session.
       }
-      if (next === on) return;
+      if (next === on) {
+        // Already on but pending: this is a gesture, so try to start the clock now.
+        if (on) update();
+        return;
+      }
       on = next;
-      if (on) ensureGraph();
       update();
-      for (const fn of listeners) fn();
+      notify();
     },
     setTravelSpeed(v) {
       scene.speed = clamp01(v);

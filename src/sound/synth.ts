@@ -324,6 +324,9 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
   let step = 0;
   let restrike = false;
   let dropIndex = -1;
+  /** The latest downbeat: its audio time and its step, the grid a late tick snaps back onto. */
+  let barTime = -1;
+  let barStep = 0;
   /**
    * `when` nudged by a few ms of timing slop, never before 0: right after the context is
    * created the clock is ~0, and Web Audio throws on a negative time (which used to break the
@@ -334,6 +337,8 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
     const pos = step % 8;
     const chord = CHORDS[Math.floor(step / 8) % CHORDS.length];
     if (pos === 0) {
+      barTime = when;
+      barStep = step;
       // New bar: decide this bar's small variations so no two passes of the loop match.
       restrike = Math.random() < KEYS.restrikeChance;
       dropIndex = Math.random() < KEYS.dropNoteChance ? 1 + Math.floor(Math.random() * (chord.voicing.length - 2)) : -1;
@@ -351,6 +356,18 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
     step++;
     // Swing: the on-beat 8th is longer than the off-beat one.
     return pos % 2 === 0 ? beat * TEMPO.swing : beat * (1 - TEMPO.swing);
+  };
+
+  /**
+   * The scheduler fell behind (a stalled main thread): rather than limp on mid-bar with the
+   * downbeat's chord lost, wait for the next bar line on the loop's own grid and come back in
+   * on it, chord progression in step with the time that passed.
+   */
+  const musicResync = (now: number) => {
+    if (barTime < 0) return now;
+    const bars = Math.max(1, Math.ceil((now - barTime) / bar));
+    step = barStep + bars * 8;
+    return barTime + bars * bar;
   };
 
   /* ---- always-on loops ---- */
@@ -453,7 +470,7 @@ export function buildGraph(ctx: AudioContext, opts: { reducedMotion: boolean }):
   };
 
   const scheduler = createScheduler(() => ctx.currentTime);
-  scheduler.add(musicTrack);
+  scheduler.add(musicTrack, musicResync);
   scheduler.add(clackTrack);
   scheduler.add(dropTrack);
 

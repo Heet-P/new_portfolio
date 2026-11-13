@@ -22,3 +22,15 @@
 .waves {
   color: var(--red);
 }
+
+/*
+ * Pending: sound is on, but the browser is waiting for a click or key before audio may start.
+ * The ticket's edge goes dashed (not yet punched) and the waves print faint until it plays.
+ */
+.sound[data-pending] {
+  border-style: dashed;
+}
+
+.sound[data-pending] .waves {
+  opacity: 0.45;
+}
