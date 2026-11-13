@@ -19,8 +19,6 @@ export const CABIN = {
    * clips only what is within 0.2 m of the lens.
    */
   scale: 2.5,
-  /** Underside of the ceiling panels, where the display's hangers attach. */
-  ceilingY: 2.62,
   /** Side window openings (x ranges), on both walls. */
   windowsX: [
     [-8.25, -6.89],
@@ -44,13 +42,31 @@ export interface CabinPose {
 
 /**
  * Where the camera arrives (just inside a right-hand window, looking across the car, as if it
- * had flown straight through the glass) and where it settles (standing in the aisle, facing
- * forward, the display hanging from the ceiling in front of it).
+ * had flown straight through the glass), where it leans toward the newspaper lying on the
+ * opposite bench, and where it settles (standing in the aisle, facing forward, a touch down,
+ * reading the unfolded paper held in front of it).
  */
-export const POSES: { entry: CabinPose; settled: CabinPose } = {
+export const POSES: { entry: CabinPose; lean: CabinPose; settled: CabinPose } = {
   entry: { pos: new THREE.Vector3(-6.2, 1.62, 1.05), look: new THREE.Vector3(-6.6, 1.5, -2) },
-  settled: { pos: new THREE.Vector3(-5.0, 1.62, 0), look: new THREE.Vector3(10, 1.62, 0) },
+  lean: { pos: new THREE.Vector3(-4.75, 1.42, -0.15), look: new THREE.Vector3(-3.6, 0.46, -1.2) },
+  settled: { pos: new THREE.Vector3(-5.0, 1.58, 0.12), look: new THREE.Vector3(-1.0, 1.36, 0.12) },
 };
 
-/** Distance (cabin metres) from the settled eye to the display's screen. */
-export const DISPLAY_DISTANCE = 2.5;
+/**
+ * Distance (cabin metres) from the settled eye to the unfolded newspaper. At this distance a
+ * desktop front page is about 0.65 x 0.43 m: a real tabloid spread held at reading distance.
+ */
+export const PAPER_DISTANCE = 1.0;
+
+/**
+ * Where the folded newspaper lies: on the left-hand bench (z < 0; cushion top at y = 0.45,
+ * from z = -1.05 to -1.4), its fold toward the aisle and its masthead toward the wall so it
+ * reads the right way up from the aisle, turned a little off square as if dropped there.
+ * `pos` is the middle of the fold.
+ */
+export const NEWSPAPER = {
+  pos: new THREE.Vector3(-3.6, 0.465, -1.08),
+  yaw: 0.14,
+  /** Height (m) of the arc the paper makes as it is picked up. */
+  liftArc: 0.12,
+} as const;

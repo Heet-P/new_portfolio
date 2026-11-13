@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STATIONS } from "@/content/route";
-import { displayOpacity, passGate, smoothDamp, STOP_PHASE, stopBlend, swapOpacity } from "./stopCamera";
+import { displayOpacity, paperLift, paperUnfold, passGate, smoothDamp, STOP_PHASE, stopBlend, swapOpacity } from "./stopCamera";
 
 /*
  * stopBlend takes the TRAIN's smoothed position (travel.position, in stations), not the
@@ -101,6 +101,43 @@ describe("swap overlay and display timing", () => {
   it("only shows the display once the camera is settling inside", () => {
     expect(displayOpacity(STOP_PHASE.fadeEnd)).toBe(0);
     expect(displayOpacity(1)).toBe(1);
+  });
+});
+
+describe("the newspaper on the seat", () => {
+  it("lies folded on the seat while the camera comes in and leans toward it", () => {
+    for (const b of [0, STOP_PHASE.cut, STOP_PHASE.fadeEnd, STOP_PHASE.lean]) {
+      expect(paperLift(b)).toBe(0);
+      expect(paperUnfold(b)).toBe(0);
+    }
+  });
+
+  it("is lifted and fully unfolded before the HTML page fades in over it", () => {
+    expect(paperLift(STOP_PHASE.displayFrom)).toBe(1);
+    expect(paperUnfold(STOP_PHASE.displayFrom)).toBe(1);
+    expect(displayOpacity(STOP_PHASE.unfoldTo)).toBe(0);
+    expect(paperLift(1)).toBe(1);
+    expect(paperUnfold(1)).toBe(1);
+  });
+
+  it("starts unfolding only once it has left the seat", () => {
+    expect(STOP_PHASE.unfoldFrom).toBeGreaterThan(STOP_PHASE.liftFrom);
+    expect(paperLift(STOP_PHASE.unfoldFrom)).toBeGreaterThan(0);
+  });
+
+  it("lifts and unfolds monotonically with the blend (so leaving plays it in reverse)", () => {
+    let prevLift = -1;
+    let prevUnfold = -1;
+    let violations = 0;
+    for (let k = 0; k <= 1000; k++) {
+      const b = k / 1000;
+      const l = paperLift(b);
+      const u = paperUnfold(b);
+      if (l < prevLift || u < prevUnfold || l < 0 || l > 1 || u < 0 || u > 1) violations++;
+      prevLift = l;
+      prevUnfold = u;
+    }
+    expect(violations).toBe(0);
   });
 });
 

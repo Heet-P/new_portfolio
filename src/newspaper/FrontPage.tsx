@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PROFILE, STATIONS, type Station } from "@/content/route";
 import { StationMedia } from "@/express/StationMedia";
 import { Clipping } from "./Clipping";
+import { deckOf, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
 import { linkProps, splitLinks } from "./links";
 import { BrushTab, BrushUnderline } from "./ornaments";
 import { StatValue } from "./StatValue";
@@ -18,47 +19,16 @@ import styles from "./newspaper.module.css";
  * framed page and the Express column can both use it.
  */
 
+export { formatDateline, nextStopLabel } from "./edition";
+
 const LAST = STATIONS.length - 1;
 const CABIN_CREDIT_URL = "https://sketchfab.com/3d-models/subway-interior-b7f25426ac674a9291ba092fb9fe8406";
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** The edition date when a stop has no dates of its own. */
-const EDITION_DATE = "Nov 2026";
-
-/** Newspaper section a stop is filed under (the kicker above its headline). */
-const SECTION: Record<Station["kind"], string> = {
-  intro: "Special Edition",
-  project: "Technology",
-  internship: "Business",
-  open: "Situations Wanted",
-  end: "Classifieds",
-};
 
 /** Stamps for the two "live" states; finished stops speak through their dates. */
 const STAMP: Partial<Record<NonNullable<Station["status"]>, string>> = {
   current: "Current stop",
   upcoming: "Platform open",
 };
-
-/** "09/2026" -> "Sep 2026"; "05/2026 - 06/2026" -> "May – Jun 2026"; none -> the edition date. */
-export function formatDateline(dates: string | undefined): string {
-  if (!dates) return EDITION_DATE;
-  const month = (part: string) => {
-    const m = /^(\d{2})\/(\d{4})$/.exec(part.trim());
-    return m ? { mon: MONTHS[Number(m[1]) - 1], year: m[2] } : null;
-  };
-  const [from, to] = dates.split(" - ");
-  const a = month(from);
-  if (!a) return dates;
-  if (to === undefined) return `${a.mon} ${a.year}`;
-  const b = month(to);
-  if (!b) return `${a.mon} ${a.year} – ${to.trim()}`;
-  return a.year === b.year ? `${a.mon} – ${b.mon} ${b.year}` : `${a.mon} ${a.year} – ${b.mon} ${b.year}`;
-}
-
-/** How a stop is named as "the next stop": the open platform is an ad, not a stop called "Next stop". */
-export function nextStopLabel(station: Station): string {
-  return station.kind === "open" ? SECTION.open : station.name;
-}
 
 /* ---------- Pieces ---------- */
 
@@ -251,8 +221,8 @@ function ProjectStory({ station, level }: { station: Station; level: 1 | 2 }) {
     <>
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={station.name} level={level} />
-          <p className={styles.deck}>{station.tagline}</p>
+          <Headline text={headlineOf(station)} level={level} />
+          <p className={styles.deck}>{deckOf(station)}</p>
           {station.stats && <AtAGlance stats={station.stats} />}
         </div>
         <Clipping id={station.id} />
@@ -284,8 +254,8 @@ function DepartureStory({ station, level }: { station: Station; level: 1 | 2 }) 
     <>
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={PROFILE.name} level={level} />
-          <p className={styles.deck}>{PROFILE.role}</p>
+          <Headline text={headlineOf(station)} level={level} />
+          <p className={styles.deck}>{deckOf(station)}</p>
           {/* Straight after the deck, so the resume is reachable without scrolling. */}
           <Actions>
             <Stamp href={PROFILE.resume} primary>
@@ -310,7 +280,7 @@ function NextStory({ station, level }: { station: Station; level: 1 | 2 }) {
   return (
     <div className={styles.lede}>
       <div className={`${styles.ledeText} ${styles.ad}`}>
-        <Headline text={station.tagline} level={level} />
+        <Headline text={headlineOf(station)} level={level} />
         <Body paragraphs={station.body} />
         <Actions>
           <Stamp href={`mailto:${PROFILE.email}`} primary>
@@ -328,27 +298,30 @@ function NextStory({ station, level }: { station: Station; level: 1 | 2 }) {
 function TerminusStory({ station, level }: { station: Station; level: 1 | 2 }) {
   return (
     <>
+      {/* Contact under the notice, the ticket ad above the clipping: both in the first view. */}
       <div className={styles.lede}>
         <div className={styles.ledeText}>
-          <Headline text={station.tagline} level={level} />
+          <Headline text={headlineOf(station)} level={level} />
           <Body paragraphs={station.body} />
+          <div className={styles.ad}>
+            <p className={styles.adTitle}>Contact</p>
+            <Actions>
+              <Stamp href={`mailto:${PROFILE.email}`} primary>
+                Email {PROFILE.email}
+              </Stamp>
+              <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
+              <Stamp href={PROFILE.github}>GitHub</Stamp>
+            </Actions>
+          </div>
         </div>
-        <Clipping id={station.id} />
-      </div>
-      <div className={styles.classifieds}>
-        <div className={styles.ad}>
-          <p className={styles.adTitle}>Contact</p>
-          <Actions>
-            <Stamp href={`mailto:${PROFILE.email}`} primary>
-              Email {PROFILE.email}
-            </Stamp>
-            <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
-            <Stamp href={PROFILE.github}>GitHub</Stamp>
-          </Actions>
-        </div>
-        <div className={styles.ad}>
-          <p className={styles.adTitle}>Clip &amp; keep</p>
-          <Ticket />
+        <div>
+          <div className={styles.ad}>
+            <p className={styles.adTitle}>Clip &amp; keep</p>
+            <Ticket />
+          </div>
+          <div className={styles.clipBelow}>
+            <Clipping id={station.id} />
+          </div>
         </div>
       </div>
       <p className={styles.credits}>

@@ -129,10 +129,10 @@ export default function Scene() {
           <Stations shadows={shadows} post={quality.post} reducedMotion={reducedMotion} />
           <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
         </Outside>
-        {/* The cabin loads with the train, so a deep link opens already seated at the display. */}
+        {/* The cabin loads with the train, so a deep link opens already in front of the paper. */}
         <Suspense fallback={null}>
           <Train reducedMotion={reducedMotion} shadows={shadows} post={quality.post} />
-          <Cabin post={quality.post} />
+          <Cabin post={quality.post} reducedMotion={reducedMotion} />
           <FirstFrame onReady={() => setReady(true)} />
         </Suspense>
         {quality.post && (

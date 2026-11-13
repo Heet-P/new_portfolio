@@ -52,8 +52,11 @@ export function passGate(speed: number): number {
  *  swoopEnd .. swapIn   a full-screen overlay fades in (cabin colour + slight blur)
  *  swapIn .. swapOut    overlay fully opaque; at `cut` the camera jumps into the cabin
  *  swapOut .. fadeEnd   overlay fades out, revealing the cabin
- *  fadeEnd .. 1         the camera glides round to face the display and settles
- *  displayFrom .. displayTo  the display's HTML fades in over the 3D panel
+ *  cut .. lean          inside, the camera turns and leans toward the newspaper folded on a seat
+ *  liftFrom .. liftTo   the newspaper lifts off the seat to in front of the camera, which settles
+ *                       at liftTo too (so nothing moves while the HTML fades in)
+ *  unfoldFrom .. unfoldTo  meanwhile it unfolds (a hinge at the fold) into the full front page
+ *  displayFrom .. displayTo  the front page's HTML fades in over the flat 3D paper
  * The opaque plateau around `cut` makes the jump invisible even if a frame lands either side.
  */
 export const STOP_PHASE = {
@@ -62,9 +65,24 @@ export const STOP_PHASE = {
   cut: 0.525,
   swapOut: 0.55,
   fadeEnd: 0.6,
-  displayFrom: 0.78,
-  displayTo: 0.96,
+  lean: 0.72,
+  liftFrom: 0.74,
+  unfoldFrom: 0.78,
+  liftTo: 0.9,
+  unfoldTo: 0.9,
+  displayFrom: 0.9,
+  displayTo: 0.98,
 } as const;
+
+/** How far the newspaper has travelled from the seat to in front of the camera (0..1, eased). */
+export function paperLift(b: number): number {
+  return smoothstep(STOP_PHASE.liftFrom, STOP_PHASE.liftTo, b);
+}
+
+/** How far the newspaper has unfolded (0 = folded in half, 1 = flat), eased. */
+export function paperUnfold(b: number): number {
+  return smoothstep(STOP_PHASE.unfoldFrom, STOP_PHASE.unfoldTo, b);
+}
 
 /** True once the camera belongs inside the cabin (the world outside can stop drawing). */
 export function insideCabin(b: number): boolean {
@@ -77,7 +95,7 @@ export function swapOpacity(b: number): number {
   return 1 - smoothstep(STOP_PHASE.swapOut, STOP_PHASE.fadeEnd, b);
 }
 
-/** Opacity of the display's HTML for a blend value: only once the camera is settling. */
+/** Opacity of the front page's HTML for a blend value: only once the 3D paper lies flat. */
 export function displayOpacity(b: number): number {
   return smoothstep(STOP_PHASE.displayFrom, STOP_PHASE.displayTo, b);
 }

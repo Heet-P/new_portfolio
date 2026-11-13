@@ -72,7 +72,7 @@ function windowPose(k: { side: number; up: number }, pos: THREE.Vector3, q: THRE
   lookQuat(pos, target, q);
 }
 
-/** Settled camera pose (world), e.g. for fitting the display panel. */
+/** Settled camera pose (world), e.g. for fitting the newspaper to the HTML page. */
 export function settledPose(pos: THREE.Vector3, q: THREE.Quaternion) {
   cabinPose(POSES.settled, pos, q);
 }
@@ -82,8 +82,10 @@ export function settledPose(pos: THREE.Vector3, q: THREE.Quaternion) {
  * cabin blend `b` (cabinFrame.blend, see ride/stopCamera.ts):
  *   0 .. swoopEnd     chase -> off the rear car's window (smootherstep: leaves and arrives gently)
  *   swoopEnd .. cut   dives at the glass (ease-in), hidden by the swap overlay
- *   cut .. 1          inside the cabin: from just inside the window, turns and glides to face
- *                     the display (ease-out, so the dive carries on and then settles)
+ *   cut .. lean       inside the cabin: from just inside the window, turns and leans toward the
+ *                     newspaper on the seat (ease-out, so the dive carries on and then settles)
+ *   lean .. liftTo    straightens up to the reading pose while the paper rises and unfolds
+ *                     (smootherstep: leaves and arrives gently); still from there on
  * Every segment is a continuous function of `b`, which is itself a smooth function of the
  * train's eased position plus a critically damped spring, so the camera cannot jitter.
  * Reduced motion: no swoop and no glide; the camera stays on the chase view until the swap
@@ -119,9 +121,14 @@ export function applyStopCamera(camera: THREE.Camera, b: number, reducedMotion: 
     return;
   }
 
-  cabinPose(POSES.entry, eye, q1);
-  cabinPose(POSES.settled, eye2, q2);
-  const t = easeOut(clamp01((b - cut) / (1 - cut)));
+  // Inside: turn from the window toward the newspaper on the seat (the dive carries on, then
+  // eases off), then straighten up to reading height while the paper is lifted and unfolded.
+  // It arrives together with the paper (liftTo), so nothing moves while the HTML fades in.
+  const { lean, liftTo } = STOP_PHASE;
+  const inLean = b < lean;
+  cabinPose(inLean ? POSES.entry : POSES.lean, eye, q1);
+  cabinPose(inLean ? POSES.lean : POSES.settled, eye2, q2);
+  const t = inLean ? easeOut(clamp01((b - cut) / (lean - cut))) : smoother(clamp01((b - lean) / (liftTo - lean)));
   camera.position.lerpVectors(eye, eye2, t);
   camera.quaternion.slerpQuaternions(q1, q2, t);
 }

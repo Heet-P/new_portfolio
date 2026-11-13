@@ -505,17 +505,13 @@
 
 /* ---------- Classifieds (Next stop, Terminus) ---------- */
 
-.classifieds {
-  display: grid;
-  gap: 24px;
-  margin-top: 32px;
+.ledeText > .ad {
+  margin-top: 24px;
 }
 
-@container (min-width: 720px) {
-  .classifieds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
+/* The Terminus clipping, under its ticket ad. */
+.clipBelow {
+  margin-top: 32px;
 }
 
 /* A boxed small ad: a double rule round it, as in the classifieds pages. */
