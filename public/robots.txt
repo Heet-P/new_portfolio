@@ -1,0 +1,5 @@
+# Let every search engine crawl the whole site, and point them at the sitemap.
+User-agent: *
+Allow: /
+
+Sitemap: https://www.heetp.tech/sitemap.xml
