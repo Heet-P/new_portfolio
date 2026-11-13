@@ -8,6 +8,7 @@ import { applyStopCamera } from "./cabin/cabinCamera";
 import { smoothstep } from "./noise";
 import { ROUTE, tangentAt, trainPose } from "./route3d";
 import { travel } from "./travel";
+import { TUNNEL_VIEW, tunnelBlend } from "./tunnelCamera";
 import { getWorld } from "./World";
 import { heightAt } from "./worldgen";
 
@@ -109,8 +110,11 @@ export function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
     // Barely-there idle drift (none for reduced motion).
     const t = (clock.elapsedTime / CAMERA.driftPeriod) * Math.PI * 2;
     const drift = reducedMotion ? 0 : CAMERA.driftAmount;
-    const up = frame.up + Math.sin(t * 0.7 + 1) * drift * 0.5;
-    const side = frame.side + Math.sin(t) * drift;
+    // In a tunnel's stretch the camera drops into the bore (see tunnelCamera.ts) so the skills
+    // reel on the walls is in view; tk eases that framing in and out around the portals.
+    const tk = tunnelBlend(trainS + frame.ahead, getWorld().tunnels);
+    const up = frame.up + (TUNNEL_VIEW.up - frame.up) * tk + Math.sin(t * 0.7 + 1) * drift * 0.5;
+    const side = frame.side + (TUNNEL_VIEW.side - frame.side) * tk + Math.sin(t) * drift;
 
     // Camera position from the curve at its own arc length (behind the train).
     const u = Math.max(0, Math.min(1, (trainS + frame.ahead) / ROUTE.length));
@@ -125,8 +129,9 @@ export function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
     goalPos.set(pos.x + rx * side, pos.y + up, pos.z + rz * side);
     // Never inside a hill (tunnels, valley sides): ride up over the terrain. The look target
     // rises by the same amount, so the view keeps its pitch and looks out over the hill
-    // (e.g. while the train is inside a tunnel) instead of into the slope.
-    const lift = Math.max(0, heightAt(getWorld(), goalPos.x, goalPos.z) + CAMERA.minClearance - goalPos.y);
+    // (e.g. while the train is inside a tunnel) instead of into the slope. Not inside a bore (tk = 1),
+    // where the camera is meant to be under the hill.
+    const lift = Math.max(0, heightAt(getWorld(), goalPos.x, goalPos.z) + CAMERA.minClearance - goalPos.y) * (1 - tk);
     goalPos.y += lift;
     // Look target: on the track ahead of the train (taken from the curve, so it leads the
     // camera round bends).

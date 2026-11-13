@@ -9,15 +9,13 @@ import { MATS } from "./materials";
 import { Mist } from "./Mist";
 import { hash2 } from "./noise";
 import { TRACK } from "./route3d";
-import { heightAt, TUNNEL_HILL, TUNNEL_HOLE, type Bridge, type Span, type WorldLayout } from "./worldgen";
+import { BORE_HALF, BORE_SPRING, heightAt, TUNNEL_HILL, TUNNEL_HOLE, type Bridge, type Span, type WorldLayout } from "./worldgen";
 
 /** Heet's steel girder bridge (compressed by scripts/compress-model.mjs). */
 const BRIDGE_URL = "/models/bridge.glb";
 useGLTF.preload(BRIDGE_URL);
 
-/** Bore cross-section: straight walls to 4.5, round arch on top (train is 6 tall, 3.3 wide). */
-const BORE_HALF = 3.4;
-const BORE_SPRING = 4.5;
+/** Bore outline (BORE_HALF / BORE_SPRING live in worldgen): straight walls, round arch on top (train is 6 tall, 3.3 wide). */
 const BORE_PROFILE: [number, number][] = [[-BORE_HALF, -0.5]];
 for (let k = 0; k <= 8; k++) {
   const a = Math.PI - (k / 8) * Math.PI;

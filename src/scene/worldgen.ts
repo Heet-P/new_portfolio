@@ -19,6 +19,9 @@ const FLAT = 9;
 export const SNOW_LINE = 52;
 /** Half-width of the hole cut in the terrain for a tunnel's bore (units). */
 export const TUNNEL_HOLE = 8;
+/** Tunnel bore cross-section (units from the centreline): straight walls to BORE_SPRING, a round arch above. */
+export const BORE_HALF = 3.4;
+export const BORE_SPRING = 4.5;
 /** Height of a tunnel's hill crest above the track. */
 export const TUNNEL_HILL = 13;
 /** Steel bridge model half length (public/models/bridge.glb bounds, x = +-73.4). */

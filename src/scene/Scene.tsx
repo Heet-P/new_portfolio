@@ -17,6 +17,7 @@ import { Stations } from "./stations/Stations";
 import { Track } from "./Track";
 import { Train } from "./Train";
 import { resetTravel, stepTravel, travel } from "./travel";
+import { TunnelPanels } from "./TunnelPanels";
 import { getWorld, World } from "./World";
 
 /** Bloom + tone mapping + vignette: its own chunk, fetched only on the desktop tier. */
@@ -127,6 +128,7 @@ export default function Scene() {
           <Catenary world={getWorld()} shadows={shadows} />
           {/* The stations' lettering has its own Suspense inside, so it never holds up the meshes. */}
           <Stations shadows={shadows} post={quality.post} reducedMotion={reducedMotion} />
+          <TunnelPanels tunnels={getWorld().tunnels} reducedMotion={reducedMotion} />
           <Rain count={quality.rainDrops} reducedMotion={reducedMotion} />
         </Outside>
         {/* The cabin loads with the train, so a deep link opens already in front of the paper. */}
