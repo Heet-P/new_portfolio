@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The owner's git-ignored drop folder (raw media, reference snippets): not app code.
+    "media-inbox/**",
   ]),
 ]);
 
