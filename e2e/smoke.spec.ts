@@ -1,9 +1,20 @@
 import { test, expect } from "@playwright/test";
 
 // Smoke test: the statically exported home page renders the owner's name as h1.
+// (Task 13: scoped to the Express page; the ride now has its own visually hidden h1 too.)
 test("home page has an h1 with the owner's name", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("h1")).toContainText("Heet Parikh");
+  await expect(page.locator("#express h1")).toContainText("Heet Parikh");
+});
+
+// Task 13: while riding (Express hidden) there is still exactly one main landmark and one h1.
+test("the ride has one main landmark and one h1", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("nt-mode", "ride"));
+  await page.goto("/");
+  await expect(page.getByRole("navigation", { name: "Route map" })).toBeVisible();
+  await expect(page.getByRole("main")).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Heet Parikh");
 });
 
 // Phone width: neither view may ever scroll sideways (16px gutter, wrapping chips, the route strip).
