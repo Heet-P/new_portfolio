@@ -31,11 +31,12 @@ describe("ModeToggle", () => {
     expect(btn.hasAttribute("aria-pressed")).toBe(false);
   });
 
-  it("offers Express from ride mode with an explicit name and no aria-pressed", () => {
+  // Task 13 (owner): the ride's way out reads "In a hurry?" (was "Express"); the name starts with it.
+  it("offers the quick-read page from ride mode as 'In a hurry?', with an explicit name and no aria-pressed", () => {
     useRide.setState({ mode: "ride" });
     render(<ModeToggle />);
-    const btn = screen.getByRole("button", { name: "Express: switch to the plain Express page" });
-    expect(btn.textContent).toBe("Express");
+    const btn = screen.getByRole("button", { name: "In a hurry? Switch to the quick-read page" });
+    expect(btn.textContent).toBe("In a hurry?");
     expect(btn.hasAttribute("aria-pressed")).toBe(false);
   });
 
@@ -44,7 +45,7 @@ describe("ModeToggle", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Ride the train/ }));
     expect(useRide.getState().mode).toBe("ride");
     expect(window.localStorage.getItem("nt-mode")).toBe("ride");
-    fireEvent.click(screen.getByRole("button", { name: /^Express/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^In a hurry?/ }));
     expect(useRide.getState().mode).toBe("express");
     expect(window.localStorage.getItem("nt-mode")).toBe("express");
   });

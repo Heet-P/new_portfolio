@@ -81,15 +81,15 @@ test("keyboard reaches the toggles and every route map stop in the ride", async 
     seen.add(await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "").trim()));
   }
   expect(seen).toContain("Sound");
-  expect([...seen].some((t) => t.startsWith("Express"))).toBe(true);
+  expect([...seen].some((t) => t.startsWith("In a hurry?"))).toBe(true);
   for (const stop of ["Departure", "Vaani AI", "SAHARA", "Terminus"]) expect(seen).toContain(stop);
 });
 
 // Mode toggle: always reachable, big enough to tap, and it flips the label.
 test("mode toggle is visible, 44px+ and switches mode", async ({ page }) => {
   await page.goto("/");
-  // Reduced motion is not emulated, so a WebGL-capable browser starts in ride mode ("Express" offered).
-  const toggle = page.getByRole("button", { name: /^(Express|Ride the train)/ });
+  // Reduced motion is not emulated, so a WebGL-capable browser starts in ride mode ("In a hurry?" offered).
+  const toggle = page.getByRole("button", { name: /^(In a hurry?|Ride the train)/ });
   await expect(toggle).toBeVisible();
   const box = await toggle.boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(44);
@@ -120,7 +120,7 @@ test.describe("reduced motion", () => {
 test("sound toggle is off by default, 44px+, in both views, and remembered", async ({ page }) => {
   await page.goto("/");
   // The mode toggle only renders once the page has hydrated, so clicks below reach React.
-  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(In a hurry?|Ride the train)/ })).toBeVisible();
   const sound = page.getByRole("button", { name: "Sound", exact: true });
   await expect(sound).toBeVisible();
   await expect(sound).toHaveAttribute("aria-pressed", "false");
@@ -130,11 +130,11 @@ test("sound toggle is off by default, 44px+, in both views, and remembered", asy
   await sound.click();
   await expect(sound).toHaveAttribute("aria-pressed", "true");
   // The other view has it too, still on.
-  await page.getByRole("button", { name: /^(Express|Ride the train)/ }).click();
+  await page.getByRole("button", { name: /^(In a hurry?|Ride the train)/ }).click();
   await expect(sound).toBeVisible();
   await expect(sound).toHaveAttribute("aria-pressed", "true");
   await page.reload();
-  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(In a hurry?|Ride the train)/ })).toBeVisible();
   await expect(sound).toHaveAttribute("aria-pressed", "true");
   // Task 13: remembered "on" can't play before a gesture, so it shows as pending (was: plain
   // pressed). Tapping the pending ticket starts the sound; the next tap switches it off.
@@ -155,7 +155,7 @@ test("sound toggle works when localStorage throws", async ({ page }) => {
     Object.defineProperty(window, "localStorage", { get: fail, configurable: true });
   });
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /^(Express|Ride the train)/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(In a hurry?|Ride the train)/ })).toBeVisible();
   const sound = page.getByRole("button", { name: "Sound", exact: true });
   await expect(sound).toHaveAttribute("aria-pressed", "false");
   await sound.click();

@@ -63,7 +63,7 @@ test("rapid route map clicks end at the last clicked station", async ({ page }) 
 test("switching to Express lands on the same station's section", async ({ page }) => {
   await page.goto("/#sahara");
   await expect(currentStop(page)).toHaveAttribute("aria-label", "SAHARA");
-  await page.getByRole("button", { name: /^Express/ }).click();
+  await page.getByRole("button", { name: /^In a hurry?/ }).click();
   await expect(page.locator("#express")).toBeVisible();
   await expect(page.locator("#sahara")).toBeInViewport();
 });
@@ -73,7 +73,7 @@ test("ride mode mounts the 3D scene; Express removes it", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.getByTestId("ride-scene")).toHaveCSS("opacity", "1", { timeout: 15000 });
-  await page.getByRole("button", { name: /^Express/ }).click();
+  await page.getByRole("button", { name: /^In a hurry?/ }).click();
   await expect(page.locator("#express")).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(0);
 });
@@ -152,7 +152,7 @@ test("cold deep links always open at the right station", async ({ browser }) => 
 test("re-entering the ride from Express snaps to the hash's station", async ({ page }) => {
   await page.goto("/#vaani");
   await expect(page.getByRole("region", { name: "Vaani AI" })).toBeVisible({ timeout: 20000 });
-  await page.getByRole("button", { name: /^Express/ }).click();
+  await page.getByRole("button", { name: /^In a hurry?/ }).click();
   await expect(page.locator("#express")).toBeVisible();
   // A stale hash from elsewhere (e.g. an in-page link) while on Express.
   await page.evaluate(() => history.replaceState(null, "", "#terminus"));

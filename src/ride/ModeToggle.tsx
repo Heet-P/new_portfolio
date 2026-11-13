@@ -12,7 +12,8 @@ const noopSubscribe = () => () => {};
 
 /**
  * Always-visible switch between the ride and the plain Express page.
- * The label names the destination ("Express" while riding, "Ride the train" while on Express);
+ * The label names the destination: "In a hurry?" while riding (to the quick-read Express page),
+ * "Ride the train" while on Express;
  * It is a plain action button (no aria-pressed: a pressed state that flips along with a destination
  * label would be announced backwards); aria-label starts with the visible text and spells out the action.
  */
@@ -33,14 +34,14 @@ export function ModeToggle() {
     <button
       type="button"
       className={styles.toggle}
-      aria-label={express ? "Ride the train: switch to the 3D train ride" : "Express: switch to the plain Express page"}
+      aria-label={express ? "Ride the train: switch to the 3D train ride" : "In a hurry? Switch to the quick-read page"}
       onClick={() => {
         getSound().tap();
         setMode(next);
         saveMode(next);
       }}
     >
-      {express ? "Ride the train" : "Express"}
+      {express ? "Ride the train" : "In a hurry?"}
     </button>
   );
 }
