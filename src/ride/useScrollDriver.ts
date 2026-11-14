@@ -5,8 +5,9 @@ import Lenis from "lenis";
 import { STATIONS } from "@/content/route";
 import { resetTravel } from "@/scene/travel";
 import { snapCabin } from "./cabinStore";
-import { nearestStation, parseHash, stationToProgress } from "./mapping";
+import { dwellEdge, nearestStation, parseHash, progressToStation, stationToProgress } from "./mapping";
 import { useRide } from "./rideStore";
+import { setRideScroller } from "./rideScroll";
 import { progressToScroll, scrollToProgress } from "./scrollMap";
 
 const IDS = STATIONS.map((s) => s.id);
@@ -51,7 +52,8 @@ const SETTLE_CHECKS_MS = [300, 900];
  *   clearing `target` on arrival or when the visitor takes over with the wheel/touch;
  * - keeps `#<station>` in the URL with replaceState (never pushState: no history spam);
  * - keeps the visitor at the same progress across resizes and orientation changes;
- * - lets native keyboard scrolling (PageDown, Space, arrows, Home/End) interrupt a goTo ride.
+ * - lets native keyboard scrolling (PageDown, Space, arrows, Home/End) interrupt a goTo ride;
+ * - takes the scroll the cabin's newspaper hands on once its page runs out (rideScroll.ts).
  * Whenever it places the ride (deep link, re-entry from Express) the train and the cabin snap
  * there instead of gliding through the stops in between.
  * On leaving ride mode, Lenis is destroyed and the Express page is scrolled to the section
@@ -112,6 +114,23 @@ export function useScrollDriver(): void {
       if (!deltaX && !deltaY) return;
       takenOver = true;
       if (useRide.getState().target !== null) useRide.setState({ target: null });
+    });
+
+    // The cabin's newspaper hands on the scroll its page has run out of (display/usePaperHandoff.ts).
+    // It goes the way the window's own wheel goes (Lenis, programmatic: false), so the ride, the
+    // stops and the arrival all behave exactly as for a window scroll. Two differences:
+    // - a route-map ride in flight keeps going (the paper is on its way out anyway);
+    // - leaving a stop skips the rest of its dwell: the page was the hold, so the train answers
+    //   the first handed-off scroll instead of seeming to ignore the next ~quarter viewport of it.
+    setRideScroller((px, smooth) => {
+      if (!px || useRide.getState().target !== null) return;
+      takenOver = true;
+      const from = lenis.targetScroll;
+      const dir = px > 0 ? 1 : -1;
+      const { index, atStop } = progressToStation(progressOf(from), COUNT);
+      const edge = atStop ? scrollOf(dwellEdge(index, dir, COUNT)) : from;
+      const base = dir > 0 ? Math.max(from, edge) : Math.min(from, edge);
+      lenis.scrollTo(base + px, { programmatic: false, lerp: smooth ? lenis.options.lerp : 1 });
     });
 
     // Keyboard scrolling is native (Lenis doesn't smooth it), but while a goTo ride is animating
@@ -201,6 +220,7 @@ export function useScrollDriver(): void {
       settleTimers.forEach(clearTimeout);
       unsubHash();
       unsubTarget();
+      setRideScroller(null);
       lenis.destroy();
       useRide.setState({ target: null });
       html.style.scrollBehavior = "";

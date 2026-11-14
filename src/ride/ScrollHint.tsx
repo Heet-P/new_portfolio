@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useIntroOpen } from "@/intro/IntroGate";
+import { useCabin } from "./cabinStore";
+import { usePaperHint } from "./paperHint";
 import { useRide } from "./rideStore";
-import { HINT_TEXT, isDeparted, markHintSeen, readHintSeen, shouldShowHint } from "./hint";
+import { HINT_TEXT, isDeparted, markHintSeen, readHintSeen, shouldShowHint, shouldShowPaperHint } from "./hint";
 import styles from "./ScrollHint.module.css";
 
 /** Keys that scroll the page (and so move the train): the first one counts as setting off. */
@@ -43,6 +45,7 @@ function InkArrow() {
  * (never under the ticket-printer intro), only while the train sits at Departure, and goes for
  * the rest of the session (sessionStorage `nt-hint-seen`) on the first wheel, touch drag or
  * scroll key, or when the train leaves Departure any other way (a route-map ride, a deep link).
+ * It stands aside while the cabin paper's own first-time cue is up (one hint at a time).
  *
  * One polite status region that is always there, so the words are announced once as they
  * appear; they fade out, then leave the DOM, and never come back to be announced again.
@@ -50,8 +53,11 @@ function InkArrow() {
 export function ScrollHint() {
   const introOpen = useIntroOpen();
   const [seen, setSeen] = useState(readHintSeen);
+  // One hint at a time: while the open paper shows its own first-time cue, that one wins.
+  const paperShown = useCabin((s) => s.shown);
+  const paperHint = shouldShowPaperHint({ shown: paperShown, seen: usePaperHint((s) => s.seen) });
   const visible = useRide((s) =>
-    shouldShowHint({ mode: s.mode, progress: s.progress, target: s.target, sceneReady: s.sceneReady, seen, introOpen }),
+    shouldShowHint({ mode: s.mode, progress: s.progress, target: s.target, sceneReady: s.sceneReady, seen, introOpen, paperHint }),
   );
 
   // The words stay in the DOM through the fade-out after the hint has been shown.

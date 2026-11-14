@@ -1,0 +1,213 @@
+/*
+ * The cabin paper's ways on (PaperFooter.tsx): the end-of-page footer, the phones' sticky stop
+ * bar and the first-time hint slip. Newspaper tokens throughout (globals.css); type on the
+ * 16/20 scale; touch targets >= 44px. Red text only on --paper / --paper-light (4.9:1 / 5.5:1).
+ * Motion: transform/opacity only, ease-out, < 300ms, none under reduced motion.
+ */
+
+/* ---------- End-of-page footer: "Continued at the next stop" ---------- */
+
+.footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 2px solid var(--red);
+}
+
+/* Like a story's "continued on page 4": Merriweather italic, the arrow in red ink. */
+.cue {
+  margin: 0;
+  font-family: var(--font-headline), Georgia, serif;
+  font-style: italic;
+  font-size: var(--text-sub);
+  line-height: var(--text-sub-lh);
+  color: var(--ink);
+}
+
+.cue .arrow {
+  color: var(--red);
+}
+
+/* The handed-off-scroll pulse (usePaperHandoff) moves the line as one piece. */
+.cue[data-handoff-cue] {
+  display: inline-block;
+}
+
+.stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The newspaper's ink-stamp look (newspaper.module.css .action), on a real <button>. */
+.stamp {
+  cursor: pointer;
+}
+
+.arrow {
+  display: inline-block;
+}
+
+/* ---------- Phones and touch screens: the sticky stop bar ---------- */
+
+/* Mouse on a wide screen: the footer and the scroll do the job; the bar is not drawn. */
+.bar {
+  display: none;
+}
+
+/*
+ * Pinned under the scrolling page, inside the paper. Safe-area aware by construction: the
+ * display's layer already ends above the route strip, which clears env(safe-area-inset-bottom).
+ */
+@media (max-width: 640px), (max-height: 600px), (pointer: coarse) {
+  .bar {
+    flex: none;
+    display: grid;
+    /* The buttons keep their size; the stop's name takes what is left, cut short if it must be. */
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-top: 5px double var(--rule);
+    background: var(--paper-grain), var(--paper-light);
+  }
+}
+
+.barButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-stamp);
+  background: transparent;
+  font-family: var(--font-headline), Georgia, serif;
+  font-weight: 700;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.barButton:first-child {
+  justify-self: start;
+}
+
+.barButton:last-child {
+  justify-self: end;
+}
+
+.barButton[data-primary] {
+  color: var(--red);
+}
+
+.barButton:active {
+  transform: scale(0.97);
+}
+
+.barButton:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The stop's name between the buttons: the dateline's faded italic, cut short if it must be. */
+.barName {
+  overflow: hidden;
+  font-family: var(--font-body), Georgia, serif;
+  font-style: italic;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--ink-faded);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- First-time hint slip ---------- */
+
+/* Over the foot of the page (the text scrolls under it, nothing is lost), never taking a pointer. */
+.hintRow {
+  position: absolute;
+  z-index: 1;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* A slip of fresh paper in red ink, a hair crooked, like the Departure tag. */
+.hint {
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-stamp);
+  background: var(--paper-grain), var(--paper-light);
+  box-shadow:
+    inset 0 0 0 2px var(--paper-light),
+    inset 0 0 0 3px var(--rule-faint),
+    0 12px 24px -12px rgb(20 12 4 / 0.6);
+  color: var(--red);
+  font-family: var(--font-body), Georgia, serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  font-style: italic;
+  font-weight: 600;
+  text-align: center;
+  transform: rotate(-1deg);
+}
+
+/* Dismissed: fades out, then leaves the DOM (PaperHint, on transitionend). */
+.hint:not([data-visible]) {
+  opacity: 0;
+}
+
+/* Mouse or trackpad: "Scroll to read..."; touch screens: "Swipe to read...". */
+.coarse {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .fine {
+    display: none;
+  }
+
+  .coarse {
+    display: inline;
+  }
+}
+
+/* ---------- Motion (only for visitors fine with it) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hint {
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  /* Pinned on once the page has faded in: rises 8px and fades in (never from nothing). */
+  .hint[data-visible] {
+    animation: hint-in 240ms var(--ease-out) 400ms backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barButton {
+    transition: none;
+  }
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) rotate(-1deg);
+  }
+}

@@ -5,20 +5,42 @@ import { STATIONS, type Station } from "@/content/route";
 import { FrontPage } from "@/newspaper/FrontPage";
 import { cabinFrame, onCabinFrame, useCabin } from "../cabinStore";
 import { useRide } from "../rideStore";
+import { dismissPaperHint } from "../paperHint";
 import { displayOpacity } from "../stopCamera";
+import { edgesOf } from "./handoff";
 import styles from "./OnboardDisplay.module.css";
+import { PaperBar, PaperFooter, PaperHint } from "./PaperFooter";
+import { usePaperHandoff } from "./usePaperHandoff";
 
 /**
  * One stop's front page of "The Project Post", as a `region` labelled with the station name so
- * screen reader users can jump to it. Long pages scroll inside the sheet.
+ * screen reader users can jump to it. Long pages scroll inside the sheet, and keep going into
+ * the ride once they run out (usePaperHandoff); the page ends with the way on (PaperFooter),
+ * phones get a sticky stop bar under it (PaperBar), and a first-time reader a hint (PaperHint).
  */
 export function DisplayScreen({ station, index }: { station: Station; index: number }) {
   return (
     <section className={styles.screen} aria-label={station.name}>
-      {/* Lenis must not swallow the wheel here: long content scrolls inside the page. */}
-      <div className={styles.scroller} data-lenis-prevent="">
-        <FrontPage station={station} index={index} />
+      <div className={styles.page}>
+        {/* Lenis must not swallow the wheel here: the page scrolls first, and usePaperHandoff hands
+            its overflow on to the train. Focusable, so the keyboard can scroll it (and ride on). */}
+        <div
+          className={styles.scroller}
+          data-lenis-prevent=""
+          data-paper-scroller=""
+          tabIndex={0}
+          onScroll={(e) => {
+            // Reaching the end of a page (by scrolling it) is how a reader finds the way on.
+            const el = e.currentTarget;
+            if (el.scrollHeight > el.clientHeight && edgesOf(el).atBottom) dismissPaperHint();
+          }}
+        >
+          <FrontPage station={station} index={index} />
+          <PaperFooter index={index} />
+        </div>
+        <PaperHint />
       </div>
+      <PaperBar index={index} />
     </section>
   );
 }
@@ -42,6 +64,8 @@ export function OnboardDisplay() {
   const riding = useRide((s) => s.target !== null && s.target !== index);
   const layer = useRef<HTMLDivElement>(null);
   const screen = useRef<HTMLDivElement>(null);
+  // Scrolling on past the page's end rides on to the next stop (or back to the previous one).
+  usePaperHandoff(layer);
 
   // Publish the display's laid-out box (transforms excluded: offset* ignore them).
   useLayoutEffect(() => {

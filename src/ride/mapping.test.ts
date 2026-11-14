@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STATIONS } from "@/content/route";
 import {
   STOP_HOLD,
+  dwellEdge,
   nearestStation,
   parseHash,
   progressToStation,
@@ -102,5 +103,23 @@ describe("nearestStation", () => {
   it("clamps out-of-range progress", () => {
     expect(nearestStation(-1, N)).toBe(0);
     expect(nearestStation(2, N)).toBe(7);
+  });
+});
+
+// Task 17: riding on from the newspaper leaves the platform's dwell straight away.
+describe("dwellEdge", () => {
+  it("is the edge of a station's dwell zone on the side the train leaves by", () => {
+    const seg = 1 / (N - 1);
+    expect(dwellEdge(1, 1, N)).toBeCloseTo(seg * (1 + STOP_HOLD / 2));
+    expect(dwellEdge(1, -1, N)).toBeCloseTo(seg * (1 - STOP_HOLD / 2));
+    // Just past it, the timeline says "travelling"; just inside, still stopped.
+    expect(progressToStation(dwellEdge(3, 1, N) + 1e-6, N).atStop).toBe(false);
+    expect(progressToStation(dwellEdge(3, 1, N) - 1e-6, N)).toMatchObject({ index: 3, atStop: true });
+    expect(progressToStation(dwellEdge(3, -1, N) - 1e-6, N)).toMatchObject({ index: 2, atStop: false });
+  });
+
+  it("is clamped at the ends of the line", () => {
+    expect(dwellEdge(0, -1, N)).toBe(0);
+    expect(dwellEdge(N - 1, 1, N)).toBe(1);
   });
 });

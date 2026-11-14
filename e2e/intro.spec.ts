@@ -68,8 +68,11 @@ test("'Take the journey' tears the ticket, then the ride is visible", async ({ p
 });
 
 // Task 15: a first-time rider is told how the train moves, once.
+// (Task 17: while the cabin paper shows its own first-time cue, that one wins; here it has been
+// seen already, so this is the Departure hint on its own. e2e/paper.spec.ts covers the paper's.)
 test("after boarding at Departure the scroll hint shows, and a wheel scroll dismisses it for the session", async ({ page }) => {
   const hint = page.getByTestId("scroll-hint");
+  await page.addInitScript(() => window.sessionStorage.setItem("nt-paper-hint-seen", "1"));
   await page.goto("/");
   // Never under the intro.
   await expect(take(page)).toBeVisible({ timeout: 10000 });

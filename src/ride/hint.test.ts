@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { contrast } from "@/newspaper/contrast";
 import { memoryStorage, throwingStorage } from "@/sound/fakeAudioContext";
-import { HINT_SEEN_KEY, HINT_TEXT, isDeparted, markHintSeen, readHintSeen, shouldShowHint } from "./hint";
+import {
+  HINT_SEEN_KEY,
+  HINT_TEXT,
+  isDeparted,
+  markHintSeen,
+  markPaperHintSeen,
+  PAPER_HINT_SEEN_KEY,
+  PAPER_HINT_TEXT,
+  readHintSeen,
+  readPaperHintSeen,
+  shouldShowHint,
+  shouldShowPaperHint,
+} from "./hint";
 
 /** A visitor sitting at Departure in the ride, intro gone, world drawn, never scrolled. */
 const AT_DEPARTURE = { mode: "ride", progress: 0, target: null, seen: false, introOpen: false, sceneReady: true } as const;
@@ -74,5 +86,48 @@ describe("hint copy", () => {
   it("red ink on the paper tag passes 4.5:1", () => {
     // --red on --paper-light (globals.css): the tag's text and its background.
     expect(contrast("#b0352b", "#f8f2e2")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/* ---------- Task 17: the paper's own first-time cue ---------- */
+
+describe("shouldShowPaperHint", () => {
+  it("shows on the open paper until seen this session", () => {
+    expect(shouldShowPaperHint({ shown: true, seen: false })).toBe(true);
+    expect(shouldShowPaperHint({ shown: true, seen: true })).toBe(false);
+    expect(shouldShowPaperHint({ shown: false, seen: false })).toBe(false);
+  });
+});
+
+describe("only one hint at a time", () => {
+  it("the paper hint wins: the Departure hint stays away while the paper's own cue is up", () => {
+    expect(shouldShowHint({ ...AT_DEPARTURE, paperHint: true })).toBe(false);
+    expect(shouldShowHint({ ...AT_DEPARTURE, paperHint: false })).toBe(true);
+  });
+});
+
+describe("paper hint memory (sessionStorage nt-paper-hint-seen)", () => {
+  it("reads unseen, remembers, then reads seen, under its own key", () => {
+    const s = memoryStorage();
+    expect(PAPER_HINT_SEEN_KEY).toBe("nt-paper-hint-seen");
+    expect(readPaperHintSeen(s)).toBe(false);
+    markPaperHintSeen(s);
+    expect(s.getItem("nt-paper-hint-seen")).toBe("1");
+    expect(readPaperHintSeen(s)).toBe(true);
+    // Separate from the Departure hint.
+    expect(readHintSeen(s)).toBe(false);
+  });
+
+  it("never throws when storage is blocked (reads as unseen)", () => {
+    const s = throwingStorage();
+    expect(() => markPaperHintSeen(s)).not.toThrow();
+    expect(readPaperHintSeen(s)).toBe(false);
+  });
+});
+
+describe("paper hint copy", () => {
+  it("says scroll on a desktop and swipe on touch, and that going on rides on", () => {
+    expect(PAPER_HINT_TEXT.fine).toBe("Scroll to read · keep scrolling to ride on");
+    expect(PAPER_HINT_TEXT.coarse).toBe("Swipe to read · keep swiping to ride on");
   });
 });

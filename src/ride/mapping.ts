@@ -78,3 +78,14 @@ export function parseHash(hash: string, ids: readonly string[]): number {
   const i = ids.indexOf(hash.replace(/^#/, ""));
   return i === -1 ? 0 : i;
 }
+
+/**
+ * Progress at the edge of a station's dwell zone on the side the train leaves by (`dir` +1 =
+ * toward the next stop, -1 = back toward the previous one), clamped to the line's ends.
+ * Riding on from the cabin's newspaper starts here: the page itself was the stop's hold, so the
+ * train answers the very first handed-off scroll instead of sitting out the platform's dwell.
+ */
+export function dwellEdge(index: number, dir: 1 | -1, count: number): number {
+  if (count <= 1) return 0;
+  return clamp01((index + (dir * STOP_HOLD) / 2) / (count - 1));
+}

@@ -82,7 +82,9 @@ test("keyboard reaches the toggles and every route map stop in the ride", async 
   await page.goto("/#vaani");
   await expect(page.getByRole("navigation", { name: "Route map" })).toBeVisible();
   const seen = new Set<string>();
-  for (let i = 0; i < 12; i++) {
+  // Enough presses to go all the way round: the stops, then the open paper (its scroller, links and,
+  // since Task 17, the Previous / Next stop buttons at the end of the page), then the toggles.
+  for (let i = 0; i < 20; i++) {
     await page.keyboard.press("Tab");
     seen.add(await page.evaluate(() => (document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "").trim()));
   }

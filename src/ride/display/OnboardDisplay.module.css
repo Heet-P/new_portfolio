@@ -32,12 +32,16 @@
   pointer-events: auto;
 }
 
-/* Phones and short windows: the full width between 16px gutters, above the route strip. */
+/*
+ * Phones and short windows: the paper must not swallow the screen. 24px of cabin either side,
+ * and ~15% of the screen's height free above it (never less than the toggle's 60px + 12px), so
+ * the ride stays in view around the page; above the route strip at the bottom.
+ */
 @media (max-width: 640px), (max-height: 600px) {
   .layer {
-    top: 72px; /* the toggle ends at 60px, then a 12px gap */
-    right: 16px;
-    left: 16px;
+    top: max(72px, 15svh);
+    right: 24px;
+    left: 24px;
     /* Route strip = 8 + 44 + 8px (+ the home-indicator inset), then a 16px gap. */
     bottom: calc(76px + env(safe-area-inset-bottom));
   }
@@ -50,8 +54,11 @@
 
 /* ---------- The sheet ---------- */
 
+/* A column: the scrolling page, then (phones and touch screens) the sticky stop bar. */
 .screen {
   position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
   /* Newsprint: grain and tide-marks over a sun-faded edge; square corners like a real sheet. */
@@ -79,12 +86,32 @@
   pointer-events: none;
 }
 
+/* The page's box: the scroller, with the first-time hint slip pinned over its foot. */
+.page {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .scroller {
   height: 100%;
   overflow-y: auto;
+  /* Its overscroll never chains to the window (that would move the train unasked, and bounce the
+     page): running out of page is handed to the train deliberately, by usePaperHandoff. */
+  overscroll-behavior: contain;
   padding: 24px 32px 32px;
   scrollbar-width: thin;
   scrollbar-color: rgb(29 25 21 / 0.35) transparent;
+}
+
+/* Focusable for keyboard scrolling; a ring only for keyboard focus, inset so it stays on the sheet. */
+.scroller:focus {
+  outline: none;
+}
+
+.scroller:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -4px;
 }
 
 @media (max-width: 640px) {

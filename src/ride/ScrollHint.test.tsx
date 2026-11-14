@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { resetCabin, useCabin } from "./cabinStore";
+import { usePaperHint } from "./paperHint";
 import { useRide } from "./rideStore";
 import { ScrollHint } from "./ScrollHint";
 
@@ -22,6 +24,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  resetCabin();
+  usePaperHint.setState({ seen: false });
   useRide.setState({ mode: "express", progress: 0, target: null, sceneReady: false });
 });
 
@@ -97,5 +101,15 @@ describe("ScrollHint", () => {
     sessionStorage.setItem("nt-hint-seen", "1");
     render(<ScrollHint />);
     expect(status().textContent).toBe("");
+  });
+
+  // Task 17: one hint at a time. With the paper open and its own cue up, the paper hint wins.
+  it("stays away while the open paper shows its own first-time cue, and comes back once that is seen", () => {
+    usePaperHint.setState({ seen: false });
+    act(() => useCabin.setState({ shown: true, stationIndex: 0 }));
+    render(<ScrollHint />);
+    expect(status().hasAttribute("data-visible")).toBe(false);
+    act(() => usePaperHint.setState({ seen: true }));
+    expect(status().hasAttribute("data-visible")).toBe(true);
   });
 });
