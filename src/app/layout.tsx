@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Merriweather, Newsreader } from "next/font/google";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
+import { PostHogInit } from "@/analytics/PostHogInit";
 import { PROFILE } from "@/content/route";
 import "./globals.css";
 
@@ -113,6 +114,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Vercel Web Analytics: cookie-free visit counts, referrers, countries and devices.
             Only reports on Vercel deployments (no-op locally); enable it in the Vercel dashboard. */}
         <Analytics />
+        {/* PostHog product analytics: cookieless, loaded after first paint, off without a key. */}
+        <PostHogInit />
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { track } from "@/analytics/track";
 import { STATIONS } from "@/content/route";
 import { getSound } from "@/sound/sound";
 import { nearestStation } from "./mapping";
@@ -124,6 +125,7 @@ export function RouteMap() {
                     data-upcoming={upcoming || undefined}
                     onClick={() => {
                       getSound().tap();
+                      track("route_map_jump", { to: station.id });
                       goTo(i);
                     }}
                   >

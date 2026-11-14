@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import type { AnalyticsEvent, AnalyticsProps } from "@/analytics/track";
 import { PROFILE, STATIONS, type Station } from "@/content/route";
 import { StationMedia } from "@/express/StationMedia";
 import { TapLink } from "@/sound/TapLink";
 import { Clipping } from "./Clipping";
 import { deckOf, EDITION_VOLUME, formatDateline, headlineOf, nextStopLabel, SECTION } from "./edition";
-import { linkProps, splitLinks } from "./links";
+import { kindOfHref, type LinkKind, linkProps, splitLinks } from "./links";
 import { BrushTab, BrushUnderline, InkSpeckles, StopPress } from "./ornaments";
 import { PressNameplate } from "./PressNameplate";
 import { StatValue } from "./StatValue";
@@ -179,12 +180,36 @@ const Out = () => (
   </span>
 );
 
-/** One ink-stamp button (soft tap when sound is on). External links open in a new tab (noopener), the PDF downloads. */
-function Stamp({ href, primary, children }: { href: string; primary?: boolean; children: ReactNode }) {
+/**
+ * One ink-stamp button (soft tap when sound is on). External links open in a new tab (noopener), the PDF downloads.
+ * Clicks are reported (ids and kinds only): the resume as `resume_downloaded` (from `resumeFrom`), others as
+ * `link_clicked` with their `kind` (given, or read from the address; links of neither kind are not reported).
+ */
+function Stamp({
+  href,
+  primary,
+  kind,
+  stationId,
+  resumeFrom,
+  children,
+}: {
+  href: string;
+  primary?: boolean;
+  kind?: LinkKind;
+  stationId?: string;
+  resumeFrom?: "ticket" | "express" | "departure";
+  children: ReactNode;
+}) {
   const external = href.startsWith("http");
+  const linkKind = kind ?? kindOfHref(href);
+  const analytics: { event: AnalyticsEvent; props: AnalyticsProps } | undefined = href.endsWith(".pdf")
+    ? { event: "resume_downloaded" as const, props: { from: resumeFrom ?? "departure" } }
+    : linkKind
+      ? { event: "link_clicked" as const, props: { kind: linkKind, ...(stationId ? { station_id: stationId } : {}) } }
+      : undefined;
   return (
     <li>
-      <TapLink className={styles.action} data-primary={primary || undefined} href={href} {...linkProps(href)}>
+      <TapLink className={styles.action} data-primary={primary || undefined} href={href} analytics={analytics} {...linkProps(href)}>
         {children}
         {external && <Out />}
       </TapLink>
@@ -204,7 +229,12 @@ function Actions({ children }: { children: ReactNode }) {
 function Ticket({ whimsy }: { whimsy: boolean }) {
   const Link = whimsy ? TicketLink : TapLink;
   return (
-    <Link className={styles.ticket} href={PROFILE.resume} download="">
+    <Link
+      className={styles.ticket}
+      href={PROFILE.resume}
+      download=""
+      analytics={{ event: "resume_downloaded", props: { from: "ticket" } }}
+    >
       <span className={styles.ticketMain}>
         <span className={styles.ticketKicker} aria-hidden="true">
           Admit one · The Project Post
@@ -257,9 +287,9 @@ function ProjectStory(props: StoryProps) {
   const { live, demos, repo, rest } = splitLinks(station.links);
   // Text comes from the kind of link, not its label; the first one is the red stamp.
   const primary = [
-    ...(live ? [{ link: live, text: "See live" }] : []),
-    ...demos.map((link, i) => ({ link, text: i === 0 ? "Watch demo" : `Watch demo ${i + 1}` })),
-    ...(repo ? [{ link: repo, text: "GitHub" }] : []),
+    ...(live ? [{ link: live, text: "See live", kind: "live" as const }] : []),
+    ...demos.map((link, i) => ({ link, text: i === 0 ? "Watch demo" : `Watch demo ${i + 1}`, kind: "demo" as const })),
+    ...(repo ? [{ link: repo, text: "GitHub", kind: "github" as const }] : []),
   ];
   return (
     <>
@@ -279,13 +309,13 @@ function ProjectStory(props: StoryProps) {
       {station.stack && <Stack items={station.stack} />}
       {primary.length + rest.length > 0 && (
         <Actions>
-          {primary.map(({ link, text }, i) => (
-            <Stamp key={link.href} href={link.href} primary={i === 0}>
+          {primary.map(({ link, text, kind }, i) => (
+            <Stamp key={link.href} href={link.href} primary={i === 0} kind={kind} stationId={station.id}>
               {text}
             </Stamp>
           ))}
           {rest.map((l) => (
-            <Stamp key={l.href} href={l.href}>
+            <Stamp key={l.href} href={l.href} stationId={station.id}>
               {l.label}
             </Stamp>
           ))}
@@ -306,12 +336,18 @@ function DepartureStory(props: StoryProps) {
           <p className={styles.deck}>{deckOf(station)}</p>
           {/* Straight after the deck, so the resume is reachable without scrolling. */}
           <Actions>
-            <Stamp href={PROFILE.resume} primary>
+            <Stamp href={PROFILE.resume} primary resumeFrom={whimsy ? "express" : "departure"}>
               Download resume
             </Stamp>
-            <Stamp href={`mailto:${PROFILE.email}`}>Email</Stamp>
-            <Stamp href={PROFILE.github}>GitHub</Stamp>
-            <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
+            <Stamp href={`mailto:${PROFILE.email}`} stationId={station.id}>
+              Email
+            </Stamp>
+            <Stamp href={PROFILE.github} stationId={station.id}>
+              GitHub
+            </Stamp>
+            <Stamp href={PROFILE.linkedin} stationId={station.id}>
+              LinkedIn
+            </Stamp>
           </Actions>
           {station.stats && <AtAGlance stats={station.stats} />}
         </div>
@@ -332,10 +368,12 @@ function NextStory(props: StoryProps) {
         <Headline text={headlineOf(station)} level={level} drawId={drawIdOf(props)} />
         <Body paragraphs={station.body} />
         <Actions>
-          <Stamp href={`mailto:${PROFILE.email}`} primary>
+          <Stamp href={`mailto:${PROFILE.email}`} primary stationId={station.id}>
             Email me
           </Stamp>
-          <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
+          <Stamp href={PROFILE.linkedin} stationId={station.id}>
+            LinkedIn
+          </Stamp>
         </Actions>
       </div>
       <Clipping id={station.id} whimsy={whimsy} priority={props.art} />
@@ -356,11 +394,15 @@ function TerminusStory(props: StoryProps) {
           <div className={styles.ad}>
             <p className={styles.adTitle}>Contact</p>
             <Actions>
-              <Stamp href={`mailto:${PROFILE.email}`} primary>
+              <Stamp href={`mailto:${PROFILE.email}`} primary stationId={station.id}>
                 Email {PROFILE.email}
               </Stamp>
-              <Stamp href={PROFILE.linkedin}>LinkedIn</Stamp>
-              <Stamp href={PROFILE.github}>GitHub</Stamp>
+              <Stamp href={PROFILE.linkedin} stationId={station.id}>
+                LinkedIn
+              </Stamp>
+              <Stamp href={PROFILE.github} stationId={station.id}>
+                GitHub
+              </Stamp>
             </Actions>
           </div>
         </div>

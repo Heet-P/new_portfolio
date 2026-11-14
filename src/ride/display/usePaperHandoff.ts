@@ -1,6 +1,7 @@
 "use client";
 
 import { type RefObject, useEffect } from "react";
+import { track } from "@/analytics/track";
 import { STATIONS } from "@/content/route";
 import { cabinFrame, useCabin } from "../cabinStore";
 import { dismissPaperHint } from "../paperHint";
@@ -120,6 +121,8 @@ export function usePaperHandoff(layer: RefObject<HTMLElement | null>): void {
         if (delta > 0) dismissPaperHint();
       }
       if (r.pass) {
+        // Once per hand-off, when it starts (not for every px forwarded while the display fades).
+        if (!handing) track("paper_handoff", { direction: r.pass > 0 ? "next" : "prev", via: "scroll" });
         handing = true;
         dismissPaperHint();
         rideScrollBy(r.pass, smooth);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { track } from "@/analytics/track";
 import { chooseInitialMode, readSavedMode } from "./mode";
 import { webglSupported } from "./webgl";
 import { useRide } from "./rideStore";
@@ -18,5 +19,7 @@ export function useInitialMode(): void {
       saved: readSavedMode(),
     });
     useRide.getState().setMode(mode);
+    // The mode the visit starts in (the ride vs Express split is the headline number).
+    track("mode_changed", { mode, initial: true });
   }, []);
 }

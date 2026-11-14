@@ -14,6 +14,18 @@ export function linkProps(href: string) {
   return {};
 }
 
+/** What a front-page link is, for analytics (station links add "live" / "demo" by their label). */
+export type LinkKind = "github" | "demo" | "live" | "linkedin" | "email";
+
+/** The kind a link's address gives away (mail, LinkedIn, GitHub), or undefined for any other. */
+export function kindOfHref(href: string): LinkKind | undefined {
+  if (href.startsWith("mailto:")) return "email";
+  const h = host(href);
+  if (h === "linkedin.com") return "linkedin";
+  if (h === "github.com") return "github";
+  return undefined;
+}
+
 /** Labels name what a link is; hosts only for the two sites whose links are unambiguous. */
 const REPO_LABEL = /github|repo/i;
 const LIVE_LABEL = /live|site|app/i;

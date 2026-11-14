@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/analytics/track";
 import { STATIONS } from "@/content/route";
 import { nextStopLabel } from "@/newspaper/edition";
 import news from "@/newspaper/newspaper.module.css";
@@ -21,9 +22,10 @@ import styles from "./PaperFooter.module.css";
 
 const LAST = STATIONS.length - 1;
 
-/** Ride to stop `i`: the soft paper tap, and the reader has found their way on (no more hint). */
-function rideTo(i: number) {
+/** Ride from stop `from` to stop `i`: the soft paper tap, and the reader has found their way on (no more hint). */
+function rideTo(i: number, from: number) {
   getSound().tap();
+  track("paper_handoff", { direction: i > from ? "next" : "prev", via: "button" });
   dismissPaperHint();
   useRide.getState().goTo(i);
 }
@@ -56,18 +58,18 @@ export function PaperFooter({ index }: { index: number }) {
       <ul className={styles.stamps}>
         {next && index > 0 && (
           <li>
-            <button type="button" className={`${news.action} ${styles.stamp}`} onClick={() => rideTo(index - 1)}>
+            <button type="button" className={`${news.action} ${styles.stamp}`} onClick={() => rideTo(index - 1, index)}>
               <Arrow>←</Arrow> Previous stop
             </button>
           </li>
         )}
         <li>
           {next ? (
-            <button type="button" className={`${news.action} ${styles.stamp}`} data-primary="" onClick={() => rideTo(index + 1)}>
+            <button type="button" className={`${news.action} ${styles.stamp}`} data-primary="" onClick={() => rideTo(index + 1, index)}>
               Next stop <Arrow>→</Arrow>
             </button>
           ) : (
-            <button type="button" className={`${news.action} ${styles.stamp}`} data-primary="" onClick={() => rideTo(0)}>
+            <button type="button" className={`${news.action} ${styles.stamp}`} data-primary="" onClick={() => rideTo(0, index)}>
               Back to Departure <Arrow>↑</Arrow>
             </button>
           )}
@@ -88,7 +90,7 @@ export function PaperBar({ index }: { index: number }) {
   return (
     <div className={styles.bar} role="group" aria-label="Stops" data-testid="paper-bar">
       {index > 0 ? (
-        <button type="button" className={styles.barButton} aria-label="Previous stop" data-handoff-cue="prev" onClick={() => rideTo(index - 1)}>
+        <button type="button" className={styles.barButton} aria-label="Previous stop" data-handoff-cue="prev" onClick={() => rideTo(index - 1, index)}>
           <Arrow>←</Arrow> Prev
         </button>
       ) : (
@@ -96,11 +98,11 @@ export function PaperBar({ index }: { index: number }) {
       )}
       <span className={styles.barName}>{station?.name}</span>
       {last ? (
-        <button type="button" className={styles.barButton} aria-label="Back to Departure" onClick={() => rideTo(0)}>
+        <button type="button" className={styles.barButton} aria-label="Back to Departure" onClick={() => rideTo(0, index)}>
           Departure <Arrow>↑</Arrow>
         </button>
       ) : (
-        <button type="button" className={styles.barButton} data-primary="" aria-label="Next stop" data-handoff-cue="next" onClick={() => rideTo(index + 1)}>
+        <button type="button" className={styles.barButton} data-primary="" aria-label="Next stop" data-handoff-cue="next" onClick={() => rideTo(index + 1, index)}>
           Next stop <Arrow>→</Arrow>
         </button>
       )}

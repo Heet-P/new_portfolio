@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { track } from "@/analytics/track";
 import { STATIONS, type Station } from "@/content/route";
 import { FrontPage } from "@/newspaper/FrontPage";
 import { cabinFrame, onCabinFrame, useCabin } from "../cabinStore";
@@ -11,6 +12,9 @@ import { edgesOf } from "./handoff";
 import styles from "./OnboardDisplay.module.css";
 import { PaperBar, PaperFooter, PaperHint } from "./PaperFooter";
 import { usePaperHandoff } from "./usePaperHandoff";
+
+/** Stops the train has settled at this page load (a session: analytics keeps nothing across loads). */
+const reached = new Set<string>();
 
 /**
  * One stop's front page of "The Project Post", as a `region` labelled with the station name so
@@ -131,6 +135,14 @@ export function OnboardDisplay() {
   }, []);
 
   const station = STATIONS[index];
+
+  // The train has settled at a stop (display up, no longer riding on): count it once per session.
+  useEffect(() => {
+    if (!shown || riding || !station || reached.has(station.id)) return;
+    reached.add(station.id);
+    track("station_reached", { station_id: station.id, station_index: index });
+  }, [shown, riding, station, index]);
+
   return (
     <>
       {/* Screen reader users hear each stop as the display comes up (the old station label's job),

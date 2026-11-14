@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { track } from "@/analytics/track";
 import { getSound } from "@/sound/sound";
 import { saveMode } from "./mode";
 import { webglSupported } from "./webgl";
@@ -37,6 +38,8 @@ export function ModeToggle() {
       aria-label={express ? "Ride the train: switch to the 3D train ride" : "In a hurry? Switch to the quick-read page"}
       onClick={() => {
         getSound().tap();
+        if (!express) track("hurry_clicked", { from: "toggle" });
+        track("mode_changed", { mode: next });
         setMode(next);
         saveMode(next);
       }}

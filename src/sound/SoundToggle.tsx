@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useSyncExternalStore } from "react";
+import { track } from "@/analytics/track";
 import ticket from "@/ride/ModeToggle.module.css";
 import type { SoundState } from "./audioEngine";
 import { getSound } from "./sound";
@@ -60,7 +61,9 @@ export function SoundToggle() {
           // Tap first: turning off, it is the last thing heard; turning on, it is a no-op.
           sound.tap();
           // Pending: this click is the gesture the browser was waiting for, so start, don't stop.
-          sound.setEnabled(pending ? true : !on);
+          const next = pending ? true : !on;
+          track("sound_toggled", { on: next });
+          sound.setEnabled(next);
         }}
       >
         <SpeakerGlyph on={on} />

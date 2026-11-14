@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { type Ref, useCallback, useEffect, useRef, useState } from "react";
+import { track } from "@/analytics/track";
 import { saveMode } from "@/ride/mode";
 import { useRide } from "@/ride/rideStore";
 import { getSound } from "@/sound/sound";
@@ -69,6 +70,7 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
     if (leavingRef.current) return;
     leavingRef.current = true;
     markIntroSeen();
+    track("boarded");
     const sound = getSound();
     sound.stopChatter();
     sound.tap();
@@ -87,6 +89,8 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   const hurry = () => {
     leavingRef.current = true;
     markIntroSeen();
+    track("hurry_clicked", { from: "intro" });
+    track("mode_changed", { mode: "express" });
     const sound = getSound();
     sound.stopChatter();
     sound.tap();
@@ -104,6 +108,7 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   };
 
   const skip = () => {
+    track("intro_skipped");
     getSound().stopChatter();
     setSkipped(true);
     setStage("complete");
@@ -149,6 +154,7 @@ export default function Intro({ instant, onClose }: { instant: boolean; onClose:
   // keyboard focus lands on the way forward.
   useEffect(() => {
     if (stage !== "complete") return;
+    track("ticket_printed");
     const sound = getSound();
     if (!instant && sound.state() === "on") sound.chime();
     takeRef.current?.focus();
